@@ -20,6 +20,10 @@ import {
     Select,
     InputLabel,
     FormControl,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 
 const AdminPanel = () => {
@@ -29,10 +33,14 @@ const AdminPanel = () => {
     const [users, setUsers] = useState([]);
     const [requests, setRequests] = useState([]);
     const [offers, setOffers] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [userFilter, setUserFilter] = useState('');
     const [userRoleFilter, setUserRoleFilter] = useState('');
     const [requestStatusFilter, setRequestStatusFilter] = useState('');
     const [offerStatusFilter, setOfferStatusFilter] = useState('');
+    const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [newCategory, setNewCategory] = useState({ name: '', label: '', image: null });
 
     // Получение данных
     useEffect(() => {
@@ -49,6 +57,10 @@ const AdminPanel = () => {
                 // Получение предложений
                 const offersRes = await axios.get('/admin/offers');
                 setOffers(offersRes.data);
+
+                // Получение категорий
+                const categoriesRes = await axios.get('/admin/categories');
+                setCategories(categoriesRes.data);
             } catch (error) {
                 console.error('Error fetching admin data:', error);
             }
@@ -135,6 +147,67 @@ const AdminPanel = () => {
         }
     };
 
+    // Управление категориями
+    const handleOpenCategoryDialog = (category = null) => {
+        setEditingCategory(category);
+        setNewCategory(category ? { name: category.name, label: category.label, image: null } : { name: '', label: '', image: null });
+        setOpenCategoryDialog(true);
+    };
+
+    const handleCloseCategoryDialog = () => {
+        setOpenCategoryDialog(false);
+        setEditingCategory(null);
+        setNewCategory({ name: '', label: '', image: null });
+    };
+
+    const handleCategoryChange = (e) => {
+        const { name, value } = e.target;
+        setNewCategory({ ...newCategory, [name]: value });
+    };
+
+    const handleImageChange = (e) => {
+        setNewCategory({ ...newCategory, image: e.target.files[0] });
+    };
+
+    const handleSaveCategory = async () => {
+        const formData = new FormData();
+        formData.append('name', newCategory.name);
+        formData.append('label', newCategory.label);
+        if (newCategory.image) {
+            formData.append('image', newCategory.image);
+        }
+
+        try {
+            if (editingCategory) {
+                // Обновление категории
+                const res = await axios.patch(`/admin/categories/${editingCategory._id}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                setCategories(categories.map(cat => (cat._id === editingCategory._id ? res.data : cat)));
+            } else {
+                // Добавление новой категории
+                const res = await axios.post('/admin/categories', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                setCategories([...categories, res.data]);
+            }
+            handleCloseCategoryDialog();
+        } catch (error) {
+            console.error('Error saving category:', error);
+        }
+    };
+
+    const handleDeleteCategory = async (categoryId) => {
+        if (window.confirm(t('confirm_delete_category'))) {
+            try {
+                await axios.delete(`/admin/categories/${categoryId}`);
+                setCategories(categories.filter(cat => cat._id !== categoryId));
+            } catch (error) {
+                console.error('Error deleting category:', error);
+            }
+        }
+    };
+
     // Фильтрация пользователей
     const filteredUsers = users.filter(user => {
         const matchesSearch = userFilter
@@ -166,6 +239,7 @@ const AdminPanel = () => {
                 <Tab label={t('users')} />
                 <Tab label={t('requests')} />
                 <Tab label={t('offers')} />
+                <Tab label={t('categories')} />
             </Tabs>
 
             {/* Вкладка: Пользователи */}
@@ -322,6 +396,7 @@ const AdminPanel = () => {
             )}
 
             {/* Вкладка: Предложения */}
+            // Вкладка: Предложения
             {tabValue === 2 && (
                 <Box>
                     <Typography variant="h6" gutterBottom>
@@ -336,8 +411,10 @@ const AdminPanel = () => {
                                 label={t('status')}
                             >
                                 <MenuItem value="">{t('all')}</MenuItem>
-                                <MenuItem value="active">{t('active')}</MenuItem>
-                                <MenuItem value="inactive">{t('inactive')}</MenuItem>
+                                <MenuItem value="pending">{t('pending')}</MenuItem>
+                                <MenuItem value="accepted">{t('accepted')}</MenuItem>
+                                <MenuItem value="completed">{t('completed')}</MenuItem>
+                                <MenuItem value="rejected">{t('rejected')}</MenuItem>
                             </Select>
                         </FormControl>
                     </Box>
@@ -346,6 +423,7 @@ const AdminPanel = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell>ID</TableCell>
+                                    <TableCell>{t('type')}</TableCell>
                                     <TableCell>{t('service_type')}</TableCell>
                                     <TableCell>{t('description')}</TableCell>
                                     <TableCell>{t('price')}</TableCell>
@@ -359,17 +437,29 @@ const AdminPanel = () => {
                                 {filteredOffers.map(offer => (
                                     <TableRow key={offer._id}>
                                         <TableCell>{offer._id}</TableCell>
+                                        <TableCell>{offer.type}</TableCell>
                                         <TableCell>{t(offer.serviceType)}</TableCell>
                                         <TableCell>{offer.description}</TableCell>
-                                        <TableCell>{offer.price}</TableCell>
-                                        <TableCell>{offer.location}</TableCell>
+                                        <TableCell>{offer.price || 'N/A'}</TableCell>
+                                        <TableCell>{offer.location || 'N/A'}</TableCell>
                                         <TableCell>
                                             <Select
                                                 value={offer.status}
-                                                onChange={(e) => handleChangeOfferStatus(offer._id, e.target.value, offer.type || (offer.providerId ? 'Offer' : 'Service'))}
+                                                onChange={(e) => handleChangeOfferStatus(offer._id, e.target.value, offer.type)}
                                             >
-                                                <MenuItem value="active">{t('active')}</MenuItem>
-                                                <MenuItem value="inactive">{t('inactive')}</MenuItem>
+                                                {offer.type === 'ServiceRequest' ? (
+                                                    <>
+                                                        <MenuItem value="pending">{t('pending')}</MenuItem>
+                                                        <MenuItem value="accepted">{t('accepted')}</MenuItem>
+                                                        <MenuItem value="completed">{t('completed')}</MenuItem>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <MenuItem value="pending">{t('pending')}</MenuItem>
+                                                        <MenuItem value="accepted">{t('accepted')}</MenuItem>
+                                                        <MenuItem value="rejected">{t('rejected')}</MenuItem>
+                                                    </>
+                                                )}
                                             </Select>
                                         </TableCell>
                                         <TableCell>{new Date(offer.createdAt).toLocaleDateString()}</TableCell>
@@ -377,7 +467,66 @@ const AdminPanel = () => {
                                             <Button
                                                 variant="contained"
                                                 color="error"
-                                                onClick={() => handleDeleteOffer(offer._id, offer.type || (offer.providerId ? 'Offer' : 'Service'))}
+                                                onClick={() => handleDeleteOffer(offer._id, offer.type)}
+                                            >
+                                                {t('delete')}
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Box>
+            )}            {/* Вкладка: Категории */}
+            {tabValue === 3 && (
+                <Box>
+                    <Typography variant="h6" gutterBottom>
+                        {t('categories')}
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleOpenCategoryDialog()}
+                        sx={{ marginBottom: 2 }}
+                    >
+                        {t('add_category')}
+                    </Button>
+                    <TableContainer component={Paper}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>ID</TableCell>
+                                    <TableCell>{t('name')}</TableCell>
+                                    <TableCell>{t('label')}</TableCell>
+                                    <TableCell>{t('image')}</TableCell>
+                                    <TableCell>{t('created_at')}</TableCell>
+                                    <TableCell>{t('actions')}</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {categories.map(category => (
+                                    <TableRow key={category._id}>
+                                        <TableCell>{category._id}</TableCell>
+                                        <TableCell>{category.name}</TableCell>
+                                        <TableCell>{t(category.label)}</TableCell>
+                                        <TableCell>
+                                            <img src={category.image} alt={category.label} style={{ width: 50, height: 50 }} />
+                                        </TableCell>
+                                        <TableCell>{new Date(category.createdAt).toLocaleDateString()}</TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={() => handleOpenCategoryDialog(category)}
+                                                sx={{ marginRight: 1 }}
+                                            >
+                                                {t('edit')}
+                                            </Button>
+                                            <Button
+                                                variant="contained"
+                                                color="error"
+                                                onClick={() => handleDeleteCategory(category._id)}
                                             >
                                                 {t('delete')}
                                             </Button>
@@ -389,6 +538,44 @@ const AdminPanel = () => {
                     </TableContainer>
                 </Box>
             )}
+
+            {/* Диалог для добавления/редактирования категории */}
+            <Dialog open={openCategoryDialog} onClose={handleCloseCategoryDialog}>
+                <DialogTitle>{editingCategory ? t('edit_category') : t('add_category')}</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label={t('name')}
+                        name="name"
+                        value={newCategory.name}
+                        onChange={handleCategoryChange}
+                        fullWidth
+                        margin="normal"
+                    />
+                    <TextField
+                        label={t('label')}
+                        name="label"
+                        value={newCategory.label}
+                        onChange={handleCategoryChange}
+                        fullWidth
+                        margin="normal"
+                    />
+                    <TextField
+                        type="file"
+                        label={t('image')}
+                        name="image"
+                        onChange={handleImageChange}
+                        fullWidth
+                        margin="normal"
+                        InputLabelProps={{ shrink: true }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseCategoryDialog}>{t('cancel')}</Button>
+                    <Button onClick={handleSaveCategory} color="primary">
+                        {t('save')}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

@@ -2,9 +2,23 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const ServiceRequest = require('../models/ServiceRequest');
-const Service = require('../models/Service');
+const Service = require('../models/ServiceOffer');
 const Offer = require('../models/Offer');
+const Category = require('../models/Category');
 const auth = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+
+// Настройка Multer для загрузки изображений
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    },
+});
+const upload = multer({ storage });
 
 // Middleware для проверки роли admin
 const adminAuth = (req, res, next) => {
@@ -116,9 +130,14 @@ router.delete('/requests/:id', auth, adminAuth, async (req, res) => {
 // Получение списка предложений
 router.get('/offers', auth, adminAuth, async (req, res) => {
     try {
-        const services = await Service.find();
+        const serviceRequests = await ServiceRequest.find();
+        const serviceOffers = await Service.find();
         const offers = await Offer.find();
-        res.json([...services, ...offers]);
+        res.json([
+            ...serviceRequests.map(request => ({ ...request._doc, type: 'ServiceRequest' })),
+            ...serviceOffers.map(service => ({ ...service._doc, type: 'ServiceOffer' })),
+            ...offers.map(offer => ({ ...offer._doc, type: 'Offer' })),
+        ]);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -128,21 +147,31 @@ router.get('/offers', auth, adminAuth, async (req, res) => {
 router.patch('/offers/:id/status', auth, adminAuth, async (req, res) => {
     try {
         const { status, type } = req.body;
-        if (!['active', 'inactive'].includes(status)) {
-            return res.status(400).json({ error: 'Invalid status' });
-        }
-        let offer;
-        if (type === 'Service') {
-            offer = await Service.findById(req.params.id);
+        let item;
+        if (type === 'ServiceRequest') {
+            if (!['pending', 'accepted', 'completed'].includes(status)) {
+                return res.status(400).json({ error: 'Invalid status for ServiceRequest' });
+            }
+            item = await ServiceRequest.findById(req.params.id);
+        } else if (type === 'ServiceOffer') {
+            if (!['pending', 'accepted', 'rejected'].includes(status)) {
+                return res.status(400).json({ error: 'Invalid status for ServiceOffer' });
+            }
+            item = await Service.findById(req.params.id);
+        } else if (type === 'Offer') {
+            if (!['pending', 'accepted', 'rejected'].includes(status)) {
+                return res.status(400).json({ error: 'Invalid status for Offer' });
+            }
+            item = await Offer.findById(req.params.id);
         } else {
-            offer = await Offer.findById(req.params.id);
+            return res.status(400).json({ error: 'Invalid type' });
         }
-        if (!offer) {
-            return res.status(404).json({ error: 'Offer not found' });
+        if (!item) {
+            return res.status(404).json({ error: 'Item not found' });
         }
-        offer.status = status;
-        await offer.save();
-        res.json(offer);
+        item.status = status;
+        await item.save();
+        res.json(item);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -152,16 +181,77 @@ router.patch('/offers/:id/status', auth, adminAuth, async (req, res) => {
 router.delete('/offers/:id', auth, adminAuth, async (req, res) => {
     try {
         const { type } = req.body;
-        let offer;
-        if (type === 'Service') {
-            offer = await Service.findByIdAndDelete(req.params.id);
+        let item;
+        if (type === 'ServiceRequest') {
+            item = await ServiceRequest.findByIdAndDelete(req.params.id);
+        } else if (type === 'ServiceOffer') {
+            item = await Service.findByIdAndDelete(req.params.id);
+        } else if (type === 'Offer') {
+            item = await Offer.findByIdAndDelete(req.params.id);
         } else {
-            offer = await Offer.findByIdAndDelete(req.params.id);
+            return res.status(400).json({ error: 'Invalid type' });
         }
-        if (!offer) {
-            return res.status(404).json({ error: 'Offer not found' });
+        if (!item) {
+            return res.status(404).json({ error: 'Item not found' });
         }
-        res.json({ message: 'Offer deleted' });
+        res.json({ message: 'Item deleted' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Получение списка категорий
+router.get('/categories', auth, adminAuth, async (req, res) => {
+    try {
+        const categories = await Category.find();
+        res.json(categories);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Добавление новой категории
+router.post('/categories', auth, adminAuth, upload.single('image'), async (req, res) => {
+    try {
+        const { name, label } = req.body;
+        if (!name || !label || !req.file) {
+            return res.status(400).json({ error: 'Name, label, and image are required' });
+        }
+        const image = `/uploads/${req.file.filename}`;
+        const category = new Category({ name, label, image });
+        await category.save();
+        res.json(category);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Обновление категории
+router.patch('/categories/:id', auth, adminAuth, upload.single('image'), async (req, res) => {
+    try {
+        const { name, label } = req.body;
+        const category = await Category.findById(req.params.id);
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+        if (name) category.name = name;
+        if (label) category.label = label;
+        if (req.file) category.image = `/uploads/${req.file.filename}`;
+        await category.save();
+        res.json(category);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Удаление категории
+router.delete('/categories/:id', auth, adminAuth, async (req, res) => {
+    try {
+        const category = await Category.findByIdAndDelete(req.params.id);
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+        res.json({ message: 'Category deleted' });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }

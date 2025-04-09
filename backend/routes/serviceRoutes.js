@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const ServiceRequest = require('../models/ServiceRequest');
-const ServiceOffer = require('../models/ServiceOffer');
+const Service = require('../models/ServiceOffer');
 const Offer = require('../models/Offer');
 const Category = require('../models/Category');
 const Message = require('../models/Message');
@@ -68,40 +68,12 @@ router.post('/categories', auth, (req, res, next) => {
 // Получение всех предложений (доступно всем, включая гостей)
 router.get('/offers', async (req, res) => {
     try {
-        const independentOffers = await Offer.find().populate('providerId', 'name email phone address status');
-        const serviceOffers = await ServiceOffer.find()
-            .populate('providerId', 'name email phone address status')
-            .populate('requestId', 'serviceType location description');
-
-        const formattedIndependentOffers = independentOffers.map(offer => ({
-            id: offer._id,
-            type: 'independent',
-            provider: offer.providerId,
-            serviceType: offer.serviceType,
-            location: offer.location,
-            description: offer.description,
-            price: offer.price,
-            image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
-            createdAt: offer.createdAt,
-            requestId: null,
-        }));
-
-        const formattedServiceOffers = serviceOffers.map(offer => ({
-            id: offer._id,
-            type: 'service',
-            provider: offer.providerId,
-            serviceType: offer.requestId?.serviceType || 'N/A',
-            location: offer.requestId?.location || 'N/A',
-            description: offer.message,
-            price: offer.price,
-            createdAt: offer.createdAt,
-            requestId: offer.requestId?._id || null,
-            image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
-        }));
-
-        const allOffers = [...formattedIndependentOffers, ...formattedServiceOffers];
-        allOffers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        res.json(allOffers);
+        const services = await Service.find({ status: 'active' });
+        const offers = await Offer.find({ status: 'active' });
+        res.json([
+            ...services.map(service => ({ ...service._doc, type: 'ServiceOffer' })), // Исправляем type
+            ...offers.map(offer => ({ ...offer._doc, type: 'Offer' })),
+        ]);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -110,50 +82,15 @@ router.get('/offers', async (req, res) => {
 // Получение конкретного предложения по ID (доступно всем, включая гостей)
 router.get('/offers/:id', async (req, res) => {
     try {
-        let offer = await Offer.findById(req.params.id).populate('providerId', 'name email phone address status');
-        let type = 'independent';
-
-        if (!offer) {
-            offer = await ServiceOffer.findById(req.params.id)
-                .populate('providerId', 'name email phone address status')
-                .populate('requestId', 'serviceType location description');
-            type = 'service';
+        const service = await Service.findById(req.params.id);
+        if (service) {
+            return res.json({ ...service._doc, type: 'ServiceOffer' }); // Исправляем type
         }
-
-        if (!offer) {
-            return res.status(404).json({ error: 'Offer not found' });
+        const offer = await Offer.findById(req.params.id).populate('providerId', 'name email');
+        if (offer) {
+            return res.json({ ...offer._doc, type: 'Offer' });
         }
-
-        let formattedOffer;
-        if (type === 'independent') {
-            formattedOffer = {
-                id: offer._id,
-                type: 'independent',
-                provider: offer.providerId,
-                serviceType: offer.serviceType,
-                location: offer.location,
-                description: offer.description,
-                price: offer.price,
-                image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
-                createdAt: offer.createdAt,
-                requestId: null,
-            };
-        } else {
-            formattedOffer = {
-                id: offer._id,
-                type: 'service',
-                provider: offer.providerId,
-                serviceType: offer.requestId?.serviceType || 'N/A',
-                location: offer.requestId?.location || 'N/A',
-                description: offer.message,
-                price: offer.price,
-                image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
-                createdAt: offer.createdAt,
-                requestId: offer.requestId?._id || null,
-            };
-        }
-
-        res.json(formattedOffer);
+        res.status(404).json({ error: 'Offer not found' });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -426,54 +363,13 @@ router.post('/favorites', auth, async (req, res) => {
 // Получение избранных предложений пользователя
 router.get('/favorites', auth, async (req, res) => {
     try {
-        const favorites = await Favorite.find({ userId: req.user.id });
-
-        const offers = await Promise.all(
-            favorites.map(async (favorite) => {
-                const Model = favorite.offerType === 'Offer' ? Offer : ServiceOffer;
-                const offer = await Model.findById(favorite.offerId)
-                    .populate('providerId', 'name email phone address status')
-                    .populate('requestId', 'serviceType location description');
-
-                if (!offer) return null;
-
-                if (favorite.offerType === 'Offer') {
-                    return {
-                        id: offer._id,
-                        type: 'independent',
-                        provider: offer.providerId,
-                        serviceType: offer.serviceType,
-                        location: offer.location,
-                        description: offer.description,
-                        price: offer.price,
-                        image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
-                        createdAt: offer.createdAt,
-                        requestId: null,
-                    };
-                } else {
-                    return {
-                        id: offer._id,
-                        type: 'service',
-                        provider: offer.providerId,
-                        serviceType: offer.requestId?.serviceType || 'N/A',
-                        location: offer.requestId?.location || 'N/A',
-                        description: offer.message,
-                        price: offer.price,
-                        image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
-                        createdAt: offer.createdAt,
-                        requestId: offer.requestId?._id || null,
-                    };
-                }
-            })
-        );
-
-        // Фильтруем null значения (если предложение было удалено)
-        const filteredOffers = offers.filter(offer => offer !== null);
-        if (filteredOffers.length === 0) {
-            return res.status(200).json([]);
-        }
-
-        res.json(filteredOffers);
+        const userId = req.user.id;
+        const services = await Service.find({ favoritedBy: userId, status: 'active' });
+        const offers = await Offer.find({ favoritedBy: userId, status: 'active' });
+        res.json([
+            ...services.map(service => ({ ...service._doc, type: 'ServiceOffer' })), // Исправляем type
+            ...offers.map(offer => ({ ...offer._doc, type: 'Offer' })),
+        ]);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
