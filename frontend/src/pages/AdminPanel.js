@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from '../utils/axiosConfig';
 import { useTranslation } from 'react-i18next';
+import axios from '../utils/axiosConfig';
 import {
     Box,
     Typography,
@@ -16,10 +15,10 @@ import {
     Paper,
     Button,
     TextField,
-    MenuItem,
-    Select,
-    InputLabel,
     FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -28,7 +27,6 @@ import {
 
 const AdminPanel = () => {
     const { t } = useTranslation();
-    const navigate = useNavigate();
     const [tabValue, setTabValue] = useState(0);
     const [users, setUsers] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -42,46 +40,48 @@ const AdminPanel = () => {
     const [editingCategory, setEditingCategory] = useState(null);
     const [newCategory, setNewCategory] = useState({ name: '', label: '', image: null });
 
-    // Получение данных
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Получение пользователей
                 const usersRes = await axios.get('/admin/users');
                 setUsers(usersRes.data);
-
-                // Получение запросов
                 const requestsRes = await axios.get('/admin/requests');
                 setRequests(requestsRes.data);
-
-                // Получение предложений
                 const offersRes = await axios.get('/admin/offers');
                 setOffers(offersRes.data);
-
-                // Получение категорий
                 const categoriesRes = await axios.get('/admin/categories');
                 setCategories(categoriesRes.data);
             } catch (error) {
-                console.error('Error fetching admin data:', error);
+                console.error('Error fetching data:', error);
             }
         };
         fetchData();
     }, []);
 
-    // Переключение вкладок
-    const handleTabChange = (event, newValue) => {
+    const filteredUsers = users.filter(user =>
+        (user.name.toLowerCase().includes(userFilter.toLowerCase()) ||
+            user.email.toLowerCase().includes(userFilter.toLowerCase())) &&
+        (userRoleFilter ? user.role === userRoleFilter : true)
+    );
+
+    const filteredRequests = requests.filter(request =>
+        requestStatusFilter ? request.status === requestStatusFilter : true
+    );
+
+    const filteredOffers = offers.filter(offer =>
+        offerStatusFilter ? offer.status === offerStatusFilter : true
+    );
+
+    const handleChangeTab = (event, newValue) => {
         setTabValue(newValue);
     };
 
-    // Управление пользователями
     const handleBlockUser = async (userId) => {
-        if (window.confirm(t('confirm_block_user'))) {
-            try {
-                const res = await axios.patch(`/admin/users/${userId}/status`);
-                setUsers(users.map(user => (user._id === userId ? res.data : user)));
-            } catch (error) {
-                console.error('Error blocking user:', error);
-            }
+        try {
+            const res = await axios.patch(`/admin/users/${userId}/status`);
+            setUsers(users.map(user => (user._id === userId ? res.data : user)));
+        } catch (error) {
+            console.error('Error blocking user:', error);
         }
     };
 
@@ -105,7 +105,6 @@ const AdminPanel = () => {
         }
     };
 
-    // Управление запросами
     const handleChangeRequestStatus = async (requestId, newStatus) => {
         try {
             const res = await axios.patch(`/admin/requests/${requestId}/status`, { status: newStatus });
@@ -126,7 +125,6 @@ const AdminPanel = () => {
         }
     };
 
-    // Управление предложениями
     const handleChangeOfferStatus = async (offerId, newStatus, type) => {
         try {
             const res = await axios.patch(`/admin/offers/${offerId}/status`, { status: newStatus, type });
@@ -147,7 +145,6 @@ const AdminPanel = () => {
         }
     };
 
-    // Управление категориями
     const handleOpenCategoryDialog = (category = null) => {
         setEditingCategory(category);
         setNewCategory(category ? { name: category.name, label: category.label, image: null } : { name: '', label: '', image: null });
@@ -170,22 +167,20 @@ const AdminPanel = () => {
     };
 
     const handleSaveCategory = async () => {
-        const formData = new FormData();
-        formData.append('name', newCategory.name);
-        formData.append('label', newCategory.label);
-        if (newCategory.image) {
-            formData.append('image', newCategory.image);
-        }
-
         try {
+            const formData = new FormData();
+            formData.append('name', newCategory.name);
+            formData.append('label', newCategory.label);
+            if (newCategory.image) {
+                formData.append('image', newCategory.image);
+            }
+
             if (editingCategory) {
-                // Обновление категории
                 const res = await axios.patch(`/admin/categories/${editingCategory._id}`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
                 setCategories(categories.map(cat => (cat._id === editingCategory._id ? res.data : cat)));
             } else {
-                // Добавление новой категории
                 const res = await axios.post('/admin/categories', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
@@ -208,34 +203,12 @@ const AdminPanel = () => {
         }
     };
 
-    // Фильтрация пользователей
-    const filteredUsers = users.filter(user => {
-        const matchesSearch = userFilter
-            ? user.name.toLowerCase().includes(userFilter.toLowerCase()) ||
-            user.email.toLowerCase().includes(userFilter.toLowerCase())
-            : true;
-        const matchesRole = userRoleFilter ? user.role === userRoleFilter : true;
-        return matchesSearch && matchesRole;
-    });
-
-    // Фильтрация запросов
-    const filteredRequests = requests.filter(request => {
-        return requestStatusFilter ? request.status === requestStatusFilter : true;
-    });
-
-    // Фильтрация предложений
-    const filteredOffers = offers.filter(offer => {
-        return offerStatusFilter ? offer.status === offerStatusFilter : true;
-    });
-
     return (
         <Box sx={{ padding: 4 }}>
             <Typography variant="h4" gutterBottom>
                 {t('admin_panel')}
             </Typography>
-
-            {/* Вкладки */}
-            <Tabs value={tabValue} onChange={handleTabChange} sx={{ marginBottom: 4 }}>
+            <Tabs value={tabValue} onChange={handleChangeTab} sx={{ marginBottom: 4 }}>
                 <Tab label={t('users')} />
                 <Tab label={t('requests')} />
                 <Tab label={t('offers')} />
@@ -299,16 +272,16 @@ const AdminPanel = () => {
                                                 <MenuItem value="admin">{t('admin')}</MenuItem>
                                             </Select>
                                         </TableCell>
-                                        <TableCell>{user.status}</TableCell>
+                                        <TableCell>{user.accountStatus}</TableCell>
                                         <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                                         <TableCell>
                                             <Button
                                                 variant="contained"
-                                                color={user.status === 'active' ? 'error' : 'success'}
+                                                color={user.accountStatus === 'active' ? 'error' : 'success'}
                                                 onClick={() => handleBlockUser(user._id)}
                                                 sx={{ marginRight: 1 }}
                                             >
-                                                {user.status === 'active' ? t('block') : t('unblock')}
+                                                {user.accountStatus === 'active' ? t('block') : t('unblock')}
                                             </Button>
                                             <Button
                                                 variant="contained"
@@ -355,6 +328,7 @@ const AdminPanel = () => {
                                     <TableCell>{t('user')}</TableCell>
                                     <TableCell>{t('service_type')}</TableCell>
                                     <TableCell>{t('description')}</TableCell>
+                                    <TableCell>{t('location')}</TableCell>
                                     <TableCell>{t('status')}</TableCell>
                                     <TableCell>{t('created_at')}</TableCell>
                                     <TableCell>{t('actions')}</TableCell>
@@ -364,9 +338,10 @@ const AdminPanel = () => {
                                 {filteredRequests.map(request => (
                                     <TableRow key={request._id}>
                                         <TableCell>{request._id}</TableCell>
-                                        <TableCell>{request.userId?.name || 'Unknown'}</TableCell>
+                                        <TableCell>{request.userId?.name || 'N/A'}</TableCell>
                                         <TableCell>{t(request.serviceType)}</TableCell>
                                         <TableCell>{request.description}</TableCell>
+                                        <TableCell>{request.location}</TableCell>
                                         <TableCell>
                                             <Select
                                                 value={request.status}
@@ -396,7 +371,6 @@ const AdminPanel = () => {
             )}
 
             {/* Вкладка: Предложения */}
-            // Вкладка: Предложения
             {tabValue === 2 && (
                 <Box>
                     <Typography variant="h6" gutterBottom>
@@ -478,7 +452,9 @@ const AdminPanel = () => {
                         </Table>
                     </TableContainer>
                 </Box>
-            )}            {/* Вкладка: Категории */}
+            )}
+
+            {/* Вкладка: Категории */}
             {tabValue === 3 && (
                 <Box>
                     <Typography variant="h6" gutterBottom>
@@ -509,11 +485,23 @@ const AdminPanel = () => {
                                     <TableRow key={category._id}>
                                         <TableCell>{category._id}</TableCell>
                                         <TableCell>{category.name}</TableCell>
-                                        <TableCell>{t(category.label)}</TableCell>
+                                        <TableCell>{category.label}</TableCell>
                                         <TableCell>
-                                            <img src={category.image} alt={category.label} style={{ width: 50, height: 50 }} />
+                                            {category.image ? (
+                                                <img
+                                                    src={category.image}
+                                                    alt={category.label}
+                                                    style={{ width: 50, height: 50, objectFit: 'cover' }}
+                                                />
+                                            ) : (
+                                                'No Image'
+                                            )}
                                         </TableCell>
-                                        <TableCell>{new Date(category.createdAt).toLocaleDateString()}</TableCell>
+                                        <TableCell>
+                                            {category.createdAt
+                                                ? new Date(category.createdAt).toLocaleDateString()
+                                                : 'N/A'}
+                                        </TableCell>
                                         <TableCell>
                                             <Button
                                                 variant="contained"
@@ -559,18 +547,27 @@ const AdminPanel = () => {
                         fullWidth
                         margin="normal"
                     />
-                    <TextField
+                    <input
                         type="file"
-                        label={t('image')}
-                        name="image"
+                        accept="image/*"
                         onChange={handleImageChange}
-                        fullWidth
-                        margin="normal"
-                        InputLabelProps={{ shrink: true }}
+                        style={{ marginTop: 16 }}
                     />
+                    {editingCategory && editingCategory.image && (
+                        <Box sx={{ marginTop: 2 }}>
+                            <Typography variant="body2">{t('current_image')}:</Typography>
+                            <img
+                                src={editingCategory.image}
+                                alt="Current"
+                                style={{ width: 100, height: 100, objectFit: 'cover' }}
+                            />
+                        </Box>
+                    )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCloseCategoryDialog}>{t('cancel')}</Button>
+                    <Button onClick={handleCloseCategoryDialog} color="secondary">
+                        {t('cancel')}
+                    </Button>
                     <Button onClick={handleSaveCategory} color="primary">
                         {t('save')}
                     </Button>

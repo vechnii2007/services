@@ -10,6 +10,7 @@ require('dotenv').config();
 
 // Логирование для проверки JWT_SECRET
 console.log('JWT_SECRET:', process.env.JWT_SECRET);
+
 if (!process.env.JWT_SECRET) {
     console.error('Error: JWT_SECRET is not defined in .env file');
     process.exit(1);
@@ -30,9 +31,6 @@ const upload = multer({ storage });
 
 app.use(cors());
 app.use(express.json());
-
-// Статическая папка для доступа к загруженным файлам
-app.use('/uploads', express.static('uploads'));
 
 // Проверка подключения к MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -63,3 +61,7 @@ mongoose.connection.on('error', (err) => {
 app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/uploads', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+}, express.static('uploads'));

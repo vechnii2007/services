@@ -217,7 +217,7 @@ router.post('/categories', auth, adminAuth, upload.single('image'), async (req, 
         if (!name || !label || !req.file) {
             return res.status(400).json({ error: 'Name, label, and image are required' });
         }
-        const image = `/uploads/${req.file.filename}`;
+        const image = `/images/${req.file.filename}`; // Обновляем путь
         const category = new Category({ name, label, image });
         await category.save();
         res.json(category);
@@ -236,7 +236,7 @@ router.patch('/categories/:id', auth, adminAuth, upload.single('image'), async (
         }
         if (name) category.name = name;
         if (label) category.label = label;
-        if (req.file) category.image = `/uploads/${req.file.filename}`;
+        if (req.file) category.image = `/images/${req.file.filename}`; // Обновляем путь
         await category.save();
         res.json(category);
     } catch (error) {
