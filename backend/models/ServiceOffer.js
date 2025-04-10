@@ -23,6 +23,11 @@ const serviceOfferSchema = new mongoose.Schema({
         type: String, // URL изображения
         default: null,
     },
+    status: {
+        type: String,
+        enum: ['pending', 'active', 'inactive'], // Возможные значения
+        default: 'pending', // Значение по умолчанию
+    },
     createdAt: {
         type: Date,
         default: Date.now,

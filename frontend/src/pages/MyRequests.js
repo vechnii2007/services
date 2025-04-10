@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../utils/axiosConfig'; // Используем настроенный axios
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Card, CardContent, Grid, Button } from '@mui/material';
 
@@ -10,9 +10,16 @@ const MyRequests = () => {
     const [requests, setRequests] = useState([]);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    const isFetchingData = useRef(false); // Флаг для предотвращения дубликатов
 
     useEffect(() => {
         const fetchRequests = async () => {
+            if (isFetchingData.current) {
+                console.log('Fetch requests already in progress, skipping...');
+                return;
+            }
+
+            isFetchingData.current = true;
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
@@ -20,7 +27,7 @@ const MyRequests = () => {
                     navigate('/login');
                     return;
                 }
-                const res = await axios.get('http://localhost:5001/api/services/my-requests', {
+                const res = await axios.get('/services/my-requests', {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -34,10 +41,11 @@ const MyRequests = () => {
                 }
             } finally {
                 setLoading(false);
+                isFetchingData.current = false;
             }
         };
         fetchRequests();
-    }, [t, navigate]);
+    }, [navigate]); // Убрали t из зависимостей
 
     if (loading) {
         return <Typography>{t('loading')}</Typography>;

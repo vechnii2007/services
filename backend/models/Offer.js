@@ -22,14 +22,16 @@ const offerSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
-    image: {
-        type: String, // URL изображения
-        default: null,
+    images: [{ type: String }], // Теперь массив строк вместо одной строки
+    status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'active',
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    },
-});
+    favoritedBy: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+    }],
+}, { timestamps: true });
 
 module.exports = mongoose.model('Offer', offerSchema);

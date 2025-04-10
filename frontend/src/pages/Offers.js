@@ -12,6 +12,7 @@ import {
     TextField,
     Button,
     IconButton,
+    Pagination,
 } from '@mui/material';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -23,12 +24,16 @@ const Offers = () => {
     const [categories, setCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
+    const [locationFilter, setLocationFilter] = useState('');
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
     const [favorites, setFavorites] = useState({});
-    const isFetchingData = useRef(false); // Флаг для предотвращения дубликатов
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const isFetchingData = useRef(false);
 
-    // Обратное соответствие: переведённое значение → оригинальный ключ
     const serviceTypeMap = {
         [t('translation')]: 'translation',
         [t('legal')]: 'legal',
@@ -58,17 +63,23 @@ const Offers = () => {
 
             isFetchingData.current = true;
             try {
-                // Получение предложений
-                const offersRes = await axios.get('/services/offers');
+                const offersRes = await axios.get('/services/offers', {
+                    params: {
+                        page,
+                        limit: 10,
+                        minPrice: minPrice || undefined,
+                        maxPrice: maxPrice || undefined,
+                        location: locationFilter || undefined,
+                    },
+                });
                 console.log('Fetched offers:', offersRes.data);
-                setOffers(offersRes.data);
+                setOffers(offersRes.data.offers);
+                setTotalPages(offersRes.data.totalPages);
 
-                // Получение категорий
                 const categoriesRes = await axios.get('/services/categories');
                 console.log('Fetched categories:', categoriesRes.data);
                 setCategories(categoriesRes.data);
 
-                // Получение избранных предложений
                 const token = localStorage.getItem('token');
                 if (token) {
                     try {
@@ -77,7 +88,7 @@ const Offers = () => {
                         });
                         const favoritesMap = {};
                         favoritesRes.data.forEach(offer => {
-                            favoritesMap[offer.id] = true;
+                            favoritesMap[offer._id] = true; // Используем _id вместо id
                         });
                         setFavorites(favoritesMap);
                     } catch (error) {
@@ -94,7 +105,7 @@ const Offers = () => {
             }
         };
         fetchData();
-    }, []); // Пустой массив зависимостей
+    }, [page, minPrice, maxPrice, locationFilter]);
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
@@ -102,6 +113,10 @@ const Offers = () => {
 
     const handleCategoryClick = (category) => {
         setSelectedCategory(category === selectedCategory ? '' : category);
+    };
+
+    const handlePageChange = (event, value) => {
+        setPage(value);
     };
 
     const toggleFavorite = async (offerId, offerType) => {
@@ -157,25 +172,46 @@ const Offers = () => {
                 </Typography>
             )}
 
-            {/* Поиск */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 4, gap: 2 }}>
                 <TextField
                     label={t('search_placeholder')}
                     value={searchQuery}
                     onChange={handleSearchChange}
                     variant="outlined"
-                    sx={{ width: '50%' }}
+                    sx={{ width: '30%' }}
+                />
+                <TextField
+                    label={t('min_price')}
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    type="number"
+                    variant="outlined"
+                    sx={{ width: '15%' }}
+                />
+                <TextField
+                    label={t('max_price')}
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    type="number"
+                    variant="outlined"
+                    sx={{ width: '15%' }}
+                />
+                <TextField
+                    label={t('location')}
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    variant="outlined"
+                    sx={{ width: '20%' }}
                 />
                 <Button
                     variant="contained"
                     color="primary"
-                    sx={{ marginLeft: 2, backgroundColor: '#ff0000' }}
+                    sx={{ backgroundColor: '#ff0000' }}
                 >
                     {t('search')}
                 </Button>
             </Box>
 
-            {/* Категории */}
             <Typography variant="h6" gutterBottom>
                 {t('categories')}
             </Typography>
@@ -205,57 +241,66 @@ const Offers = () => {
                 ))}
             </Grid>
 
-            {/* Список предложений */}
             {filteredOffers.length > 0 ? (
-                <Grid container spacing={3}>
-                    {filteredOffers.map((offer) => (
-                        <Grid item xs={12} sm={6} md={3} key={offer.id}>
-                            <Card>
-                                {offer.image && (
-                                    <CardMedia
-                                        component="img"
-                                        height="140"
-                                        image={offer.image}
-                                        alt={offer.serviceType}
-                                    />
-                                )}
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Typography variant="h6">
-                                            {t(offer.serviceType).toUpperCase()}
+                <>
+                    <Grid container spacing={3}>
+                        {filteredOffers.map((offer) => (
+                            <Grid item xs={12} sm={6} md={3} key={offer._id}> {/* Используем _id вместо id */}
+                                <Card>
+                                    {offer.image && (
+                                        <CardMedia
+                                            component="img"
+                                            height="140"
+                                            image={offer.image}
+                                            alt={offer.serviceType}
+                                        />
+                                    )}
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography variant="h6">
+                                                {t(offer.serviceType).toUpperCase()}
+                                            </Typography>
+                                            <IconButton onClick={() => toggleFavorite(offer._id, offer.type === 'independent' ? 'Offer' : 'ServiceOffer')}>
+                                                {favorites[offer._id] ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
+                                            </IconButton>
+                                        </Box>
+                                        <Typography variant="body2" color="textSecondary">
+                                            {offer.description}
                                         </Typography>
-                                        <IconButton onClick={() => toggleFavorite(offer.id, offer.type === 'independent' ? 'Offer' : 'ServiceOffer')}>
-                                            {favorites[offer.id] ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
-                                        </IconButton>
-                                    </Box>
-                                    <Typography variant="body2" color="textSecondary">
-                                        {offer.description}
-                                    </Typography>
-                                    <Typography variant="h6" sx={{ marginTop: 1 }}>
-                                        {offer.price} {t('currency')}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: 1 }}>
-                                        <Typography variant="body2">
-                                            {offer.location}
+                                        <Typography variant="h6" sx={{ marginTop: 1 }}>
+                                            {offer.price} {t('currency')}
                                         </Typography>
-                                        <Typography variant="body2">
-                                            {t(offer.serviceType)}
-                                        </Typography>
-                                    </Box>
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        component={Link}
-                                        to={`/offers/${offer.id}`}
-                                        sx={{ marginTop: 2, width: '100%' }}
-                                    >
-                                        {t('view_offer')}
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    ))}
-                </Grid>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: 1 }}>
+                                            <Typography variant="body2">
+                                                {offer.location}
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {t(offer.serviceType)}
+                                            </Typography>
+                                        </Box>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            component={Link}
+                                            to={`/offers/${offer._id}`} // Используем _id вместо id
+                                            sx={{ marginTop: 2, width: '100%' }}
+                                        >
+                                            {t('view_offer')}
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))}
+                    </Grid>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                        <Pagination
+                            count={totalPages}
+                            page={page}
+                            onChange={handlePageChange}
+                            color="primary"
+                        />
+                    </Box>
+                </>
             ) : (
                 <Typography variant="body1" align="center">
                     {t('no_offers')}

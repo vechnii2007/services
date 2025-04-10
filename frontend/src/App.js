@@ -13,12 +13,13 @@ import ProviderRequests from './pages/ProviderRequests';
 import Chat from './pages/Chat';
 import ChatList from './pages/ChatList';
 import Offers from './pages/Offers';
-import AdminPanel from './pages/AdminPanel'; // Импортируем новый компонент
+import AdminPanel from './pages/AdminPanel';
 import OfferDetails from './pages/OfferDetails';
 import CreateOffer from './pages/CreateOffer';
 import MyOffers from './pages/MyOffers';
 import Favorites from './pages/Favorites';
 import PaymentDashboard from './pages/PaymentDashboard';
+import Notifications from './pages/Notifications'; // Импортируем новый компонент
 import RouteGuard from './utils/RouteGuard';
 
 const App = () => {
@@ -27,7 +28,9 @@ const App = () => {
     const [user, setUser] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [notifications, setNotifications] = useState([]); // Состояние для уведомлений
     const isFetchingUser = useRef(false); // Флаг для предотвращения дубликатов
+    const isFetchingNotifications = useRef(false); // Флаг для уведомлений
 
     const handleLanguageMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
@@ -73,14 +76,72 @@ const App = () => {
         }
     };
 
+    const fetchNotifications = async () => {
+        if (isFetchingNotifications.current) {
+            console.log('Fetch notifications already in progress, skipping...');
+            return;
+        }
+
+        isFetchingNotifications.current = true;
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setNotifications([]);
+                return;
+            }
+            const res = await axios.get('/services/notifications', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            setNotifications(res.data);
+        } catch (error) {
+            console.error('Error fetching notifications:', error.response?.data || error.message);
+            setNotifications([]);
+        } finally {
+            isFetchingNotifications.current = false;
+        }
+    };
+
+    const markNotificationAsRead = async (notificationId) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            await axios.put(`/services/notifications/${notificationId}/read`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            setNotifications((prev) =>
+                prev.map((n) =>
+                    n._id === notificationId ? { ...n, read: true } : n
+                )
+            );
+        } catch (error) {
+            console.error('Error marking notification as read:', error.response?.data || error.message);
+        }
+    };
+
     useEffect(() => {
         fetchUser();
     }, []); // Пустой массив зависимостей
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications();
+            // Настраиваем интервал для периодического обновления уведомлений
+            const interval = setInterval(fetchNotifications, 30000); // Каждые 30 секунд
+            return () => clearInterval(interval); // Очищаем интервал при размонтировании
+        } else {
+            setNotifications([]);
+        }
+    }, [user]); // Зависимость от user
 
     const handleLogout = () => {
         console.log('Logging out...');
         localStorage.removeItem('token');
         setUser(null);
+        setNotifications([]); // Очищаем уведомления при выходе
         window.location.href = '/login';
     };
 
@@ -180,6 +241,12 @@ const App = () => {
                             <MenuItem onClick={() => changeLanguage('ua')}>{t('ukrainian')}</MenuItem>
                             <MenuItem onClick={() => changeLanguage('es')}>{t('spanish')}</MenuItem>
                         </Menu>
+                        {user && (
+                            <Notifications
+                                notifications={notifications}
+                                onMarkAsRead={markNotificationAsRead}
+                            />
+                        )}
                         {user ? (
                             <Button color="inherit" onClick={handleLogout}>
                                 {t('logout')}

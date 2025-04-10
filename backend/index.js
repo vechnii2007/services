@@ -32,6 +32,17 @@ const upload = multer({ storage });
 app.use(cors());
 app.use(express.json());
 
+// Добавляем поддержку пути /images, перенаправляя на uploads/
+app.use('/images', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+}, express.static('uploads'));
+
+app.use('/uploads', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+}, express.static('uploads'));
+
 // Проверка подключения к MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -61,7 +72,3 @@ mongoose.connection.on('error', (err) => {
 app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/uploads', (req, res, next) => {
-    res.set('Cache-Control', 'no-store');
-    next();
-}, express.static('uploads'));

@@ -7,6 +7,7 @@ const Offer = require('../models/Offer');
 const Category = require('../models/Category');
 const Message = require('../models/Message');
 const Favorite = require('../models/Favorite');
+const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const path = require('path');
 
@@ -29,6 +30,20 @@ router.get('/categories', async (req, res) => {
     try {
         const categories = await Category.find();
         res.json(categories);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Получение уникальных местоположений (доступно всем)
+router.get('/locations', async (req, res) => {
+    try {
+        const serviceLocations = await Service.distinct('location');
+        const offerLocations = await Offer.distinct('location');
+        const allLocations = [...new Set([...serviceLocations, ...offerLocations])]
+            .filter(location => location) // Убираем пустые значения
+            .sort(); // Сортируем по алфавиту
+        res.json(allLocations);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -65,15 +80,84 @@ router.post('/categories', auth, (req, res, next) => {
     }
 });
 
-// Получение всех предложений (доступно всем, включая гостей)
+// Обновление категории (доступно только admin)
+router.put('/categories/:id', auth, (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied. Admins only.' });
+        }
+
+        const category = await Category.findById(req.params.id);
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+
+        const { name, label } = req.body;
+        category.name = name || category.name;
+        category.label = label || category.label;
+        if (req.file) {
+            category.image = `/uploads/${req.file.filename}`;
+        }
+
+        await category.save();
+        res.json(category);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Получение всех предложений с пагинацией и фильтрацией (доступно всем, включая гостей)
 router.get('/offers', async (req, res) => {
     try {
-        const services = await Service.find({ status: 'active' });
-        const offers = await Offer.find({ status: 'active' });
-        res.json([
-            ...services.map(service => ({ ...service._doc, type: 'ServiceOffer' })), // Исправляем type
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        const minPrice = parseFloat(req.query.minPrice) || 0;
+        const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
+        const location = req.query.location ? req.query.location.toLowerCase() : null;
+
+        const serviceFilter = { status: 'active' };
+        const offerFilter = { status: 'active' };
+
+        if (minPrice || maxPrice !== Infinity) {
+            serviceFilter.price = { $gte: minPrice, $lte: maxPrice };
+            offerFilter.price = { $gte: minPrice, $lte: maxPrice };
+        }
+
+        if (location) {
+            serviceFilter.location = { $regex: location, $options: 'i' };
+            offerFilter.location = { $regex: location, $options: 'i' };
+        }
+
+        const totalServices = await Service.countDocuments(serviceFilter);
+        const totalOffers = await Offer.countDocuments(offerFilter);
+        const total = totalServices + totalOffers;
+
+        const services = await Service.find(serviceFilter)
+            .skip(skip)
+            .limit(limit);
+        const offers = await Offer.find(offerFilter)
+            .skip(skip)
+            .limit(limit);
+
+        const combinedOffers = [
+            ...services.map(service => ({ ...service._doc, type: 'ServiceOffer' })),
             ...offers.map(offer => ({ ...offer._doc, type: 'Offer' })),
-        ]);
+        ];
+
+        res.json({
+            offers: combinedOffers,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+        });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -84,7 +168,7 @@ router.get('/offers/:id', async (req, res) => {
     try {
         const service = await Service.findById(req.params.id);
         if (service) {
-            return res.json({ ...service._doc, type: 'ServiceOffer' }); // Исправляем type
+            return res.json({ ...service._doc, type: 'ServiceOffer' });
         }
         const offer = await Offer.findById(req.params.id).populate('providerId', 'name email');
         if (offer) {
@@ -106,7 +190,7 @@ router.get('/my-offers', auth, async (req, res) => {
         const offers = await Offer.find({ providerId: req.user.id }).populate('providerId', 'name email phone address status');
         const formattedOffers = offers.map(offer => ({
             ...offer._doc,
-            image: offer.image ? `${BASE_URL}${offer.image}` : 'https://via.placeholder.com/150?text=Offer',
+            images: offer.images.map(image => image ? `${BASE_URL}${image}` : 'https://via.placeholder.com/150?text=Offer'),
         }));
         res.json(formattedOffers);
     } catch (error) {
@@ -115,8 +199,9 @@ router.get('/my-offers', auth, async (req, res) => {
 });
 
 // Создание независимого предложения (доступно только provider и admin)
+// Создание независимого предложения (доступно только provider и admin)
 router.post('/offers', auth, (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
+    upload.array('images', 5)(req, res, (err) => {
         if (err) {
             return res.status(400).json({ error: err.message });
         }
@@ -128,18 +213,20 @@ router.post('/offers', auth, (req, res, next) => {
             return res.status(403).json({ error: 'Access denied. Providers and admins only.' });
         }
 
-        const { serviceType, location, description, price } = req.body;
+        const { serviceType, location, description, price, providerId } = req.body;
         if (!serviceType || !location || !description || !price) {
             return res.status(400).json({ error: 'All fields are required' });
         }
 
+        const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+
         const offer = new Offer({
-            providerId: req.user.id,
+            providerId: req.user.role === 'admin' && providerId ? providerId : req.user.id, // Используем providerId, если указан, иначе текущего пользователя
             serviceType,
             location,
             description,
             price,
-            image: req.file ? `/uploads/${req.file.filename}` : null,
+            images,
         });
         await offer.save();
         res.status(201).json(offer);
@@ -147,10 +234,9 @@ router.post('/offers', auth, (req, res, next) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-
 // Обновление независимого предложения (доступно только provider и admin, которые его создали)
 router.put('/offers/:id', auth, (req, res, next) => {
-    upload.single('image')(req, res, (err) => {
+    upload.array('images', 5)(req, res, (err) => {
         if (err) {
             return res.status(400).json({ error: err.message });
         }
@@ -176,8 +262,8 @@ router.put('/offers/:id', auth, (req, res, next) => {
         offer.location = location || offer.location;
         offer.description = description || offer.description;
         offer.price = price || offer.price;
-        if (req.file) {
-            offer.image = `/uploads/${req.file.filename}`;
+        if (req.files && req.files.length > 0) {
+            offer.images = req.files.map(file => `/uploads/${file.filename}`);
         }
         await offer.save();
         res.json(offer);
@@ -202,7 +288,6 @@ router.delete('/offers/:id', auth, async (req, res) => {
             return res.status(403).json({ error: 'Access denied. You can only delete your own offers.' });
         }
 
-        // Удаляем связанные записи в избранном
         await Favorite.deleteMany({ offerId: offer._id, offerType: 'Offer' });
 
         await offer.remove();
@@ -216,7 +301,7 @@ router.delete('/offers/:id', auth, async (req, res) => {
 router.post('/offer', auth, (req, res, next) => {
     upload.single('image')(req, res, (err) => {
         if (err) {
-            return res.status(400).json({ error: err.message });
+            return res.status(400).json({ error: 'Request ID, message, and price are required' });
         }
         next();
     });
@@ -241,6 +326,15 @@ router.post('/offer', auth, (req, res, next) => {
             image: req.file ? `/uploads/${req.file.filename}` : null,
         });
         await offer.save();
+
+        const notification = new Notification({
+            userId: request.userId,
+            message: `New offer received for your request: ${request.serviceType}`,
+            type: 'offer',
+            relatedId: request._id,
+        });
+        await notification.save();
+
         res.status(201).json(offer);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -327,14 +421,12 @@ router.post('/favorites', auth, async (req, res) => {
             return res.status(400).json({ error: 'Invalid offer type' });
         }
 
-        // Проверяем, существует ли предложение
         const Model = offerType === 'Offer' ? Offer : ServiceOffer;
         const offer = await Model.findById(offerId);
         if (!offer) {
             return res.status(404).json({ error: 'Offer not found' });
         }
 
-        // Проверяем, есть ли уже в избранном
         const existingFavorite = await Favorite.findOne({
             userId: req.user.id,
             offerId,
@@ -342,11 +434,9 @@ router.post('/favorites', auth, async (req, res) => {
         });
 
         if (existingFavorite) {
-            // Если уже в избранном, удаляем
             await existingFavorite.remove();
             res.json({ message: 'Removed from favorites', isFavorite: false });
         } else {
-            // Если нет в избранном, добавляем
             const favorite = new Favorite({
                 userId: req.user.id,
                 offerId,
@@ -367,9 +457,53 @@ router.get('/favorites', auth, async (req, res) => {
         const services = await Service.find({ favoritedBy: userId, status: 'active' });
         const offers = await Offer.find({ favoritedBy: userId, status: 'active' });
         res.json([
-            ...services.map(service => ({ ...service._doc, type: 'ServiceOffer' })), // Исправляем type
+            ...services.map(service => ({ ...service._doc, type: 'ServiceOffer' })),
             ...offers.map(offer => ({ ...offer._doc, type: 'Offer' })),
         ]);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Получение уведомлений пользователя
+router.get('/notifications', auth, async (req, res) => {
+    try {
+        const notifications = await Notification.find({ userId: req.user.id })
+            .sort({ createdAt: -1 })
+            .limit(50);
+        res.json(notifications);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Пометить уведомление как прочитанное
+router.put('/notifications/:id/read', auth, async (req, res) => {
+    try {
+        const notification = await Notification.findById(req.params.id);
+        if (!notification) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+        if (notification.userId.toString() !== req.user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        notification.read = true;
+        await notification.save();
+        res.json(notification);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Получение списка провайдеров (доступно только admin)
+router.get('/providers', auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied. Admins only.' });
+        }
+
+        const providers = await User.find({ role: 'provider' }, 'name email _id');
+        res.json(providers);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }

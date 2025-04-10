@@ -18,7 +18,11 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
+    IconButton,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { Autocomplete, LoadScript } from '@react-google-maps/api';
 
 const MyOffers = () => {
     const { t } = useTranslation();
@@ -33,11 +37,14 @@ const MyOffers = () => {
         location: '',
         description: '',
         price: '',
-        image: null,
+        images: [],
     });
+    const [imagePreviews, setImagePreviews] = useState([]);
+    const [autocomplete, setAutocomplete] = useState(null);
 
     useEffect(() => {
         const fetchMyOffers = async () => {
+            if (!loading) return;
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
@@ -64,7 +71,7 @@ const MyOffers = () => {
             }
         };
         fetchMyOffers();
-    }, [t, navigate]);
+    }, []);
 
     const handleEditOpen = (offer) => {
         setCurrentOffer(offer);
@@ -73,8 +80,9 @@ const MyOffers = () => {
             location: offer.location,
             description: offer.description,
             price: offer.price,
-            image: null,
+            images: [],
         });
+        setImagePreviews(offer.images || []);
         setEditDialogOpen(true);
     };
 
@@ -86,15 +94,57 @@ const MyOffers = () => {
             location: '',
             description: '',
             price: '',
-            image: null,
+            images: [],
         });
+        setImagePreviews([]);
+    };
+
+    const onLoad = (autoC) => {
+        setAutocomplete(autoC);
+    };
+
+    const onPlaceChanged = () => {
+        if (autocomplete !== null) {
+            const place = autocomplete.getPlace();
+            if (place.geometry) {
+                setFormData({
+                    ...formData,
+                    location: place.formatted_address,
+                });
+            }
+        }
     };
 
     const handleEditChange = (e) => {
-        if (e.target.name === 'image') {
-            setFormData({ ...formData, image: e.target.files[0] });
+        if (e.target.name === 'images') {
+            const files = Array.from(e.target.files);
+            const newImages = [...formData.images, ...files];
+            setFormData({ ...formData, images: newImages });
+
+            const previews = files.map(file => URL.createObjectURL(file));
+            setImagePreviews([...imagePreviews, ...previews]);
         } else {
             setFormData({ ...formData, [e.target.name]: e.target.value });
+        }
+    };
+
+    const handleImageDelete = (index) => {
+        const newImages = formData.images.filter((_, i) => i !== index);
+        const newPreviews = imagePreviews.filter((_, i) => i !== index);
+        setFormData({ ...formData, images: newImages });
+        setImagePreviews(newPreviews);
+    };
+
+    const handleImageEdit = (index) => (e) => {
+        const newImage = e.target.files[0];
+        if (newImage) {
+            const newImages = [...formData.images];
+            newImages[index] = newImage;
+            setFormData({ ...formData, images: newImages });
+
+            const newPreviews = [...imagePreviews];
+            newPreviews[index] = URL.createObjectURL(newImage);
+            setImagePreviews(newPreviews);
         }
     };
 
@@ -106,9 +156,9 @@ const MyOffers = () => {
             data.append('location', formData.location);
             data.append('description', formData.description);
             data.append('price', formData.price);
-            if (formData.image) {
-                data.append('image', formData.image);
-            }
+            formData.images.forEach((image) => {
+                data.append('images', image);
+            });
 
             const res = await axios.put(
                 `http://localhost:5001/api/services/offers/${currentOffer._id}`,
@@ -154,6 +204,32 @@ const MyOffers = () => {
         }
     };
 
+    const handleToggleStatus = async (offerId, currentStatus) => {
+        try {
+            const token = localStorage.getItem('token');
+            const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+            const res = await axios.put(
+                `http://localhost:5001/api/services/offers/${offerId}`,
+                { status: newStatus },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+            setOffers(offers.map((offer) =>
+                offer._id === offerId ? { ...offer, status: newStatus } : offer
+            ));
+            setMessage(t('status_updated'));
+        } catch (error) {
+            setMessage('Error: ' + (error.response?.data?.error || t('something_went_wrong')));
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                localStorage.removeItem('token');
+                navigate('/login');
+            }
+        }
+    };
+
     if (loading) {
         return <Typography>{t('loading')}</Typography>;
     }
@@ -176,6 +252,9 @@ const MyOffers = () => {
                             <Card>
                                 <CardContent>
                                     <Typography variant="body1">
+                                        <strong>{t('provider')}:</strong> {offer.providerId?.name || 'Unknown'}
+                                    </Typography>
+                                    <Typography variant="body1">
                                         <strong>{t('service_type')}:</strong> {t(offer.serviceType)}
                                     </Typography>
                                     <Typography variant="body1">
@@ -187,10 +266,26 @@ const MyOffers = () => {
                                     <Typography variant="body1">
                                         <strong>{t('price')}:</strong> {offer.price}
                                     </Typography>
-                                    {offer.image && (
-                                        <Typography variant="body1">
-                                            <strong>{t('image')}:</strong> <img src={offer.image} alt="Offer" style={{ width: '100px' }} />
-                                        </Typography>
+                                    <Typography variant="body1">
+                                        <strong>{t('status')}:</strong> {t(offer.status)}
+                                    </Typography>
+                                    {offer.images && offer.images.length > 0 && (
+                                        <Box sx={{ marginTop: 2 }}>
+                                            <Typography variant="body1">
+                                                <strong>{t('images')}:</strong>
+                                            </Typography>
+                                            <Grid container spacing={1}>
+                                                {offer.images.map((image, index) => (
+                                                    <Grid item xs={4} key={index}>
+                                                        <img
+                                                            src={image}
+                                                            alt={`Offer ${index}`}
+                                                            style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                                                        />
+                                                    </Grid>
+                                                ))}
+                                            </Grid>
+                                        </Box>
                                     )}
                                     <Box sx={{ marginTop: 2 }}>
                                         <Button
@@ -205,8 +300,16 @@ const MyOffers = () => {
                                             variant="contained"
                                             color="secondary"
                                             onClick={() => handleDelete(offer._id)}
+                                            sx={{ marginRight: 1 }}
                                         >
                                             {t('delete')}
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            color={offer.status === 'active' ? 'error' : 'success'}
+                                            onClick={() => handleToggleStatus(offer._id, offer.status)}
+                                        >
+                                            {offer.status === 'active' ? t('deactivate') : t('activate')}
                                         </Button>
                                     </Box>
                                 </CardContent>
@@ -252,15 +355,22 @@ const MyOffers = () => {
                             <MenuItem value="evacuation">{t('evacuation')}</MenuItem>
                         </Select>
                     </FormControl>
-                    <TextField
-                        label={t('location')}
-                        name="location"
-                        value={formData.location}
-                        onChange={handleEditChange}
-                        fullWidth
-                        required
-                        sx={{ marginBottom: 2 }}
-                    />
+                    <LoadScript
+                        googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
+                        libraries={['places']}
+                    >
+                        <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+                            <TextField
+                                label={t('location')}
+                                name="location"
+                                value={formData.location}
+                                onChange={handleEditChange}
+                                fullWidth
+                                required
+                                sx={{ marginBottom: 2 }}
+                            />
+                        </Autocomplete>
+                    </LoadScript>
                     <TextField
                         label={t('description')}
                         name="description"
@@ -282,15 +392,52 @@ const MyOffers = () => {
                         required
                         sx={{ marginBottom: 2 }}
                     />
-                    <TextField
-                        label={t('image')}
-                        name="image"
-                        type="file"
-                        onChange={handleEditChange}
-                        fullWidth
-                        sx={{ marginBottom: 2 }}
-                        InputLabelProps={{ shrink: true }}
-                    />
+                    <Box sx={{ marginBottom: 2 }}>
+                        <Button variant="contained" component="label">
+                            {t('upload_images')}
+                            <input
+                                type="file"
+                                hidden
+                                multiple
+                                accept="image/*"
+                                name="images"
+                                onChange={handleEditChange}
+                            />
+                        </Button>
+                    </Box>
+                    {imagePreviews.length > 0 && (
+                        <Grid container spacing={2} sx={{ marginBottom: 2 }}>
+                            {imagePreviews.map((preview, index) => (
+                                <Grid item xs={4} key={index}>
+                                    <Box sx={{ position: 'relative' }}>
+                                        <img
+                                            src={preview}
+                                            alt={`Preview ${index}`}
+                                            style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                                        />
+                                        <IconButton
+                                            sx={{ position: 'absolute', top: 0, right: 0 }}
+                                            onClick={() => handleImageDelete(index)}
+                                        >
+                                            <DeleteIcon color="error" />
+                                        </IconButton>
+                                        <IconButton
+                                            sx={{ position: 'absolute', top: 0, left: 0 }}
+                                            component="label"
+                                        >
+                                            <EditIcon />
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                onChange={handleImageEdit(index)}
+                                            />
+                                        </IconButton>
+                                    </Box>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleEditClose} color="secondary">

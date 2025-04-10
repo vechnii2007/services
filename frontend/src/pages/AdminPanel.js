@@ -455,6 +455,7 @@ const AdminPanel = () => {
             )}
 
             {/* Вкладка: Категории */}
+            // Вкладка: Категории
             {tabValue === 3 && (
                 <Box>
                     <Typography variant="h6" gutterBottom>
@@ -492,6 +493,12 @@ const AdminPanel = () => {
                                                     src={category.image}
                                                     alt={category.label}
                                                     style={{ width: 50, height: 50, objectFit: 'cover' }}
+                                                    onError={(e) => {
+                                                        console.error(`Failed to load image for category ${category.name}: ${category.image}`);
+                                                        e.target.alt = 'Image not found';
+                                                        e.target.style.display = 'none';
+                                                    }}
+                                                    onLoad={() => console.log(`Successfully loaded image for category ${category.name}: ${category.image}`)}
                                                 />
                                             ) : (
                                                 'No Image'
@@ -526,7 +533,6 @@ const AdminPanel = () => {
                     </TableContainer>
                 </Box>
             )}
-
             {/* Диалог для добавления/редактирования категории */}
             <Dialog open={openCategoryDialog} onClose={handleCloseCategoryDialog}>
                 <DialogTitle>{editingCategory ? t('edit_category') : t('add_category')}</DialogTitle>
