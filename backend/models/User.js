@@ -35,20 +35,84 @@ const userSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['online', 'offline'],
+        enum: ['online', 'offline', 'away'],
         default: 'offline',
+    },
+    lastSeen: {
+        type: Date,
+        default: Date.now,
+    },
+    pushSubscription: {
+        endpoint: String,
+        keys: {
+            p256dh: String,
+            auth: String,
+        },
+    },
+    notificationPreferences: {
+        messages: {
+            type: Boolean,
+            default: true,
+        },
+        offers: {
+            type: Boolean,
+            default: true,
+        },
+        statusUpdates: {
+            type: Boolean,
+            default: true,
+        },
+        email: {
+            type: Boolean,
+            default: true,
+        },
+        push: {
+            type: Boolean,
+            default: true,
+        },
+    },
+    avatar: String,
+    createdAt: {
+        type: Date,
+        default: Date.now,
     },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
-    if (this.isModified('password')) {
-        this.password = await bcrypt.hash(this.password, 8);
+    if (!this.isModified('password')) {
+        return next();
     }
-    next();
+    
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (error) {
+        next(error);
+    }
 });
 
-userSchema.methods.comparePassword = async function (password) {
-    return await bcrypt.compare(password, this.password);
+userSchema.methods.comparePassword = async function (candidatePassword) {
+    try {
+        return await bcrypt.compare(candidatePassword, this.password);
+    } catch (error) {
+        throw error;
+    }
+};
+
+userSchema.methods.updateOnlineStatus = async function(status) {
+    this.status = status;
+    this.lastSeen = new Date();
+    return this.save();
+};
+
+userSchema.virtual('isOnline').get(function() {
+    return this.status === 'online';
+});
+
+userSchema.methods.updateNotificationPreferences = async function(preferences) {
+    Object.assign(this.notificationPreferences, preferences);
+    return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

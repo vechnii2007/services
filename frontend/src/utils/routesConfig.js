@@ -12,7 +12,7 @@ import Chat from '../pages/Chat';
 import Favorites from '../pages/Favorites';
 import PaymentDashboard from '../pages/PaymentDashboard';
 import Profile from '../pages/Profile';
-import AdminPanel from '../pages/AdminPanel';
+import AdminPanel from '../components/AdminPanel/AdminPanelTabs';
 
 export const routesConfig = [
     { path: '/offers', element: <Offers />, requiredRole: null },
@@ -29,5 +29,5 @@ export const routesConfig = [
     { path: '/favorites', element: <Favorites />, requiredRole: ['user', 'provider', 'admin'] },
     { path: '/payment-dashboard', element: <PaymentDashboard />, requiredRole: ['user', 'provider', 'admin'] },
     { path: '/profile', element: <Profile />, requiredRole: ['user', 'provider', 'admin'] },
-    { path: '/admin-panel', element: <AdminPanel />, requiredRole: 'admin' },
+    { path: '/admin', element: <AdminPanel />, requiredRole: 'admin' }, // Переименован маршрут
 ];

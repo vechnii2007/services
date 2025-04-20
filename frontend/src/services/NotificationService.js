@@ -1,26 +1,29 @@
-import axios from '../utils/axiosConfig';
+import api from "../middleware/api";
 
-const NotificationService = {
-    async fetchNotifications() {
-        const token = localStorage.getItem('token');
-        if (!token) return [];
-        const response = await axios.get('/services/notifications', {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        return response.data;
-    },
+export const NotificationService = {
+  getNotifications: async (params = {}) => {
+    const response = await api.get("/services/notifications", { params });
+    return response.data;
+  },
 
-    async markNotificationAsRead(notificationId) {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        await axios.put(
-            `/services/notifications/${notificationId}/read`,
-            {},
-            {
-                headers: { Authorization: `Bearer ${token}` },
-            }
-        );
-    },
+  markAsRead: async (notificationId) => {
+    const response = await api.put(
+      `/services/notifications/${notificationId}/read`
+    );
+    return response.data;
+  },
+
+  deleteNotification: async (notificationId) => {
+    const response = await api.delete(
+      `/services/notifications/${notificationId}`
+    );
+    return response.data;
+  },
+
+  getVapidKey: async () => {
+    const response = await api.get("/notifications/vapid-public-key");
+    return response.data;
+  },
 };
 
 export default NotificationService;

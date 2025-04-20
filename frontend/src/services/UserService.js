@@ -1,14 +1,30 @@
-import axios from '../utils/axiosConfig';
+import api from "../middleware/api";
 
-const UserService = {
-    async fetchUser() {
-        const token = localStorage.getItem('token');
-        if (!token) return null;
-        const response = await axios.get('/users/me', {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        return response.data;
-    },
+export const UserService = {
+  getCurrentUser: async () => {
+    const response = await api.get("/users/me");
+    return response.data;
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.put("/users/profile", profileData);
+    return response.data;
+  },
+
+  updateStatus: async (status) => {
+    const response = await api.put("/users/status", { status });
+    return response.data;
+  },
+
+  getPayments: async () => {
+    const response = await api.get("/users/payments");
+    return response.data;
+  },
+
+  deposit: async (amount) => {
+    const response = await api.post("/users/payments/deposit", { amount });
+    return response.data;
+  },
 };
 
 export default UserService;

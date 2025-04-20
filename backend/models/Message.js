@@ -1,24 +1,32 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-    requestId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'ServiceRequest',
-        required: true,
-    },
-    userId: {
+    senderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    text: {
+    recipientId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
+    message: {
         type: String,
         required: true,
+    },
+    read: {
+        type: Boolean,
+        default: false,
     },
     timestamp: {
         type: Date,
         default: Date.now,
     },
-});
+}, { timestamps: true });
+
+// Индексы для оптимизации запросов
+messageSchema.index({ senderId: 1, recipientId: 1 });
+messageSchema.index({ timestamp: -1 });
 
 module.exports = mongoose.model('Message', messageSchema);

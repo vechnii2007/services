@@ -1,31 +1,54 @@
-import axios from 'axios';
+import axios from "axios";
 
 // Создаём экземпляр axios с базовыми настройками
 const instance = axios.create({
-    baseURL: 'http://localhost:5001/api',
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5001",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Добавляем интерцептор для добавления токена в заголовки
+// Добавляем токен к каждому запросу, если он есть
 instance.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    // Логируем запрос для отладки
+    console.log("Request:", {
+      url: config.url,
+      method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers,
+    });
+    return config;
+  },
+  (error) => {
+    console.error("Request error:", error);
+    return Promise.reject(error);
+  }
 );
 
-// Убираем автоматический редирект при 401
+// Обработка ошибок ответа
 instance.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        console.log('Axios error:', error.response?.data || error.message);
-        return Promise.reject(error);
-    }
+  (response) => {
+    // Логируем успешный ответ
+    console.log("Response:", {
+      status: response.status,
+      data: response.data,
+    });
+    return response;
+  },
+  (error) => {
+    // Логируем ошибку ответа
+    console.error("Response error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    return Promise.reject(error);
+  }
 );
 
 export default instance;
