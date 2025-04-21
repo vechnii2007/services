@@ -33,7 +33,7 @@ const CreateUserDialog = ({ open, onClose, onUserCreated }) => {
 
   const handleSubmit = async () => {
     try {
-      await axios.post("/api/admin/users", formData);
+      await axios.post("/admin/users", formData);
       onUserCreated();
       onClose();
     } catch (error) {

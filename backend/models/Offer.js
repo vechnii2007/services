@@ -1,37 +1,48 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const offerSchema = new mongoose.Schema({
-    providerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
+const offerSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
     },
-    serviceType: {
-        type: String,
-        required: true,
+    providerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    category: {
+      type: String,
+      required: true,
     },
     location: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     description: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     price: {
-        type: Number,
-        required: true,
+      type: Number,
+      required: true,
     },
-    images: [{ type: String }], // Теперь массив строк вместо одной строки
+    image: {
+      type: String,
+    },
     status: {
-        type: String,
-        enum: ['active', 'inactive'],
-        default: 'active',
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
     },
-    favoritedBy: [{
+    favoritedBy: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-    }],
-}, { timestamps: true });
+        ref: "User",
+      },
+    ],
+  },
+  { timestamps: true }
+);
 
-module.exports = mongoose.model('Offer', offerSchema);
+module.exports = mongoose.model("Offer", offerSchema);

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import axios from "../utils/axiosConfig";
+import api from "../middleware/api";
 import { useTranslation } from "react-i18next";
-import { API_BASE_URL } from "../constants";
 import {
   Card,
   CardContent,
@@ -18,6 +17,7 @@ import {
   Marker,
   Autocomplete,
 } from "@react-google-maps/api";
+import { useNavigate } from "react-router-dom";
 
 const containerStyle = {
   width: "100%",
@@ -40,6 +40,9 @@ const ServiceRequestForm = () => {
   const [message, setMessage] = useState("");
   const [showMap, setShowMap] = useState(false); // Состояние для отображения карты
   const [autocomplete, setAutocomplete] = useState(null); // Состояние для автодополнения
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -75,18 +78,16 @@ const ServiceRequestForm = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setMessage(t("please_login"));
-        return;
-      }
-      const res = await axios.post(
-        `${API_BASE_URL}/api/services/request`,
-        formData
-      );
+      await api.post("/services/request", {
+        serviceType: formData.serviceType,
+        location: formData.location,
+        coordinates: formData.coordinates,
+        description: formData.description,
+      });
       setMessage(t("request_created"));
       setFormData({
         serviceType: "",
@@ -95,18 +96,12 @@ const ServiceRequestForm = () => {
         coordinates: { lat: center.lat, lng: center.lng },
       });
       setShowMap(false);
-      console.log(res.data);
+      navigate("/my-requests");
     } catch (error) {
-      if (error.response) {
-        setMessage(
-          "Error: " + (error.response.data.error || "Something went wrong")
-        );
-      } else if (error.request) {
-        setMessage("Error: No response from server. Is the backend running?");
-      } else {
-        setMessage("Error: " + error.message);
-      }
-      console.error(error);
+      console.error("Error creating request:", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,6 +125,16 @@ const ServiceRequestForm = () => {
               sx={{ marginBottom: 2 }}
             >
               {message}
+            </Typography>
+          )}
+          {error && (
+            <Typography
+              variant="body2"
+              color="error"
+              align="center"
+              sx={{ marginBottom: 2 }}
+            >
+              {error}
             </Typography>
           )}
           <form onSubmit={handleSubmit}>
@@ -203,8 +208,13 @@ const ServiceRequestForm = () => {
                 fullWidth
                 required
               />
-              <Button type="submit" variant="contained" color="primary">
-                {t("create_request_button")}
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={loading}
+              >
+                {loading ? t("creating_request") : t("create_request_button")}
               </Button>
             </Box>
           </form>

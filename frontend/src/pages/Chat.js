@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "../utils/axiosConfig";
-import { useSocket } from "../hooks/useSocket";
 import { useTranslation } from "react-i18next";
-import { API_BASE_URL } from "../constants";
+import api from "../middleware/api";
+import { useSocket } from "../hooks/useSocket";
 import {
   Box,
   TextField,
@@ -29,50 +28,28 @@ const Chat = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError(t("please_login"));
-          navigate("/login");
-          return;
-        }
-        const res = await axios.get(`/api/services/messages/${requestId}`);
+        const res = await api.get(`/services/messages/${requestId}`);
         setMessages(res.data);
       } catch (error) {
-        setError(
-          "Error fetching messages: " +
-            (error.response?.data?.error || error.message)
-        );
         console.error("Error fetching messages:", error);
+        setError(error.message);
       }
     };
 
-    const fetchUser = async () => {
+    const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError(t("please_login"));
-          navigate("/login");
-          return;
-        }
-        const res = await axios.get(`/api/users/me`);
+        const res = await api.get(`/users/me`);
         setUserId(res.data._id);
         setUserName(res.data.name);
       } catch (error) {
-        setError(
-          "Error fetching user: " +
-            (error.response?.data?.error || error.message)
-        );
-        console.error("Error fetching user:", error);
-        if (error.response?.status === 400 || error.response?.status === 401) {
-          localStorage.removeItem("token");
-          navigate("/login");
-        }
+        console.error("Error fetching user data:", error);
+        setError(error.message);
       }
     };
 
     const fetchData = async () => {
       setLoading(true);
-      await Promise.all([fetchMessages(), fetchUser()]);
+      await Promise.all([fetchMessages(), fetchUserData()]);
       setLoading(false);
     };
 

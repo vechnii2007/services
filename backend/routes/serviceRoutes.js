@@ -101,52 +101,71 @@ router.put(
 
 // Получение всех предложений с пагинацией и фильтрацией (доступно всем, включая гостей)
 router.get("/offers", async (req, res) => {
+  console.log(
+    "[serviceRoutes] GET /offers request received with query:",
+    req.query
+  );
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const minPrice = req.query.minPrice
+      ? parseFloat(req.query.minPrice)
+      : undefined;
+    const maxPrice = req.query.maxPrice
+      ? parseFloat(req.query.maxPrice)
+      : undefined;
+    const location = req.query.location;
+
+    console.log("[serviceRoutes] Parsed query parameters:", {
+      page,
+      limit,
+      minPrice,
+      maxPrice,
+      location,
+    });
+
     const skip = (page - 1) * limit;
-    const minPrice = parseFloat(req.query.minPrice) || 0;
-    const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
-    const location = req.query.location
-      ? req.query.location.toLowerCase()
-      : null;
+    const query = {};
 
-    const serviceFilter = { status: "active" };
-    const offerFilter = { status: "active" };
-
-    if (minPrice || maxPrice !== Infinity) {
-      serviceFilter.price = { $gte: minPrice, $lte: maxPrice };
-      offerFilter.price = { $gte: minPrice, $lte: maxPrice };
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query.price = {};
+      if (minPrice !== undefined) query.price.$gte = minPrice;
+      if (maxPrice !== undefined) query.price.$lte = maxPrice;
     }
 
     if (location) {
-      serviceFilter.location = { $regex: location, $options: "i" };
-      offerFilter.location = { $regex: location, $options: "i" };
+      query.location = location;
     }
 
-    const totalServices = await ServiceOffer.countDocuments(serviceFilter);
-    const totalOffers = await Offer.countDocuments(offerFilter);
-    const total = totalServices + totalOffers;
+    console.log("[serviceRoutes] MongoDB query:", query);
 
-    const services = await ServiceOffer.find(serviceFilter)
-      .skip(skip)
-      .limit(limit);
-    const offers = await Offer.find(offerFilter).skip(skip).limit(limit);
+    const [offers, total] = await Promise.all([
+      Offer.find(query)
+        .skip(skip)
+        .limit(limit)
+        .populate("providerId", "name email")
+        .lean(),
+      Offer.countDocuments(query),
+    ]);
 
-    const combinedOffers = [
-      ...services.map((service) => ({ ...service._doc, type: "ServiceOffer" })),
-      ...offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
-    ];
+    console.log(
+      "[serviceRoutes] Found offers count:",
+      offers.length,
+      "Total:",
+      total
+    );
 
     res.json({
-      offers: combinedOffers,
+      offers,
       total,
       page,
-      totalPages: Math.ceil(total / limit),
+      pages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Error fetching offers:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("[serviceRoutes] Error fetching offers:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching offers", error: error.message });
   }
 });
 
@@ -200,28 +219,53 @@ router.get("/my-offers", auth, async (req, res) => {
 });
 
 // Создание нового предложения
-router.post(
-  "/offers",
-  auth,
-  isProvider,
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      const imagePath = req.file
-        ? `${UPLOADS_PATH}/${req.file.filename}`
-        : null;
-      const offer = new Offer({
-        ...req.body,
-        image: imagePath,
-        provider: req.user._id,
-      });
-      await offer.save();
-      res.status(201).json(offer);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+router.post("/offers", auth, upload.single("image"), async (req, res) => {
+  console.log("[serviceRoutes] POST /offers request received");
+  try {
+    const { title, description, price, location, category } = req.body;
+    console.log("[serviceRoutes] Received offer data:", {
+      title,
+      description,
+      price,
+      location,
+      category,
+    });
+
+    if (!title || !description || !price || !location || !category) {
+      console.log("[serviceRoutes] Missing required fields");
+      return res.status(400).json({ message: "All fields are required" });
     }
+
+    const offerData = {
+      title,
+      description,
+      price: parseFloat(price),
+      location,
+      category,
+      provider: req.user._id,
+    };
+
+    if (req.file) {
+      console.log("[serviceRoutes] Image file received:", req.file.filename);
+      offerData.image = path.join(UPLOADS_PATH, req.file.filename);
+    }
+
+    console.log("[serviceRoutes] Creating new offer with data:", offerData);
+    const offer = new Offer(offerData);
+    await offer.save();
+    console.log(
+      "[serviceRoutes] Offer created successfully with ID:",
+      offer._id
+    );
+
+    res.status(201).json(offer);
+  } catch (error) {
+    console.error("[serviceRoutes] Error creating offer:", error);
+    res
+      .status(500)
+      .json({ message: "Error creating offer", error: error.message });
   }
-);
+});
 
 // Обновление предложения
 router.put(

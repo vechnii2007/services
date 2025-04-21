@@ -34,7 +34,7 @@ const MyRequests = () => {
           navigate("/login");
           return;
         }
-        const res = await axios.get("/api/services/my-requests", {
+        const res = await axios.get("/services/my-requests", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -151,7 +151,7 @@ const Header = ({ onDrawerToggle }) => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/services/notifications`, {
+      const response = await axios.get(`/services/notifications`, {
         params: { limit: 5 },
       });
       setNotifications(response.data.notifications || []);
@@ -165,7 +165,7 @@ const Header = ({ onDrawerToggle }) => {
 
   const handleMarkAsRead = async (notificationId) => {
     try {
-      await axios.put(`/api/services/notifications/${notificationId}/read`);
+      await axios.put(`/services/notifications/${notificationId}/read`);
       setNotifications((prev) =>
         prev.map((notif) =>
           notif._id === notificationId ? { ...notif, read: true } : notif
@@ -178,7 +178,7 @@ const Header = ({ onDrawerToggle }) => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`/api/services/notifications/${id}`);
+      await axios.delete(`/services/notifications/${id}`);
       setNotifications((prev) =>
         prev.filter((notification) => notification._id !== id)
       );

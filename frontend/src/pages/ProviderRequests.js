@@ -39,7 +39,7 @@ const ProviderRequests = () => {
           return;
         }
 
-        const userRes = await axios.get(`/api/users/me`);
+        const userRes = await axios.get(`/users/me`);
         const userRole = userRes.data.role;
         if (userRole !== "provider") {
           setMessage(t("access_denied_providers_only"));
@@ -47,7 +47,7 @@ const ProviderRequests = () => {
           return;
         }
 
-        const res = await axios.get(`/api/services/requests`);
+        const res = await axios.get(`/services/requests`);
         setRequests(res.data);
         setMessage(t("requests_loaded"));
       } catch (error) {
@@ -110,7 +110,7 @@ const ProviderRequests = () => {
         return;
       }
       const formData = offerForms[requestId] || { message: "", price: "" };
-      const res = await axios.post(`/api/services/offer`, {
+      const res = await axios.post(`/services/offer`, {
         requestId,
         message: formData.message || "",
         price: formData.price || "",

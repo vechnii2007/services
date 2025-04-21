@@ -48,12 +48,12 @@ const CreateOffer = () => {
         }
 
         // Получаем роль пользователя
-        const userRes = await axios.get(`/api/users/me`);
+        const userRes = await axios.get(`/users/me`);
         setUserRole(userRes.data.role);
 
         // Если пользователь — администратор, загружаем список провайдеров
         if (userRes.data.role === "admin") {
-          const providersRes = await axios.get(`/api/services/providers`);
+          const providersRes = await axios.get(`/services/providers`);
           setProviders(providersRes.data);
         }
       } catch (error) {
@@ -140,7 +140,7 @@ const CreateOffer = () => {
         data.append("images", image);
       });
 
-      const res = await axios.post(`/api/services/offers`, data, {
+      const res = await axios.post(`/services/offers`, data, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

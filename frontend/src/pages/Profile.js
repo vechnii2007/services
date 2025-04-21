@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import UserService from "../services/UserService";
+import { useUser } from "../hooks/useUser";
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import {
 
 const Profile = () => {
   const { t } = useTranslation();
-  const [user, setUser] = useState(null);
+  const { user, loading, error, updateUser, updateStatus } = useUser();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,31 +23,19 @@ const Profile = () => {
   });
   const [status, setStatus] = useState("offline");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData = await UserService.getCurrentUser();
-        setUser(userData);
-        setFormData({
-          name: userData.name,
-          email: userData.email,
-          phone: userData.phone || "",
-          address: userData.address || "",
-        });
-        setStatus(userData.status);
-        setMessage(t("profile_loaded"));
-      } catch (error) {
-        setMessage(
-          "Error: " + (error.response?.data?.error || t("something_went_wrong"))
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, [t]);
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        address: user.address || "",
+      });
+      setStatus(user.status);
+      setMessage(t("profile_loaded"));
+    }
+  }, [user, t]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -57,8 +45,7 @@ const Profile = () => {
     const newStatus = e.target.value;
     setStatus(newStatus);
     try {
-      const updatedUser = await UserService.updateStatus(newStatus);
-      setUser(updatedUser);
+      await updateStatus(newStatus);
       setMessage(t("status_updated"));
     } catch (error) {
       setMessage(
@@ -70,8 +57,7 @@ const Profile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const updatedUser = await UserService.updateProfile(formData);
-      setUser(updatedUser);
+      await updateUser(formData);
       setMessage(t("profile_updated"));
     } catch (error) {
       setMessage(
@@ -82,6 +68,14 @@ const Profile = () => {
 
   if (loading) {
     return <Typography>{t("loading")}</Typography>;
+  }
+
+  if (error) {
+    return (
+      <Typography color="error">
+        {error.response?.data?.error || t("something_went_wrong")}
+      </Typography>
+    );
   }
 
   return (

@@ -27,7 +27,7 @@ const EditUserDialog = ({ open, onClose, userId, onUserUpdated }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get(`/api/admin/users/${userId}`);
+        const res = await axios.get(`/admin/users/${userId}`);
         setFormData({
           name: res.data.name,
           email: res.data.email,
@@ -49,7 +49,7 @@ const EditUserDialog = ({ open, onClose, userId, onUserUpdated }) => {
 
   const handleSubmit = async () => {
     try {
-      await axios.patch(`/api/admin/users/${userId}`, formData);
+      await axios.patch(`/admin/users/${userId}`, formData);
       onUserUpdated();
       onClose();
     } catch (error) {

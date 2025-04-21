@@ -1,9 +1,8 @@
 // src/pages/OfferDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "../utils/axiosConfig";
+import api from "../middleware/api";
 import { useTranslation } from "react-i18next";
-import { API_BASE_URL } from "../constants";
 import { Typography, Box, Card, CardContent, Button } from "@mui/material";
 
 const OfferDetails = () => {
@@ -15,20 +14,34 @@ const OfferDetails = () => {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchOffer = async () => {
       try {
-        const res = await axios.get(`/api/services/offers/${id}`);
-        setOffer(res.data);
-        setMessage(t("offer_loaded"));
+        const res = await api.get(`/services/offers/${id}`);
+        if (isMounted) {
+          setOffer(res.data);
+          setMessage(t("offer_loaded"));
+        }
       } catch (error) {
-        setMessage(
-          "Error: " + (error.response?.data?.error || t("something_went_wrong"))
-        );
+        if (isMounted) {
+          setMessage(
+            "Error: " +
+              (error.response?.data?.error || t("something_went_wrong"))
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
     fetchOffer();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, t]);
 
   if (loading) {

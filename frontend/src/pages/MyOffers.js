@@ -44,7 +44,6 @@ const MyOffers = () => {
 
   useEffect(() => {
     const fetchMyOffers = async () => {
-      if (!loading) return;
       try {
         const token = localStorage.getItem("token");
         if (!token) {
@@ -53,7 +52,7 @@ const MyOffers = () => {
           return;
         }
 
-        const res = await axios.get(`/api/services/my-offers`, {
+        const res = await axios.get(`/services/my-offers`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -72,8 +71,11 @@ const MyOffers = () => {
         setLoading(false);
       }
     };
-    fetchMyOffers();
-  }, []);
+
+    if (loading) {
+      fetchMyOffers();
+    }
+  }, [loading, navigate, t]);
 
   const handleEditOpen = (offer) => {
     setCurrentOffer(offer);
@@ -163,7 +165,7 @@ const MyOffers = () => {
       });
 
       const res = await axios.put(
-        `/api/services/offers/${currentOffer._id}`,
+        `/services/offers/${currentOffer._id}`,
         data,
         {
           headers: {
@@ -194,7 +196,7 @@ const MyOffers = () => {
     if (!window.confirm(t("confirm_delete_offer"))) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`/api/services/offers/${offerId}`, {
+      await axios.delete(`/services/offers/${offerId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -217,7 +219,7 @@ const MyOffers = () => {
       const token = localStorage.getItem("token");
       const newStatus = currentStatus === "active" ? "inactive" : "active";
       const res = await axios.put(
-        `/api/services/offers/${offerId}/status`,
+        `/services/offers/${offerId}/status`,
         { status: newStatus },
         {
           headers: {

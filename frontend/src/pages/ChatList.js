@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../utils/axiosConfig";
 import { useTranslation } from "react-i18next";
-import { API_BASE_URL } from "../constants";
 import {
   Typography,
   Box,
@@ -31,12 +30,12 @@ const ChatList = () => {
         }
 
         // Получаем запросы, созданные пользователем
-        const userRes = await axios.get(`/api/services/my-chats`);
+        const userRes = await axios.get(`/services/my-chats`);
         console.log("User requests:", userRes.data); // Добавляем лог
         setUserRequests(userRes.data);
 
         // Получаем запросы, на которые пользователь (поставщик) отправил предложения
-        const providerRes = await axios.get(`/api/services/provider-chats`);
+        const providerRes = await axios.get(`/services/provider-chats`);
         console.log("Provider requests:", providerRes.data); // Добавляем лог
         setProviderRequests(providerRes.data);
 

@@ -40,7 +40,7 @@ const UsersTab = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("/api/admin/users", {
+      const res = await axios.get("/admin/users", {
         params: { search: userFilter, role: userRoleFilter, page, limit },
       });
       setUsers(res.data.users);

@@ -1,4 +1,4 @@
-import axios from "../utils/axiosConfig";
+import api from "../middleware/api";
 
 const PushNotificationService = {
   async getNotificationStatus() {
@@ -25,8 +25,8 @@ const PushNotificationService = {
 
   async subscribeToPushNotifications(registration) {
     try {
-      const response = await axios.get("/api/notifications/vapid-public-key");
-      const vapidPublicKey = response.data.vapidPublicKey;
+      const response = await this.getVapidPublicKey();
+      const vapidPublicKey = response.vapidPublicKey;
 
       const subscription = await this.createPushSubscription(
         registration,
@@ -35,7 +35,7 @@ const PushNotificationService = {
       if (!subscription) return false;
 
       // Отправляем подписку на сервер
-      await fetch("/api/notifications/subscribe", {
+      await fetch("/notifications/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -57,7 +57,7 @@ const PushNotificationService = {
       if (!subscription) return true;
 
       // Отправляем запрос на отмену подписки
-      await fetch("/api/notifications/unsubscribe", {
+      await fetch("/notifications/unsubscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,6 +102,16 @@ const PushNotificationService = {
       outputArray[i] = rawData.charCodeAt(i);
     }
     return outputArray;
+  },
+
+  async getVapidPublicKey() {
+    try {
+      const response = await api.get("/notifications/vapid-public-key");
+      return response.data;
+    } catch (error) {
+      console.error("Error getting VAPID public key:", error);
+      throw error;
+    }
   },
 };
 

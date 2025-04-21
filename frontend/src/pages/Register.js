@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import axios from "../utils/axiosConfig";
-import { useTranslation } from "react-i18next";
-import { API_BASE_URL } from "../constants";
 import { useNavigate } from "react-router-dom";
+import api from "../middleware/api";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Card,
@@ -34,10 +33,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/api/users/register`,
-        formData
-      );
+      const res = await api.post("/users/register", formData);
       setMessage(res.data.message);
       setTimeout(() => navigate("/login"), 2000);
     } catch (error) {

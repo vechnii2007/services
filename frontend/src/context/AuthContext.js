@@ -1,32 +1,12 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useState, useEffect } from "react";
 import api from "../middleware/api";
+import { useUser } from "../hooks/useUser";
 
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const { user, loading: userLoading, error, updateUser } = useUser();
   const [token, setToken] = useState(localStorage.getItem("token"));
-  const [loading, setLoading] = useState(true);
-
-  const loadUser = useCallback(async () => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await api.get("/users/me");
-      setUser(response.data);
-    } catch (error) {
-      console.error("Error loading user:", error);
-      if (error.response?.status === 401) {
-        setToken(null);
-        setUser(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
 
   useEffect(() => {
     if (token) {
@@ -35,10 +15,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("token");
     }
   }, [token]);
-
-  useEffect(() => {
-    loadUser();
-  }, [loadUser]);
 
   const login = async (email, password) => {
     try {
@@ -51,7 +27,6 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data && response.data.token) {
         setToken(response.data.token);
-        setUser(response.data.user);
         return response.data;
       } else {
         throw new Error("Invalid response format");
@@ -66,7 +41,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post("/users/register", userData);
       setToken(response.data.token);
-      setUser(response.data.user);
       return response.data;
     } catch (error) {
       throw (
@@ -77,32 +51,22 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setToken(null);
-    setUser(null);
-  };
-
-  const updateProfile = async (profileData) => {
-    try {
-      const response = await api.put("/users/profile", profileData);
-      setUser(response.data);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.error || "An error occurred updating profile";
-    }
   };
 
   const value = {
     user,
     token,
-    loading,
+    loading: userLoading,
+    error,
     login,
     register,
     logout,
-    updateProfile,
+    updateProfile: updateUser,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!userLoading && children}
     </AuthContext.Provider>
   );
 };

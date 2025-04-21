@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { Grid, Box, Pagination, Typography } from "@mui/material";
 import PropTypes from "prop-types";
 import OfferCard from "./OfferCard/index";
 import OfferCardSkeleton from "./OfferCard/OfferCardSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { OfferService } from "../services/OfferService";
+import OfferService from "../services/OfferService";
+import debounce from "lodash/debounce";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -34,14 +35,59 @@ const OfferList = ({
   const safeFavorites =
     favorites && typeof favorites === "object" ? favorites : {};
 
+  // Мемоизируем обработанный список предложений
+  const safeOffers = useMemo(() => {
+    console.log("Recalculating safeOffers");
+    return Array.isArray(offers) ? offers : [];
+  }, [offers]);
+
   useEffect(() => {
     console.log("OfferList mounted/updated with:", {
-      offersCount: offers?.length || 0,
+      offersCount: safeOffers.length,
       favorites: safeFavorites,
       hasFavorites: !!safeFavorites,
       hasSetFavorites: typeof setFavorites === "function",
     });
-  }, [offers, safeFavorites, setFavorites]);
+  }, [safeOffers, safeFavorites, setFavorites]);
+
+  // Кэш для результатов запросов
+  const favoriteCache = useMemo(() => new Map(), []);
+
+  const debouncedToggleFavorite = useMemo(
+    () =>
+      debounce(async (offerId, offerType) => {
+        const cacheKey = `${offerId}-${offerType}`;
+
+        // Проверяем кэш
+        if (favoriteCache.has(cacheKey)) {
+          const cachedResult = favoriteCache.get(cacheKey);
+          if (Date.now() - cachedResult.timestamp < 5000) {
+            // 5 секунд
+            console.log("Using cached favorite result");
+            return cachedResult.data;
+          }
+        }
+
+        try {
+          const response = await OfferService.toggleFavorite(
+            offerId,
+            offerType
+          );
+
+          // Сохраняем в кэш
+          favoriteCache.set(cacheKey, {
+            data: response,
+            timestamp: Date.now(),
+          });
+
+          return response;
+        } catch (error) {
+          console.error("Error in debouncedToggleFavorite:", error);
+          throw error;
+        }
+      }, 300),
+    []
+  );
 
   const handleFavoriteClick = useCallback(
     async (offerId, offerType) => {
@@ -54,7 +100,7 @@ const OfferList = ({
       const safeOfferType = offerType || "offer";
 
       try {
-        const response = await OfferService.toggleFavorite(
+        const response = await debouncedToggleFavorite(
           safeOfferId,
           safeOfferType
         );
@@ -69,7 +115,7 @@ const OfferList = ({
         console.error("Error in handleFavoriteClick:", error);
       }
     },
-    [setFavorites]
+    [setFavorites, debouncedToggleFavorite]
   );
 
   if (loading) {
@@ -85,9 +131,6 @@ const OfferList = ({
       </Box>
     );
   }
-
-  // Проверяем, что у нас есть массив предложений
-  const safeOffers = Array.isArray(offers) ? offers : [];
 
   if (safeOffers.length === 0) {
     return (

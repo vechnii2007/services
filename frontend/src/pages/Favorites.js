@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import axios from "../utils/axiosConfig";
-import { API_BASE_URL } from "../constants";
+import api from "../middleware/api";
 import {
   Box,
   Typography,
@@ -18,24 +17,18 @@ const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setMessage(t("please_login"));
-          setLoading(false);
-          return;
-        }
-
-        const res = await axios.get(`/api/services/favorites`);
+        setLoading(true);
+        const res = await api.get(`/services/favorites`);
         setFavorites(res.data);
         setMessage(t("favorites_loaded"));
       } catch (error) {
-        setMessage(
-          "Error: " + (error.response?.data?.error || t("something_went_wrong"))
-        );
+        console.error("Error fetching favorites:", error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
