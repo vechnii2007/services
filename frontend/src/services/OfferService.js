@@ -68,22 +68,41 @@ class OfferService extends BaseService {
     }
   }
 
-  async toggleFavorite(offerId, offerType = "offer") {
-    console.log("[OfferService] Toggling favorite for offer:", offerId);
+  async toggleFavorite(offerId, offerType) {
+    console.log(
+      "[OfferService] Toggling favorite for offer:",
+      offerId,
+      offerType
+    );
     if (!offerId) {
-      console.error("Missing offerId for toggleFavorite");
+      console.error("[OfferService] Missing offerId for toggleFavorite");
       return { isFavorite: false };
     }
 
     try {
-      const response = await this.post("/favorites", { offerId, offerType });
+      const response = await this.post("/favorites", {
+        offerId,
+        offerType: offerType || "Offer",
+      });
       console.log("[OfferService] Favorite toggled successfully:", response);
       return {
-        isFavorite: !!response.isFavorite,
+        isFavorite: response.isFavorite,
       };
     } catch (error) {
       console.error("[OfferService] Error toggling favorite:", error);
-      return { isFavorite: false };
+      throw error;
+    }
+  }
+
+  async getFavorites() {
+    console.log("[OfferService] Getting favorites");
+    try {
+      const response = await this.get("/favorites");
+      console.log("[OfferService] Favorites response:", response);
+      return response || [];
+    } catch (error) {
+      console.error("[OfferService] Error getting favorites:", error);
+      throw error;
     }
   }
 }

@@ -8,6 +8,7 @@ const Category = require("../models/Category");
 const auth = require("../middleware/auth");
 const { isAdmin } = require("../middleware/authMiddleware");
 const { upload, UPLOADS_PATH } = require("../config/uploadConfig");
+const mongoose = require("mongoose");
 
 // Получение списка пользователей с фильтрацией и пагинацией
 router.get("/users", auth, isAdmin, async (req, res) => {
@@ -378,6 +379,21 @@ router.patch(
 router.patch("/offers/:id/status", auth, isAdmin, async (req, res) => {
   try {
     const { status, type } = req.body;
+    const id = req.params.id;
+
+    // Проверяем, является ли ID валидным ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("Invalid MongoDB ObjectId:", id);
+      return res.status(400).json({ error: "Invalid offer ID format" });
+    }
+
+    console.log("Updating status for:", {
+      id,
+      type,
+      status,
+      isValidId: mongoose.Types.ObjectId.isValid(id),
+    });
+
     let item;
     if (type === "ServiceRequest") {
       if (!["pending", "accepted", "completed"].includes(status)) {
@@ -385,29 +401,49 @@ router.patch("/offers/:id/status", auth, isAdmin, async (req, res) => {
           .status(400)
           .json({ error: "Invalid status for ServiceRequest" });
       }
-      item = await ServiceRequest.findById(req.params.id);
+      item = await ServiceRequest.findById(id);
+      console.log("ServiceRequest search result:", item);
     } else if (type === "ServiceOffer") {
       if (!["pending", "active", "inactive"].includes(status)) {
         return res
           .status(400)
           .json({ error: "Invalid status for ServiceOffer" });
       }
-      item = await ServiceOffer.findById(req.params.id);
+      item = await ServiceOffer.findById(id);
+      console.log("ServiceOffer search result:", item);
     } else if (type === "Offer") {
-      if (!["pending", "accepted", "rejected"].includes(status)) {
+      if (
+        !["PENDING", "ACTIVE", "INACTIVE", "REJECTED", "COMPLETED"].includes(
+          status
+        )
+      ) {
         return res.status(400).json({ error: "Invalid status for Offer" });
       }
-      item = await Offer.findById(req.params.id);
+      item = await Offer.findById(id);
+      console.log("Offer search result:", item);
     } else {
       return res.status(400).json({ error: "Invalid type" });
     }
+
     if (!item) {
+      console.log("Item not found for type:", type);
+      // Попробуем поискать в других коллекциях
+      if (type === "Offer") {
+        const serviceRequest = await ServiceRequest.findById(id);
+        const serviceOffer = await ServiceOffer.findById(id);
+        console.log("Additional searches:", {
+          inServiceRequest: !!serviceRequest,
+          inServiceOffer: !!serviceOffer,
+        });
+      }
       return res.status(404).json({ error: "Item not found" });
     }
+
     item.status = status;
     await item.save();
     res.json(item);
   } catch (error) {
+    console.error("Error updating status:", error);
     res.status(500).json({ error: "Server error" });
   }
 });

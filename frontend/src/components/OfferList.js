@@ -5,7 +5,7 @@ import OfferCard from "./OfferCard/index";
 import OfferCardSkeleton from "./OfferCard/OfferCardSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import OfferService from "../services/OfferService";
-import debounce from "lodash/debounce";
+import { useUser } from "../hooks/useUser";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,63 +31,21 @@ const OfferList = ({
   onPageChange,
   loading = false,
 }) => {
+  const { user } = useUser();
+
   // Проверяем, что favorites - объект
   const safeFavorites =
     favorites && typeof favorites === "object" ? favorites : {};
 
   // Мемоизируем обработанный список предложений
   const safeOffers = useMemo(() => {
-    console.log("Recalculating safeOffers");
     return Array.isArray(offers) ? offers : [];
   }, [offers]);
 
   useEffect(() => {
-    console.log("OfferList mounted/updated with:", {
-      offersCount: safeOffers.length,
-      favorites: safeFavorites,
-      hasFavorites: !!safeFavorites,
-      hasSetFavorites: typeof setFavorites === "function",
-    });
-  }, [safeOffers, safeFavorites, setFavorites]);
-
-  // Кэш для результатов запросов
-  const favoriteCache = useMemo(() => new Map(), []);
-
-  const debouncedToggleFavorite = useMemo(
-    () =>
-      debounce(async (offerId, offerType) => {
-        const cacheKey = `${offerId}-${offerType}`;
-
-        // Проверяем кэш
-        if (favoriteCache.has(cacheKey)) {
-          const cachedResult = favoriteCache.get(cacheKey);
-          if (Date.now() - cachedResult.timestamp < 5000) {
-            // 5 секунд
-            console.log("Using cached favorite result");
-            return cachedResult.data;
-          }
-        }
-
-        try {
-          const response = await OfferService.toggleFavorite(
-            offerId,
-            offerType
-          );
-
-          // Сохраняем в кэш
-          favoriteCache.set(cacheKey, {
-            data: response,
-            timestamp: Date.now(),
-          });
-
-          return response;
-        } catch (error) {
-          console.error("Error in debouncedToggleFavorite:", error);
-          throw error;
-        }
-      }, 300),
-    []
-  );
+    console.log("Current user:", user);
+    console.log("Offers with providerId:", safeOffers);
+  }, [user, safeOffers]);
 
   const handleFavoriteClick = useCallback(
     async (offerId, offerType) => {
@@ -96,123 +54,89 @@ const OfferList = ({
         return;
       }
 
-      const safeOfferId = String(offerId);
-      const safeOfferType = offerType || "offer";
-
       try {
-        const response = await debouncedToggleFavorite(
-          safeOfferId,
-          safeOfferType
-        );
+        const response = await OfferService.toggleFavorite(offerId, offerType);
+        console.log("Toggle favorite response:", response);
 
         if (response && typeof setFavorites === "function") {
-          setFavorites((prev) => ({
-            ...prev,
-            [safeOfferId]: Boolean(response.isFavorite),
-          }));
+          setFavorites((prev) => {
+            const newFavorites = { ...prev };
+            if (response.isFavorite) {
+              newFavorites[offerId] = true;
+            } else {
+              delete newFavorites[offerId];
+            }
+            return newFavorites;
+          });
         }
       } catch (error) {
         console.error("Error in handleFavoriteClick:", error);
       }
     },
-    [setFavorites, debouncedToggleFavorite]
+    [setFavorites]
   );
 
   if (loading) {
     return (
-      <Box>
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {[...Array(8)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={`skeleton-${index}`}>
-              <OfferCardSkeleton />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
-    );
-  }
-
-  if (safeOffers.length === 0) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="200px"
-      >
-        <Typography variant="body1">Нет доступных предложений</Typography>
-      </Box>
+      <Grid container spacing={3}>
+        {[...Array(6)].map((_, index) => (
+          <Grid item xs={12} sm={6} md={4} key={index}>
+            <OfferCardSkeleton />
+          </Grid>
+        ))}
+      </Grid>
     );
   }
 
   return (
-    <Box>
-      <AnimatePresence>
-        <Grid
-          container
-          spacing={3}
-          sx={{ mb: 4 }}
-          component={motion.div}
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-        >
-          {safeOffers.map((offer, index) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
-              lg={3}
-              key={offer?._id || `offer-${index}`}
-              component={motion.div}
-              variants={itemVariants}
-              layout
-            >
-              <OfferCard
-                offer={offer || {}}
-                isFavorite={
-                  offer && offer._id ? Boolean(safeFavorites[offer._id]) : false
-                }
-                onFavoriteClick={() => {
-                  if (offer && offer._id) {
-                    handleFavoriteClick(offer._id, offer.type || "offer");
-                  }
-                }}
-              />
-            </Grid>
-          ))}
+    <>
+      <Box
+        component={motion.div}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <Grid container spacing={3}>
+          {safeOffers.map((offer) => {
+            const isOwner = user && offer.providerId === user.id;
+            console.log(`Offer ${offer._id} ownership check:`, {
+              userId: user?.id,
+              providerId: offer.providerId,
+              isOwner,
+            });
+            return (
+              <Grid
+                item
+                xs={12}
+                sm={6}
+                md={4}
+                key={offer._id}
+                component={motion.div}
+                variants={itemVariants}
+              >
+                <OfferCard
+                  offer={offer}
+                  isFavorite={!!safeFavorites[offer._id]}
+                  onFavoriteClick={handleFavoriteClick}
+                  isOwner={isOwner}
+                />
+              </Grid>
+            );
+          })}
         </Grid>
-      </AnimatePresence>
+      </Box>
       {totalPages > 1 && (
-        <Box
-          component={motion.div}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          display="flex"
-          justifyContent="center"
-          mb={3}
-        >
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
           <Pagination
             count={totalPages}
             page={page}
             onChange={onPageChange}
-            disabled={loading}
             color="primary"
             size="large"
-            sx={{
-              "& .MuiPaginationItem-root": {
-                transition: "all 0.2s",
-                "&:hover": {
-                  transform: "scale(1.1)",
-                },
-              },
-            }}
           />
         </Box>
       )}
-    </Box>
+    </>
   );
 };
 

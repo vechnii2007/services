@@ -1,0 +1,16 @@
+{
+  "name": "service-portal",
+  "version": "1.0.0",
+  "description": "Платформа для размещения и поиска услуг",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "server": "nodemon backend/server.js",
+    "client": "cd frontend && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "check-promotions": "node backend/scripts/checkExpiredPromotions.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.10.1"
+  }
+}

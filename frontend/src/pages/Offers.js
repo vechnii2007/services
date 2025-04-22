@@ -17,9 +17,30 @@ import OfferService from "../services/OfferService";
 import { filterOffers } from "../utils/filterOffers";
 import { PAGINATION } from "../config";
 import { AuthContext } from "../context/AuthContext";
+import { styled } from "@mui/material/styles";
 
 import "swiper/css";
 import "swiper/css/navigation";
+
+// Создаем стилизованный компонент для слайдера
+const StyledSwiper = styled(Swiper)(({ theme }) => ({
+  padding: "16px 48px",
+  "& .swiper-button-next, & .swiper-button-prev": {
+    color: theme.palette.primary.main,
+    "&:after": {
+      fontSize: "24px",
+    },
+    "&.swiper-button-disabled": {
+      opacity: 0.35,
+      cursor: "auto",
+      pointerEvents: "none",
+    },
+  },
+  "& .swiper-slide": {
+    display: "flex",
+    justifyContent: "center",
+  },
+}));
 
 const Offers = () => {
   const { t } = useTranslation();
@@ -32,6 +53,7 @@ const Offers = () => {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -39,6 +61,7 @@ const Offers = () => {
   const isFetchingData = useRef(false);
   const fetchTimeoutRef = useRef(null);
   const fetchIdRef = useRef(0);
+  const [categoryCounts, setCategoryCounts] = useState({});
 
   const fetchData = useCallback(async () => {
     if (isFetchingData.current) {
@@ -107,6 +130,15 @@ const Offers = () => {
       if (isAuthenticated && favoritesResponse) {
         setFavorites(favoritesResponse || {});
       }
+
+      // Подсчитываем количество предложений для каждой категории
+      const counts = {};
+      offersResponse.offers.forEach((offer) => {
+        if (offer.category) {
+          counts[offer.category] = (counts[offer.category] || 0) + 1;
+        }
+      });
+      setCategoryCounts(counts);
     } catch (error) {
       console.error(`[Offers] Fetch #${currentFetchId} failed:`, error);
       setMessage(error.response?.data?.error || "Error loading offers");
@@ -166,8 +198,20 @@ const Offers = () => {
       filterOffers(offers, {
         searchQuery,
         selectedCategory,
+        minPrice,
+        maxPrice,
+        locationFilter,
+        sortBy,
       }),
-    [offers, searchQuery, selectedCategory]
+    [
+      offers,
+      searchQuery,
+      selectedCategory,
+      minPrice,
+      maxPrice,
+      locationFilter,
+      sortBy,
+    ]
   );
 
   if (loading && categories.length === 0) {
@@ -199,13 +243,39 @@ const Offers = () => {
         setMaxPrice={setMaxPrice}
         locationFilter={locationFilter}
         setLocationFilter={setLocationFilter}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        onClearFilters={() => {
+          setSearchQuery("");
+          setMinPrice("");
+          setMaxPrice("");
+          setLocationFilter("");
+          setSortBy("newest");
+          setSelectedCategory("");
+        }}
       />
 
-      <Typography variant="h6" gutterBottom>
+      <Typography
+        variant="h6"
+        gutterBottom
+        sx={{
+          mb: 2,
+          fontWeight: 600,
+          color: "text.primary",
+        }}
+      >
         {t("categories")}
       </Typography>
-      <Box sx={{ marginBottom: 4 }}>
-        <Swiper
+
+      <Box
+        sx={{
+          marginBottom: 4,
+          "& .swiper-wrapper": {
+            alignItems: "stretch",
+          },
+        }}
+      >
+        <StyledSwiper
           modules={[Navigation]}
           spaceBetween={16}
           slidesPerView={1}
@@ -222,10 +292,11 @@ const Offers = () => {
                 category={category}
                 selected={selectedCategory === category.name}
                 onClick={handleCategoryClick}
+                count={categoryCounts[category.name] || 0}
               />
             </SwiperSlide>
           ))}
-        </Swiper>
+        </StyledSwiper>
       </Box>
 
       <OfferList

@@ -1,0 +1,89 @@
+Command: node backend/scripts/createTestData.js
+Error: Command failed: node backend/scripts/createTestData.js
+(node:57066) [MONGODB DRIVER] Warning: useNewUrlParser is a deprecated option: useNewUrlParser has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57066) [MONGODB DRIVER] Warning: useUnifiedTopology is a deprecated option: useUnifiedTopology has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+Error creating test data: Error: Category validation failed: image: Path `image` is required., label: Path `label` is required.
+    at ValidationError.inspect (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/error/validation.js:52:26)
+    at formatValue (node:internal/util/inspect:805:19)
+    at inspect (node:internal/util/inspect:364:10)
+    at formatWithOptionsInternal (node:internal/util/inspect:2279:40)
+    at formatWithOptions (node:internal/util/inspect:2141:10)
+    at console.value (node:internal/console/constructor:352:14)
+    at console.warn (node:internal/console/constructor:385:61)
+    at createTestData (/Users/epetrenko/Projects/service-portal/backend/scripts/createTestData.js:364:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  errors: {
+    image: ValidatorError: Path `image` is required.
+        at validate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1404:13)
+        at SchemaType.doValidate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1388:7)
+        at /Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/document.js:3104:18
+        at process.processTicksAndRejections (node:internal/process/task_queues:77:11) {
+      properties: [Object],
+      kind: 'required',
+      path: 'image',
+      value: undefined,
+      reason: undefined,
+      [Symbol(mongoose#validatorError)]: true
+    },
+    label: ValidatorError: Path `label` is required.
+        at validate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1404:13)
+        at SchemaType.doValidate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1388:7)
+        at /Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/document.js:3104:18
+        at process.processTicksAndRejections (node:internal/process/task_queues:77:11) {
+      properties: [Object],
+      kind: 'required',
+      path: 'label',
+      value: undefined,
+      reason: undefined,
+      [Symbol(mongoose#validatorError)]: true
+    }
+  },
+  _message: 'Category validation failed'
+}
+
+Output: Starting test data creation...
+Creating categories...
+MongoDB connected for test data generation
+
+Error output: (node:57066) [MONGODB DRIVER] Warning: useNewUrlParser is a deprecated option: useNewUrlParser has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57066) [MONGODB DRIVER] Warning: useUnifiedTopology is a deprecated option: useUnifiedTopology has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+Error creating test data: Error: Category validation failed: image: Path `image` is required., label: Path `label` is required.
+    at ValidationError.inspect (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/error/validation.js:52:26)
+    at formatValue (node:internal/util/inspect:805:19)
+    at inspect (node:internal/util/inspect:364:10)
+    at formatWithOptionsInternal (node:internal/util/inspect:2279:40)
+    at formatWithOptions (node:internal/util/inspect:2141:10)
+    at console.value (node:internal/console/constructor:352:14)
+    at console.warn (node:internal/console/constructor:385:61)
+    at createTestData (/Users/epetrenko/Projects/service-portal/backend/scripts/createTestData.js:364:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  errors: {
+    image: ValidatorError: Path `image` is required.
+        at validate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1404:13)
+        at SchemaType.doValidate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1388:7)
+        at /Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/document.js:3104:18
+        at process.processTicksAndRejections (node:internal/process/task_queues:77:11) {
+      properties: [Object],
+      kind: 'required',
+      path: 'image',
+      value: undefined,
+      reason: undefined,
+      [Symbol(mongoose#validatorError)]: true
+    },
+    label: ValidatorError: Path `label` is required.
+        at validate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1404:13)
+        at SchemaType.doValidate (/Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/schemaType.js:1388:7)
+        at /Users/epetrenko/Projects/service-portal/backend/node_modules/mongoose/lib/document.js:3104:18
+        at process.processTicksAndRejections (node:internal/process/task_queues:77:11) {
+      properties: [Object],
+      kind: 'required',
+      path: 'label',
+      value: undefined,
+      reason: undefined,
+      [Symbol(mongoose#validatorError)]: true
+    }
+  },
+  _message: 'Category validation failed'
+}

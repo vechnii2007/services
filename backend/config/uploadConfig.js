@@ -1,8 +1,10 @@
 const multer = require("multer");
 const path = require("path");
 
-// Константы для путей
-const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
+// Путь до директории для загрузки файлов (относительно корня проекта)
+const UPLOADS_DIR = path.join(__dirname, "../uploads");
+
+// Путь для доступа к загруженным файлам через API
 const UPLOADS_PATH = "/uploads";
 
 // Настройка хранилища для multer

@@ -5,6 +5,13 @@ export const API_BASE_URL = API_BASE.endsWith("/api")
   ? API_BASE.slice(0, -4)
   : API_BASE;
 
+// Token Configuration
+export const TOKEN_CONFIG = {
+  ACCESS_TOKEN_KEY: "token",
+  REFRESH_TOKEN_KEY: "refreshToken",
+  TOKEN_TYPE: "Bearer",
+};
+
 // Routes Configuration
 export const ROUTES = {
   HOME: "/",
@@ -43,6 +50,7 @@ export const USER_ROLES = {
 export const PAGINATION = {
   DEFAULT_PAGE_SIZE: 10,
   DEFAULT_PAGE: 1,
+  OFFERS_PER_PAGE: 12,
 };
 
 // Image Heights
@@ -57,7 +65,11 @@ export const MENU_ITEMS = {
   ],
   USER: [
     { path: "/my-requests", label: "my_requests" },
-    { path: "/favorites", label: "favorites" },
+    {
+      path: "/favorites",
+      label: "favorites",
+      requiredRole: ["user", "provider", "admin"],
+    },
     { path: "/chat-list", label: "messages" },
   ],
   PROVIDER: [

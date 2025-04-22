@@ -11,6 +11,7 @@ const Favorite = require("../models/Favorite");
 const Notification = require("../models/Notification");
 const auth = require("../middleware/auth");
 const path = require("path");
+const offerController = require("../controllers/offerController");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -100,95 +101,10 @@ router.put(
 );
 
 // Получение всех предложений с пагинацией и фильтрацией (доступно всем, включая гостей)
-router.get("/offers", async (req, res) => {
-  console.log(
-    "[serviceRoutes] GET /offers request received with query:",
-    req.query
-  );
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const minPrice = req.query.minPrice
-      ? parseFloat(req.query.minPrice)
-      : undefined;
-    const maxPrice = req.query.maxPrice
-      ? parseFloat(req.query.maxPrice)
-      : undefined;
-    const location = req.query.location;
-
-    console.log("[serviceRoutes] Parsed query parameters:", {
-      page,
-      limit,
-      minPrice,
-      maxPrice,
-      location,
-    });
-
-    const skip = (page - 1) * limit;
-    const query = {};
-
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      query.price = {};
-      if (minPrice !== undefined) query.price.$gte = minPrice;
-      if (maxPrice !== undefined) query.price.$lte = maxPrice;
-    }
-
-    if (location) {
-      query.location = location;
-    }
-
-    console.log("[serviceRoutes] MongoDB query:", query);
-
-    const [offers, total] = await Promise.all([
-      Offer.find(query)
-        .skip(skip)
-        .limit(limit)
-        .populate("providerId", "name email")
-        .lean(),
-      Offer.countDocuments(query),
-    ]);
-
-    console.log(
-      "[serviceRoutes] Found offers count:",
-      offers.length,
-      "Total:",
-      total
-    );
-
-    res.json({
-      offers,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    });
-  } catch (error) {
-    console.error("[serviceRoutes] Error fetching offers:", error);
-    res
-      .status(500)
-      .json({ message: "Error fetching offers", error: error.message });
-  }
-});
+router.get("/offers", offerController.getOffers);
 
 // Получение конкретного предложения по ID (доступно всем, включая гостей)
-router.get("/offers/:id", async (req, res) => {
-  try {
-    const service = await ServiceOffer.findById(req.params.id);
-    if (service) {
-      return res.json({ ...service._doc, type: "ServiceOffer" });
-    }
-    const offer = await Offer.findById(req.params.id).populate(
-      "providerId",
-      "name email"
-    );
-    if (offer) {
-      return res.json({ ...offer._doc, type: "Offer" });
-    }
-    res.status(404).json({ error: "Offer not found" });
-  } catch (error) {
-    console.error("Error fetching offer by ID:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+router.get("/offers/:id", offerController.getOfferById);
 
 // Получение предложений текущего пользователя (доступно только provider и admin)
 router.get("/my-offers", auth, async (req, res) => {
@@ -199,10 +115,18 @@ router.get("/my-offers", auth, async (req, res) => {
         .json({ error: "Access denied. Providers and admins only." });
     }
 
-    const offers = await Offer.find({ providerId: req.user.id }).populate(
-      "providerId",
-      "name email phone address status"
-    );
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = { providerId: req.user.id };
+    const total = await Offer.countDocuments(query);
+
+    const offers = await Offer.find(query)
+      .populate("providerId", "name email phone address status")
+      .skip(skip)
+      .limit(limit);
+
     const formattedOffers = offers.map((offer) => ({
       ...offer._doc,
       images: offer.images.map((image) =>
@@ -211,7 +135,13 @@ router.get("/my-offers", auth, async (req, res) => {
           : "https://via.placeholder.com/150?text=Offer"
       ),
     }));
-    res.json(formattedOffers);
+
+    res.json({
+      offers: formattedOffers,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     console.error("Error fetching my offers:", error);
     res.status(500).json({ error: "Server error" });
@@ -219,110 +149,25 @@ router.get("/my-offers", auth, async (req, res) => {
 });
 
 // Создание нового предложения
-router.post("/offers", auth, upload.single("image"), async (req, res) => {
-  console.log("[serviceRoutes] POST /offers request received");
-  try {
-    const { title, description, price, location, category } = req.body;
-    console.log("[serviceRoutes] Received offer data:", {
-      title,
-      description,
-      price,
-      location,
-      category,
-    });
-
-    if (!title || !description || !price || !location || !category) {
-      console.log("[serviceRoutes] Missing required fields");
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const offerData = {
-      title,
-      description,
-      price: parseFloat(price),
-      location,
-      category,
-      provider: req.user._id,
-    };
-
-    if (req.file) {
-      console.log("[serviceRoutes] Image file received:", req.file.filename);
-      offerData.image = path.join(UPLOADS_PATH, req.file.filename);
-    }
-
-    console.log("[serviceRoutes] Creating new offer with data:", offerData);
-    const offer = new Offer(offerData);
-    await offer.save();
-    console.log(
-      "[serviceRoutes] Offer created successfully with ID:",
-      offer._id
-    );
-
-    res.status(201).json(offer);
-  } catch (error) {
-    console.error("[serviceRoutes] Error creating offer:", error);
-    res
-      .status(500)
-      .json({ message: "Error creating offer", error: error.message });
-  }
-});
+router.post(
+  "/offers",
+  auth,
+  isProvider,
+  upload.array("images"),
+  offerController.createOffer
+);
 
 // Обновление предложения
 router.put(
   "/offers/:id",
   auth,
   isProvider,
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      const offer = await Offer.findById(req.params.id);
-      if (!offer) {
-        return res.status(404).json({ message: "Предложение не найдено" });
-      }
-
-      if (req.file) {
-        offer.image = `${UPLOADS_PATH}/${req.file.filename}`;
-      }
-      await offer.save();
-      res.json(offer);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
+  upload.array("images"),
+  offerController.updateOffer
 );
 
 // Удаление независимого предложения (доступно только provider и admin, которые его создали)
-router.delete("/offers/:id", auth, async (req, res) => {
-  try {
-    if (!["provider", "admin"].includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ error: "Access denied. Providers and admins only." });
-    }
-
-    const offer = await Offer.findById(req.params.id);
-    if (!offer) {
-      return res.status(404).json({ error: "Offer not found" });
-    }
-
-    if (
-      offer.providerId.toString() !== req.user.id &&
-      req.user.role !== "admin"
-    ) {
-      return res
-        .status(403)
-        .json({ error: "Access denied. You can only delete your own offers." });
-    }
-
-    await Favorite.deleteMany({ offerId: offer._id, offerType: "Offer" });
-
-    await offer.deleteOne();
-    res.json({ message: "Offer deleted" });
-  } catch (error) {
-    console.error("Error deleting offer:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+router.delete("/offers/:id", auth, isProvider, offerController.deleteOffer);
 
 // Создание предложения на запрос (ServiceOffer, доступно только provider)
 router.post(
@@ -594,5 +439,13 @@ router.get("/providers", auth, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+// Маршруты для предложений
+router.delete(
+  "/offers/:id/images/:imageUrl",
+  auth,
+  isProvider,
+  offerController.deleteImage
+);
 
 module.exports = router;

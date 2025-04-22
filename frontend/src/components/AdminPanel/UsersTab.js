@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import axios from "../../utils/axiosConfig";
+import api from "../../middleware/api";
 import {
   Typography,
   Button,
@@ -37,10 +37,10 @@ const UsersTab = () => {
 
   const limit = 10;
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get("/admin/users", {
+      const res = await api.get("/admin/users", {
         params: { search: userFilter, role: userRoleFilter, page, limit },
       });
       setUsers(res.data.users);
@@ -54,15 +54,15 @@ const UsersTab = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userFilter, userRoleFilter, page, limit]);
 
   useEffect(() => {
     fetchUsers();
-  }, [userFilter, userRoleFilter, page]);
+  }, [fetchUsers]);
 
   const handleBlockUser = async (userId) => {
     try {
-      const res = await axios.patch(`/admin/users/${userId}/status`);
+      const res = await api.patch(`/admin/users/${userId}/status`);
       setUsers(users.map((user) => (user._id === userId ? res.data : user)));
       setSnackbar({
         open: true,
@@ -80,7 +80,7 @@ const UsersTab = () => {
 
   const handleChangeRole = async (userId, newRole) => {
     try {
-      const res = await axios.patch(`/admin/users/${userId}/role`, {
+      const res = await api.patch(`/admin/users/${userId}/role`, {
         role: newRole,
       });
       setUsers(users.map((user) => (user._id === userId ? res.data : user)));
@@ -101,7 +101,7 @@ const UsersTab = () => {
   const handleDeleteUser = async (userId) => {
     if (window.confirm(t("confirm_delete_user"))) {
       try {
-        await axios.delete(`/admin/users/${userId}`);
+        await api.delete(`/admin/users/${userId}`);
         setUsers(users.filter((user) => user._id !== userId));
         setSnackbar({
           open: true,
@@ -198,67 +198,52 @@ const UsersTab = () => {
       <Typography variant="h6" gutterBottom>
         {t("users")}
       </Typography>
-      <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
-        <FilterControls
-          searchLabel="search_by_name_or_email"
-          searchValue={userFilter}
-          onSearchChange={(e) => {
-            setUserFilter(e.target.value);
-            setPage(1);
-          }}
-          selectLabel="role"
-          selectValue={userRoleFilter}
-          onSelectChange={(e) => {
-            setUserRoleFilter(e.target.value);
-            setPage(1);
-          }}
-          selectOptions={roleOptions}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setOpenCreateDialog(true)}
-        >
-          {t("create_user")}
-        </Button>
-      </Box>
+
+      <FilterControls
+        searchValue={userFilter}
+        onSearchChange={(e) => setUserFilter(e.target.value)}
+        selectValue={userRoleFilter}
+        onSelectChange={(e) => setUserRoleFilter(e.target.value)}
+        selectOptions={roleOptions}
+        onAddClick={() => setOpenCreateDialog(true)}
+      />
+
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", padding: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
           <CircularProgress />
         </Box>
       ) : (
         <>
           <GenericTable headers={headers} rows={users} renderRow={renderRow} />
-          <Box sx={{ display: "flex", justifyContent: "center", marginTop: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
             <Pagination
               count={totalPages}
               page={page}
               onChange={(e, value) => setPage(value)}
-              color="primary"
             />
           </Box>
         </>
       )}
+
       <CreateUserDialog
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
         onUserCreated={handleUserCreated}
       />
+
       <EditUserDialog
         open={openEditDialog}
         onClose={() => setOpenEditDialog(false)}
-        userId={selectedUserId}
         onUserUpdated={handleUserUpdated}
+        userId={selectedUserId}
       />
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-        >
+        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import axios from "../../utils/axiosConfig";
+import api from "../../middleware/api";
 import {
   Dialog,
   DialogTitle,
@@ -27,7 +27,7 @@ const EditUserDialog = ({ open, onClose, userId, onUserUpdated }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get(`/admin/users/${userId}`);
+        const res = await api.get(`/admin/users/${userId}`);
         setFormData({
           name: res.data.name,
           email: res.data.email,
@@ -49,7 +49,7 @@ const EditUserDialog = ({ open, onClose, userId, onUserUpdated }) => {
 
   const handleSubmit = async () => {
     try {
-      await axios.patch(`/admin/users/${userId}`, formData);
+      await api.patch(`/admin/users/${userId}`, formData);
       onUserUpdated();
       onClose();
     } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import axios from "../../utils/axiosConfig";
+import api from "../../middleware/api";
 import {
   Dialog,
   DialogTitle,
@@ -12,7 +12,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Box,
 } from "@mui/material";
 
 const CreateUserDialog = ({ open, onClose, onUserCreated }) => {
@@ -33,7 +32,7 @@ const CreateUserDialog = ({ open, onClose, onUserCreated }) => {
 
   const handleSubmit = async () => {
     try {
-      await axios.post("/admin/users", formData);
+      await api.post("/admin/users", formData);
       onUserCreated();
       onClose();
     } catch (error) {

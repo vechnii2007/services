@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import UserService from "../services/UserService";
+import TokenManager from "../utils/TokenManager";
+import { TOKEN_CONFIG } from "../config";
 
 // Создаем объект для хранения кэшированных данных
 const cache = {
@@ -21,13 +23,22 @@ export const useUser = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async (force = false) => {
     // Если данные уже загружаются, ждем
     if (cache.loading) {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    // Проверяем актуальность кэша если это не принудительное обновление
+    if (!force) {
+      const now = Date.now();
+      if (cache.user && cache.timestamp && now - cache.timestamp < CACHE_TTL) {
+        setUser(cache.user);
+        return;
+      }
+    }
+
+    const token = TokenManager.getAccessToken();
     if (!token) {
       cache.user = null;
       cache.timestamp = null;
@@ -47,7 +58,7 @@ export const useUser = () => {
       setError(err);
       console.error("Error fetching user:", err);
       if (err.response?.status === 401) {
-        localStorage.removeItem("token");
+        TokenManager.clearTokens();
         cache.user = null;
         cache.timestamp = null;
         setUser(null);
@@ -56,22 +67,15 @@ export const useUser = () => {
       setLoading(false);
       cache.loading = false;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // Проверяем актуальность кэша
-    const now = Date.now();
-    if (cache.user && cache.timestamp && now - cache.timestamp < CACHE_TTL) {
-      setUser(cache.user);
-      return;
-    }
-
     fetchUser();
 
     // Подписываемся на изменения токена
     const handleStorageChange = (e) => {
-      if (e.key === "token") {
-        fetchUser();
+      if (e.key === TOKEN_CONFIG.ACCESS_TOKEN_KEY) {
+        fetchUser(true);
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -86,9 +90,9 @@ export const useUser = () => {
       window.removeEventListener("storage", handleStorageChange);
       cache.subscribers.delete(handleUpdate);
     };
-  }, []);
+  }, [fetchUser]);
 
-  const updateUser = async (userData) => {
+  const updateUser = useCallback(async (userData) => {
     try {
       const updatedUser = await UserService.updateProfile(userData);
       cache.user = updatedUser;
@@ -98,9 +102,9 @@ export const useUser = () => {
     } catch (err) {
       throw err;
     }
-  };
+  }, []);
 
-  const updateStatus = async (status) => {
+  const updateStatus = useCallback(async (status) => {
     try {
       const updatedUser = await UserService.updateStatus(status);
       cache.user = updatedUser;
@@ -110,7 +114,7 @@ export const useUser = () => {
     } catch (err) {
       throw err;
     }
-  };
+  }, []);
 
   return {
     user,
@@ -118,6 +122,6 @@ export const useUser = () => {
     error,
     updateUser,
     updateStatus,
-    refetch: fetchUser,
+    refetch: useCallback(() => fetchUser(true), [fetchUser]),
   };
 };

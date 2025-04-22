@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "../utils/axiosConfig";
+import api from "../middleware/api";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -19,6 +19,8 @@ import {
   FormControl,
   InputLabel,
   IconButton,
+  Pagination,
+  Stack,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -32,6 +34,8 @@ const MyOffers = () => {
   const [message, setMessage] = useState("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentOffer, setCurrentOffer] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [formData, setFormData] = useState({
     serviceType: "",
     location: "",
@@ -42,40 +46,37 @@ const MyOffers = () => {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [autocomplete, setAutocomplete] = useState(null);
 
-  useEffect(() => {
-    const fetchMyOffers = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setMessage(t("please_login"));
-          navigate("/login");
-          return;
-        }
-
-        const res = await axios.get(`/services/my-offers`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setOffers(res.data);
-        setMessage(t("offers_loaded"));
-      } catch (error) {
-        setMessage(
-          "Error: " + (error.response?.data?.error || t("something_went_wrong"))
-        );
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          localStorage.removeItem("token");
-          navigate("/login");
-        }
-      } finally {
-        setLoading(false);
+  const fetchMyOffers = async (pageNum) => {
+    try {
+      setLoading(true);
+      const res = await api.get(`/services/my-offers`, {
+        params: {
+          page: pageNum,
+          limit: 10,
+        },
+      });
+      setOffers(res.data.offers);
+      setTotalPages(Math.ceil(res.data.total / 10));
+      setMessage(t("offers_loaded"));
+    } catch (error) {
+      setMessage(
+        "Error: " + (error.response?.data?.error || t("something_went_wrong"))
+      );
+      if (error.response?.status === 401) {
+        navigate("/login");
       }
-    };
-
-    if (loading) {
-      fetchMyOffers();
+    } finally {
+      setLoading(false);
     }
-  }, [loading, navigate, t]);
+  };
+
+  useEffect(() => {
+    fetchMyOffers(page);
+  }, [page]);
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
 
   const handleEditOpen = (offer) => {
     setCurrentOffer(offer);
@@ -154,7 +155,6 @@ const MyOffers = () => {
 
   const handleEditSubmit = async () => {
     try {
-      const token = localStorage.getItem("token");
       const data = new FormData();
       data.append("serviceType", formData.serviceType);
       data.append("location", formData.location);
@@ -164,29 +164,20 @@ const MyOffers = () => {
         data.append("images", image);
       });
 
-      const res = await axios.put(
-        `/services/offers/${currentOffer._id}`,
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      setOffers(
-        offers.map((offer) =>
-          offer._id === currentOffer._id ? res.data : offer
-        )
-      );
+      const res = await api.put(`/services/offers/${currentOffer._id}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      await fetchMyOffers(page); // Перезагружаем текущую страницу
       setMessage(t("offer_updated"));
       handleEditClose();
     } catch (error) {
       setMessage(
         "Error: " + (error.response?.data?.error || t("something_went_wrong"))
       );
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        localStorage.removeItem("token");
+      if (error.response?.status === 401) {
         navigate("/login");
       }
     }
@@ -195,20 +186,14 @@ const MyOffers = () => {
   const handleDelete = async (offerId) => {
     if (!window.confirm(t("confirm_delete_offer"))) return;
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`/services/offers/${offerId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setOffers(offers.filter((offer) => offer._id !== offerId));
+      await api.delete(`/services/offers/${offerId}`);
+      await fetchMyOffers(page); // Перезагружаем текущую страницу
       setMessage(t("offer_deleted"));
     } catch (error) {
       setMessage(
         "Error: " + (error.response?.data?.error || t("something_went_wrong"))
       );
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        localStorage.removeItem("token");
+      if (error.response?.status === 401) {
         navigate("/login");
       }
     }
@@ -216,29 +201,17 @@ const MyOffers = () => {
 
   const handleToggleStatus = async (offerId, currentStatus) => {
     try {
-      const token = localStorage.getItem("token");
       const newStatus = currentStatus === "active" ? "inactive" : "active";
-      const res = await axios.put(
-        `/services/offers/${offerId}/status`,
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setOffers(
-        offers.map((offer) =>
-          offer._id === offerId ? { ...offer, status: newStatus } : offer
-        )
-      );
+      await api.put(`/services/offers/${offerId}/status`, {
+        status: newStatus,
+      });
+      await fetchMyOffers(page); // Перезагружаем текущую страницу
       setMessage(t("status_updated"));
     } catch (error) {
       setMessage(
         "Error: " + (error.response?.data?.error || t("something_went_wrong"))
       );
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        localStorage.removeItem("token");
+      if (error.response?.status === 401) {
         navigate("/login");
       }
     }
@@ -249,110 +222,77 @@ const MyOffers = () => {
   }
 
   return (
-    <Box sx={{ paddingY: 4 }}>
-      <Typography variant="h5" gutterBottom>
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h4" gutterBottom>
         {t("my_offers")}
       </Typography>
+
       {message && (
-        <Typography
-          variant="body2"
-          color="textSecondary"
-          align="center"
-          sx={{ marginBottom: 2 }}
-        >
+        <Typography color="info" sx={{ mb: 2 }}>
           {message}
         </Typography>
       )}
 
-      {offers.length > 0 ? (
-        <Grid container spacing={3}>
-          {offers.map((offer) => (
-            <Grid item xs={12} sm={6} md={4} key={offer._id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="body1">
-                    <strong>{t("provider")}:</strong>{" "}
-                    {offer.providerId?.name || "Unknown"}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>{t("service_type")}:</strong> {t(offer.serviceType)}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>{t("location")}:</strong> {offer.location}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>{t("description")}:</strong> {offer.description}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>{t("price")}:</strong> {offer.price}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>{t("status")}:</strong> {t(offer.status)}
-                  </Typography>
-                  {offer.images && offer.images.length > 0 && (
-                    <Box sx={{ marginTop: 2 }}>
-                      <Typography variant="body1">
-                        <strong>{t("images")}:</strong>
-                      </Typography>
-                      <Grid container spacing={1}>
-                        {offer.images.map((image, index) => (
-                          <Grid item xs={4} key={index}>
-                            <img
-                              src={image}
-                              alt={`Offer ${index}`}
-                              style={{
-                                width: "100%",
-                                height: "100px",
-                                objectFit: "cover",
-                              }}
-                            />
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </Box>
-                  )}
-                  <Box sx={{ marginTop: 2 }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleEditOpen(offer)}
-                      sx={{ marginRight: 1 }}
-                    >
-                      {t("edit")}
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      onClick={() => handleDelete(offer._id)}
-                      sx={{ marginRight: 1 }}
-                    >
-                      {t("delete")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color={offer.status === "active" ? "error" : "success"}
-                      onClick={() =>
-                        handleToggleStatus(offer._id, offer.status)
-                      }
-                    >
-                      {offer.status === "active"
-                        ? t("deactivate")
-                        : t("activate")}
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+      {loading ? (
+        <Typography>{t("loading")}</Typography>
       ) : (
-        <Typography variant="body1" align="center">
-          {t("no_offers")}
-        </Typography>
+        <>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {offers.map((offer) => (
+              <Grid item xs={12} sm={6} md={4} key={offer._id}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6">{offer.serviceType}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {offer.location}
+                    </Typography>
+                    <Typography variant="body1">{offer.description}</Typography>
+                    <Typography variant="h6" color="primary">
+                      {offer.price} ₽
+                    </Typography>
+                    <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+                      <Button
+                        variant="contained"
+                        color={offer.status === "active" ? "error" : "primary"}
+                        onClick={() =>
+                          handleToggleStatus(offer._id, offer.status)
+                        }
+                      >
+                        {offer.status === "active"
+                          ? t("deactivate")
+                          : t("activate")}
+                      </Button>
+                      <IconButton onClick={() => handleEditOpen(offer)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton onClick={() => handleDelete(offer._id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Stack spacing={2} alignItems="center">
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          </Stack>
+        </>
       )}
 
-      {/* Диалог для редактирования */}
-      <Dialog open={editDialogOpen} onClose={handleEditClose}>
+      {/* Edit Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={handleEditClose}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>{t("edit_offer")}</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ marginBottom: 2, marginTop: 2 }}>

@@ -12,6 +12,13 @@ const instance = axios.create({
 // Хранилище для токенов отмены запросов
 const cancelTokens = new Map();
 
+// Функция для очистки данных авторизации
+const clearAuth = () => {
+  localStorage.removeItem("token");
+  // Вызываем событие для синхронизации состояния между вкладками
+  window.dispatchEvent(new Event("auth-logout"));
+};
+
 // Добавляем токен к каждому запросу, если он есть
 instance.interceptors.request.use(
   (config) => {
@@ -66,6 +73,11 @@ instance.interceptors.response.use(
       if (error.config) {
         const requestKey = `${error.config.method}-${error.config.url}`;
         cancelTokens.delete(requestKey);
+      }
+
+      // Если получили 401, очищаем данные авторизации
+      if (error.response?.status === 401) {
+        clearAuth();
       }
 
       // Логируем ошибку ответа

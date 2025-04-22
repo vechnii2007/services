@@ -27,9 +27,10 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage("");
+
     try {
       await login(formData.email.trim(), formData.password.trim());
-      setMessage(t("login_successful"));
       navigate("/offers");
     } catch (error) {
       console.error("Login error:", error);
