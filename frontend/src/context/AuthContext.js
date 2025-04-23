@@ -53,6 +53,8 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
   };
 
+  const isAuthenticated = Boolean(token && user);
+
   const value = {
     user,
     token,
@@ -62,6 +64,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile: updateUser,
+    isAuthenticated,
   };
 
   return (

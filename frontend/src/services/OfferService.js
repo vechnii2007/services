@@ -5,15 +5,30 @@ class OfferService extends BaseService {
     super("/services");
   }
 
-  async getAll({ page = 1, limit = 10, minPrice, maxPrice, location } = {}) {
+  async getAll({
+    page = 1,
+    limit = 10,
+    minPrice,
+    maxPrice,
+    location,
+    category,
+  } = {}) {
     console.log("[OfferService] Fetching offers with params:", {
       page,
       limit,
       minPrice,
       maxPrice,
       location,
+      category,
     });
-    return this.get("/offers", { page, limit, minPrice, maxPrice, location });
+    return this.get("/offers", {
+      page,
+      limit,
+      minPrice,
+      maxPrice,
+      location,
+      category,
+    });
   }
 
   async getById(id) {
@@ -47,23 +62,69 @@ class OfferService extends BaseService {
   }
 
   async fetchCategories() {
-    return this.get("/categories");
+    console.log("[OfferService] Fetching categories with counts");
+    const response = await this.get("/categories");
+    console.log("[OfferService] Categories response:", response);
+    return response;
+  }
+
+  async fetchCategoryCounts() {
+    try {
+      console.log("[OfferService] Fetching category counts");
+      const response = await this.get("/categories/counts");
+      console.log("[OfferService] Category counts received:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[OfferService] Error fetching category counts:", error);
+      throw error;
+    }
   }
 
   async fetchFavorites() {
     console.log("[OfferService] Fetching favorites");
     try {
+      // Проверим, есть ли токен аутентификации
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log(
+          "[OfferService] No authentication token, returning empty favorites"
+        );
+        localStorage.removeItem("userFavorites");
+        return {};
+      }
+
       const response = await this.get("/favorites");
       console.log("[OfferService] Favorites fetched successfully:", response);
+
       const favoritesMap = {};
       response.forEach((offer) => {
         if (offer && offer._id) {
           favoritesMap[offer._id] = true;
         }
       });
+
+      // Сохраняем в localStorage для восстановления после перезагрузки
+      localStorage.setItem("userFavorites", JSON.stringify(favoritesMap));
+
       return favoritesMap;
     } catch (error) {
       console.error("[OfferService] Error fetching favorites:", error);
+
+      // В случае ошибки, пробуем восстановить из localStorage
+      try {
+        const cachedFavorites = localStorage.getItem("userFavorites");
+        if (cachedFavorites) {
+          const parsed = JSON.parse(cachedFavorites);
+          console.log(
+            "[OfferService] Using cached favorites from localStorage:",
+            parsed
+          );
+          return parsed;
+        }
+      } catch (e) {
+        console.error("[OfferService] Error parsing cached favorites:", e);
+      }
+
       return {};
     }
   }
@@ -76,14 +137,65 @@ class OfferService extends BaseService {
     }
 
     try {
-      const response = await this.post("/favorites", { offerId, offerType });
-      console.log("[OfferService] Favorite toggled successfully:", response);
+      const serverOfferType =
+        offerType === "offer"
+          ? "Offer"
+          : offerType === "service_offer"
+          ? "ServiceOffer"
+          : offerType;
+
+      console.log(
+        `[OfferService] Using server offerType: '${serverOfferType}' (original: '${offerType}')`
+      );
+
+      const response = await this.post("/favorites", {
+        offerId,
+        offerType: serverOfferType,
+      });
+
+      // Убедимся, что у нас всегда есть поле isFavorite в ответе
+      const isFavorite =
+        response && typeof response.isFavorite === "boolean"
+          ? response.isFavorite
+          : response &&
+            response.message &&
+            response.message.includes("Added to favorites");
+
+      console.log("[OfferService] Favorite toggled successfully:", {
+        response,
+        explicitIsFavorite: isFavorite,
+      });
+
+      // Обновляем localStorage после каждого изменения
+      try {
+        const cachedFavorites = localStorage.getItem("userFavorites");
+        let favorites = {};
+
+        if (cachedFavorites) {
+          favorites = JSON.parse(cachedFavorites);
+        }
+
+        if (isFavorite) {
+          favorites[offerId] = true;
+        } else {
+          delete favorites[offerId];
+        }
+
+        localStorage.setItem("userFavorites", JSON.stringify(favorites));
+      } catch (e) {
+        console.error(
+          "[OfferService] Error updating favorites in localStorage:",
+          e
+        );
+      }
+
       return {
-        isFavorite: !!response.isFavorite,
+        isFavorite: isFavorite,
+        message: response.message || "",
       };
     } catch (error) {
       console.error("[OfferService] Error toggling favorite:", error);
-      return { isFavorite: false };
+      return { isFavorite: false, error: error.message };
     }
   }
 }

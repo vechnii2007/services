@@ -1,14 +1,24 @@
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 
 // Константы для путей
 const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
 const UPLOADS_PATH = "/uploads";
+const IMAGES_DIR = path.join(UPLOADS_DIR, "images");
+
+// Создаем папку для изображений, если её нет
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR);
+}
+if (!fs.existsSync(IMAGES_DIR)) {
+  fs.mkdirSync(IMAGES_DIR);
+}
 
 // Настройка хранилища для multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
+    cb(null, IMAGES_DIR);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -38,4 +48,5 @@ module.exports = {
   upload,
   UPLOADS_DIR,
   UPLOADS_PATH,
+  IMAGES_DIR,
 };

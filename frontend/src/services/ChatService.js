@@ -1,27 +1,29 @@
-import api from "../middleware/api";
+import { BaseService } from "./BaseService";
 
-export const ChatService = {
-  getMessages: async (requestId) => {
-    const response = await api.get(`/services/messages/${requestId}`);
-    return response.data;
-  },
+class ChatServiceClass extends BaseService {
+  constructor() {
+    super("/services"); // Используем тот же базовый путь, что и в OfferService
+  }
 
-  getMyChats: async () => {
-    const response = await api.get("/services/my-chats");
-    return response.data;
-  },
+  async getMessages(requestId) {
+    return this.get(`/messages/${requestId}`);
+  }
 
-  getProviderChats: async () => {
-    const response = await api.get("/services/provider-chats");
-    return response.data;
-  },
+  async getMyChats() {
+    return this.get("/my-chats");
+  }
 
-  sendMessage: async (requestId, message) => {
-    const response = await api.post(`/services/messages/${requestId}`, {
+  async getProviderChats() {
+    return this.get("/provider-chats");
+  }
+
+  async sendMessage(requestId, message, recipientId) {
+    return this.post(`/messages/${requestId}`, {
       message,
+      recipientId,
     });
-    return response.data;
-  },
-};
+  }
+}
 
+const ChatService = new ChatServiceClass();
 export default ChatService;

@@ -3,9 +3,15 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
+const http = require("http");
+const { initializeSocket } = require("./socket");
+const NotificationService = require("./services/NotificationService");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const searchRoutes = require("./routes/search");
 const { UPLOADS_DIR, UPLOADS_PATH } = require("./config/uploadConfig");
 require("dotenv").config();
 
@@ -18,6 +24,10 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
+const server = http.createServer(app);
+
+// Инициализация WebSocket
+initializeSocket(server);
 
 // Настройка Multer
 const storage = multer.diskStorage({
@@ -30,6 +40,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -52,6 +63,34 @@ app.use(
   express.static(UPLOADS_DIR)
 );
 
+// Routes
+app.use("/api/users", userRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/search", searchRoutes);
+
+// Добавляем обратную совместимость для старых маршрутов
+app.use("/services", serviceRoutes);
+
+// Инициализация push-уведомлений
+NotificationService.setup()
+  .then((publicKey) => {
+    app.get("/api/notifications/vapid-public-key", (req, res) => {
+      res.json({ publicKey });
+    });
+  })
+  .catch((error) => {
+    console.error("Error setting up push notifications:", error);
+  });
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something went wrong!" });
+});
+
 // Проверка подключения к MongoDB
 mongoose
   .connect(process.env.MONGODB_URI, {
@@ -62,25 +101,18 @@ mongoose
     console.log("Connected to MongoDB");
     // Логируем текущую базу данных
     console.log("Database name:", mongoose.connection.db.databaseName);
+
+    // Start server
+    const PORT = process.env.PORT || 5001;
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);
   });
 
-// Проверка, что подключение активно перед запуском сервера
-mongoose.connection.on("connected", () => {
-  console.log("MongoDB connection established");
-  const PORT = process.env.PORT || 5001;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-});
-
 mongoose.connection.on("error", (err) => {
   console.error("MongoDB connection error:", err);
 });
-
-app.use("/api/users", userRoutes);
-app.use("/api/services", serviceRoutes);
-app.use("/api/admin", adminRoutes);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import api from "../middleware/api";
 import { useSocket } from "../hooks/useSocket";
+import ChatService from "../services/ChatService";
 import {
   Box,
   TextField,
@@ -22,14 +22,15 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("");
+  const [recipientId, setRecipientId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await api.get(`/services/messages/${requestId}`);
-        setMessages(res.data);
+        const messagesData = await ChatService.getMessages(requestId);
+        setMessages(messagesData);
       } catch (error) {
         console.error("Error fetching messages:", error);
         setError(error.message);
@@ -38,9 +39,35 @@ const Chat = () => {
 
     const fetchUserData = async () => {
       try {
-        const res = await api.get(`/users/me`);
-        setUserId(res.data._id);
-        setUserName(res.data.name);
+        // Используем API напрямую для получения данных пользователя
+        const res = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (!res.ok) throw new Error("Failed to fetch user data");
+
+        const userData = await res.json();
+        setUserId(userData._id);
+        setUserName(userData.name);
+
+        // Определяем получателя - для простоты сделаем запрос на получение связанного запроса
+        const requestData = await fetch(`/api/services/requests/${requestId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (requestData.ok) {
+          const request = await requestData.json();
+          // Если текущий пользователь является создателем запроса, то получатель - провайдер услуги
+          // иначе получатель - создатель запроса
+          if (request.userId === userData._id) {
+            setRecipientId(request.providerId);
+          } else {
+            setRecipientId(request.userId);
+          }
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
         setError(error.message);
@@ -78,17 +105,30 @@ const Chat = () => {
     }
   }, [requestId, t, navigate, socket]);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim() && socket) {
-      const messageData = {
-        room: requestId,
-        userId,
-        userName,
-        text: newMessage,
-        timestamp: new Date(),
-      };
-      socket.emit("sendMessage", messageData);
-      setNewMessage("");
+  const handleSendMessage = async () => {
+    if (newMessage.trim() && recipientId) {
+      try {
+        // Отправляем через ChatService
+        await ChatService.sendMessage(requestId, newMessage, recipientId);
+
+        // Обновляем список сообщений локально
+        const newMessageObj = {
+          senderId: userId,
+          recipientId: recipientId,
+          requestId: requestId,
+          message: newMessage,
+          timestamp: new Date(),
+          userId: { _id: userId, name: userName },
+        };
+
+        setMessages((prevMessages) => [...prevMessages, newMessageObj]);
+        setNewMessage("");
+      } catch (error) {
+        console.error("Error sending message:", error);
+        setError(error.message);
+      }
+    } else {
+      setError("Message text or recipient is missing");
     }
   };
 
@@ -120,7 +160,7 @@ const Chat = () => {
         {messages.map((message, index) => (
           <ListItem key={index}>
             <ListItemText
-              primary={message.text}
+              primary={message.message || message.text}
               secondary={`${message.userId?.name || "Unknown"}: ${new Date(
                 message.timestamp
               ).toLocaleString()}`}
@@ -138,7 +178,7 @@ const Chat = () => {
         <Button
           variant="contained"
           onClick={handleSendMessage}
-          disabled={!userId}
+          disabled={!userId || !recipientId}
         >
           {t("send")}
         </Button>

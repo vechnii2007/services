@@ -1,43 +1,160 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
-import api from "../middleware/api";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  Button,
-  Grid,
-} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { Box, Typography, Alert, CircularProgress } from "@mui/material";
+import OfferList from "../components/OfferList";
+import OfferService from "../services/OfferService";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../hooks/useAuth";
 
 const Favorites = () => {
   const { t } = useTranslation();
-  const [favorites, setFavorites] = useState([]);
+  const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading, user, token } = useAuth();
+  const [favorites, setFavorites] = useState({});
+  const [favoriteOffers, setFavoriteOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // Загрузка избранных предложений
   useEffect(() => {
+    // Ждем, пока загрузится состояние авторизации
+    if (authLoading) return;
+
+    // Если пользователь не авторизован, не делаем запрос
+    if (!isAuthenticated || !user || !token) {
+      setLoading(false);
+      setMessage(t("login_to_view_favorites"));
+      return;
+    }
+
     const fetchFavorites = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/services/favorites`);
-        setFavorites(res.data);
-        setMessage(t("favorites_loaded"));
+
+        // Получаем данные из API
+        const favoritesData = await OfferService.get("/favorites");
+        setFavoriteOffers(favoritesData || []);
+
+        // Создаем объект для передачи в OfferList в формате { id: true }
+        const favoriteMap = {};
+        favoritesData.forEach((offer) => {
+          if (offer && offer._id) {
+            favoriteMap[offer._id] = true;
+          }
+        });
+        setFavorites(favoriteMap);
+
+        if (!favoritesData || favoritesData.length === 0) {
+          setMessage(t("no_favorites"));
+        }
       } catch (error) {
-        console.error("Error fetching favorites:", error);
-        setError(error.message);
+        // Проверяем статус 401 для неавторизованных запросов
+        if (error.response?.status === 401) {
+          setMessage(t("login_to_view_favorites"));
+        } else {
+          setError(error.message || t("common.errorOccurred"));
+        }
       } finally {
         setLoading(false);
       }
     };
-    fetchFavorites();
-  }, [t]);
 
-  if (loading) {
-    return <Typography>{t("loading")}</Typography>;
+    // Убедимся, что пользователь полностью авторизован перед загрузкой данных
+    if (isAuthenticated && user && token) {
+      fetchFavorites();
+    }
+  }, [t, isAuthenticated, authLoading, user, token, navigate]);
+
+  // Обработчик удаления из избранного
+  const toggleFavorite = useCallback(
+    async (offerId, offerType) => {
+      if (!isAuthenticated || !user || !token) {
+        toast.error(t("offer.loginRequired"));
+        return;
+      }
+
+      try {
+        // Преобразуем тип предложения к формату, ожидаемому сервером
+        const serverOfferType =
+          offerType === "offer"
+            ? "Offer"
+            : offerType === "service_offer"
+            ? "ServiceOffer"
+            : offerType || "Offer";
+
+        // Оптимистично обновляем UI
+        const wasInFavorites = favorites[offerId];
+        if (wasInFavorites) {
+          // Только для страницы избранного: также удаляем из списка при удалении из избранного
+          setFavoriteOffers((prev) =>
+            prev.filter((offer) => offer._id !== offerId)
+          );
+        }
+
+        // Отправляем запрос на сервер
+        const result = await OfferService.toggleFavorite(
+          offerId,
+          serverOfferType
+        );
+
+        // Обновляем состояние избранного
+        if (!result.isFavorite) {
+          toast.success(t("removed_from_favorites"));
+        }
+      } catch (error) {
+        toast.error(t("common.errorOccurred"));
+
+        // В случае ошибки обновляем список избранного с сервера
+        try {
+          const favoritesData = await OfferService.get("/favorites");
+          setFavoriteOffers(favoritesData || []);
+
+          // Обновляем объект избранного
+          const favoriteMap = {};
+          favoritesData.forEach((offer) => {
+            if (offer && offer._id) {
+              favoriteMap[offer._id] = true;
+            }
+          });
+          setFavorites(favoriteMap);
+        } catch (err) {
+          console.error("Ошибка при обновлении списка избранного");
+        }
+      }
+    },
+    [favorites, isAuthenticated, t, user, token]
+  );
+
+  // Обработчик перехода по страницам (в будущем можно добавить пагинацию)
+  const handlePageChange = useCallback(() => {
+    // Пока не реализовано
+  }, []);
+
+  // Мемоизируем пустой объект для единственной страницы
+  const pagination = useMemo(
+    () => ({
+      page: 1,
+      totalPages: 1,
+    }),
+    []
+  );
+
+  // Пока загружается информация об авторизации, показываем индикатор загрузки
+  if (authLoading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "50vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
@@ -45,70 +162,36 @@ const Favorites = () => {
       <Typography variant="h4" gutterBottom>
         {t("favorites")}
       </Typography>
-      {message && (
-        <Typography
-          variant="body2"
-          color="textSecondary"
-          align="center"
-          sx={{ marginBottom: 2 }}
-        >
-          {message}
-        </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
 
-      {favorites.length > 0 ? (
-        <Grid container spacing={3}>
-          {favorites.map((offer) => (
-            <Grid item xs={12} sm={6} md={3} key={offer.id}>
-              <Card>
-                {offer.image && (
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={offer.image}
-                    alt={offer.serviceType}
-                  />
-                )}
-                <CardContent>
-                  <Typography variant="h6">
-                    {t(offer.serviceType).toUpperCase()}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {offer.description}
-                  </Typography>
-                  <Typography variant="h6" sx={{ marginTop: 1 }}>
-                    {offer.price} {t("currency")}
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginTop: 1,
-                    }}
-                  >
-                    <Typography variant="body2">{offer.location}</Typography>
-                    <Typography variant="body2">
-                      {t(offer.serviceType)}
-                    </Typography>
-                  </Box>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    component={Link}
-                    to={`/offers/${offer.id}`}
-                    sx={{ marginTop: 2, width: "100%" }}
-                  >
-                    {t("view_offer")}
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+      {!isAuthenticated ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {t("login_to_view_favorites")}
+        </Alert>
       ) : (
-        <Typography variant="body1" align="center">
-          {t("no_favorites")}
-        </Typography>
+        <>
+          <OfferList
+            offers={favoriteOffers}
+            favorites={favorites}
+            setFavorites={setFavorites}
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={handlePageChange}
+            loading={loading}
+            toggleFavorite={toggleFavorite}
+          />
+
+          {message && favoriteOffers.length === 0 && !loading && (
+            <Typography variant="body1" align="center" sx={{ mt: 4 }}>
+              {message}
+            </Typography>
+          )}
+        </>
       )}
     </Box>
   );

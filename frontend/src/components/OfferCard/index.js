@@ -6,6 +6,7 @@ import {
   IconButton,
   Button,
   Typography,
+  Chip,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
@@ -15,11 +16,42 @@ import { ROUTES } from "../../constants";
 import PropTypes from "prop-types";
 import OfferImage from "./OfferImage";
 import OfferInfo from "./OfferInfo";
-import ProviderInfo from "./ProviderInfo";
+import ProviderInfo from "../ProviderInfo";
 import { motion } from "framer-motion";
+import { styled } from "@mui/material/styles";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PauseCircleIcon from "@mui/icons-material/PauseCircle";
+import CategoryIcon from "@mui/icons-material/Category";
+import { formatPrice } from "../../utils/formatters";
 
 // Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
+
+const StatusChip = styled(Chip)(({ theme, status }) => ({
+  position: "absolute",
+  top: 16,
+  left: 16,
+  zIndex: 1,
+  backgroundColor:
+    status === "active" ? theme.palette.success.main : theme.palette.grey[500],
+  color: theme.palette.common.white,
+  fontWeight: "bold",
+  "& .MuiChip-icon": {
+    color: theme.palette.common.white,
+  },
+}));
+
+const CategoryChip = styled(Chip)(({ theme }) => ({
+  position: "absolute",
+  bottom: 16,
+  left: 16,
+  zIndex: 1,
+  backgroundColor: "rgba(0, 0, 0, 0.7)",
+  color: theme.palette.common.white,
+  "& .MuiChip-icon": {
+    color: theme.palette.common.white,
+  },
+}));
 
 // Фолбэк-компонент, который показывается вместо ошибки
 const EmptyOfferCard = () => {
@@ -30,7 +62,7 @@ const EmptyOfferCard = () => {
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        maxWidth: "300px",
+        maxWidth: "275px",
         borderRadius: "12px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
         backgroundColor: "background.paper",
@@ -73,15 +105,7 @@ const OfferCard = memo(
     const safeOfferLocation = offer?.location || "";
     const safeOfferCreatedAt = offer?.createdAt || "";
     const safeProvider = offer?.provider || {};
-
-    useEffect(() => {
-      console.log("OfferCard mounted/updated with props:", {
-        offerId: safeOfferId,
-        offerType: safeOfferType,
-        isFavorite,
-        hasOnFavoriteClick: !!onFavoriteClick,
-      });
-    }, [safeOfferId, safeOfferType, isFavorite, onFavoriteClick]);
+    const safeServiceType = offer?.serviceType || "Общее";
 
     // Если нет ID, показываем пустую карточку
     if (!safeOfferId) {
@@ -124,23 +148,51 @@ const OfferCard = memo(
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        whileHover={{ scale: 1.03 }}
-        transition={{ duration: 0.2 }}
+        whileHover={{
+          scale: 1.03,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+        }}
+        transition={{
+          duration: 0.2,
+          boxShadow: {
+            duration: 0.1,
+          },
+        }}
         sx={{
           height: "100%",
           display: "flex",
           flexDirection: "column",
           width: "100%",
-          maxWidth: "300px",
+          maxWidth: "275px",
           borderRadius: "12px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
           position: "relative",
           cursor: "pointer",
           backgroundColor: "background.paper",
+          overflow: "visible",
         }}
         onClick={handleCardClick}
       >
-        <OfferImage image={safeOfferImage} title={safeOfferTitle} />
+        <Box sx={{ position: "relative" }}>
+          <StatusChip
+            label={offer.status === "active" ? "Активно" : "Неактивно"}
+            status={offer.status}
+            size="small"
+            icon={
+              offer.status === "active" ? (
+                <CheckCircleIcon />
+              ) : (
+                <PauseCircleIcon />
+              )
+            }
+          />
+          <OfferImage image={safeOfferImage} title={safeOfferTitle} />
+          <CategoryChip
+            icon={<CategoryIcon />}
+            label={safeServiceType || "Общее"}
+            size="small"
+          />
+        </Box>
+
         <CardContent
           sx={{
             p: 2,
@@ -165,7 +217,7 @@ const OfferCard = memo(
               onClick={handleFavoriteClick}
               size="small"
               sx={{
-                transition: "transform 0.2s",
+                transition: "all 0.2s",
                 backgroundColor: "background.paper",
                 "&:hover": {
                   transform: "scale(1.1)",
@@ -193,7 +245,7 @@ const OfferCard = memo(
           </Box>
 
           <Box sx={{ mb: 2 }}>
-            <ProviderInfo provider={safeProvider} />
+            <ProviderInfo provider={safeProvider} variant="compact" />
           </Box>
 
           <Box
@@ -223,6 +275,8 @@ const OfferCard = memo(
                 textTransform: "none",
                 borderRadius: "8px",
                 transition: "all 0.2s",
+                background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+                boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
               }}
             >
               Подробнее

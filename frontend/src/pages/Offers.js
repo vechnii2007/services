@@ -7,26 +7,94 @@ import React, {
   useMemo,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Typography, Box } from "@mui/material";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation } from "swiper/modules";
+import { Typography, Box, Container } from "@mui/material";
+import { styled } from "@mui/material/styles";
 import OfferFilters from "../components/OfferFilters";
 import CategoryCard from "../components/CategoryCard";
+import CategorySlider from "../components/CategorySlider";
 import OfferList from "../components/OfferList";
 import OfferService from "../services/OfferService";
+import { searchService } from "../services/searchService";
 import { filterOffers } from "../utils/filterOffers";
 import { PAGINATION } from "../config";
 import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-hot-toast";
 
-import "swiper/css";
-import "swiper/css/navigation";
+const PageTitle = styled(Typography)(({ theme }) => ({
+  fontSize: theme.typography.h1.fontSize,
+  fontWeight: theme.typography.h1.fontWeight,
+  lineHeight: theme.typography.h1.lineHeight,
+  letterSpacing: theme.typography.h1.letterSpacing,
+  color: theme.palette.text.primary,
+  marginBottom: theme.spacing(4),
+  position: "relative",
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    bottom: -12,
+    left: 0,
+    width: 60,
+    height: 4,
+    background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
+    borderRadius: theme.shape.borderRadius,
+  },
+}));
+
+const CategoriesSection = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(6),
+  position: "relative",
+  backgroundColor: theme.palette.background.default,
+  borderRadius: theme.shape.borderRadius,
+  padding: theme.spacing(2, 0),
+  "& .swiper-button-prev, & .swiper-button-next": {
+    color: theme.palette.primary.main,
+  },
+}));
+
+const ContentContainer = styled(Container)(({ theme }) => ({
+  paddingTop: theme.spacing(4),
+  paddingBottom: theme.spacing(8),
+  [theme.breakpoints.up("sm")]: {
+    paddingTop: theme.spacing(5),
+    paddingBottom: theme.spacing(10),
+  },
+  [theme.breakpoints.up("md")]: {
+    paddingTop: theme.spacing(6),
+    paddingBottom: theme.spacing(12),
+  },
+}));
+
+const LoadingContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: "50vh",
+  color: theme.palette.text.secondary,
+}));
 
 const Offers = () => {
   const { t } = useTranslation();
   const { isAuthenticated } = useContext(AuthContext);
   const [offers, setOffers] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [favorites, setFavorites] = useState({});
+  const [categoryCounts, setCategoryCounts] = useState({});
+  const [favorites, setFavorites] = useState(() => {
+    // Инициализируем состояние избранного из localStorage
+    try {
+      const cachedFavorites = localStorage.getItem("userFavorites");
+      if (cachedFavorites) {
+        const parsed = JSON.parse(cachedFavorites);
+        console.log(
+          "[Offers] Initialized favorites from localStorage:",
+          parsed
+        );
+        return parsed;
+      }
+    } catch (e) {
+      console.error("[Offers] Error parsing cached favorites:", e);
+    }
+    return {};
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -36,9 +104,39 @@ const Offers = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [totalResults, setTotalResults] = useState(0);
   const isFetchingData = useRef(false);
   const fetchTimeoutRef = useRef(null);
   const fetchIdRef = useRef(0);
+
+  const handleCategoryClick = useCallback(
+    (category) => {
+      console.log("[Offers] Category click handler started", {
+        clickedCategory: category,
+        currentSelectedCategory: selectedCategory,
+        currentPage: page,
+        currentSearchQuery: searchQuery,
+        currentFilters: {
+          minPrice,
+          maxPrice,
+          locationFilter,
+        },
+      });
+
+      const newCategory =
+        category.name === selectedCategory ? "" : category.name;
+      console.log("[Offers] Setting new category:", newCategory);
+
+      setSelectedCategory(newCategory);
+      setPage(1); // Сбрасываем страницу при смене категории
+      setLoading(true); // Устанавливаем состояние загрузки
+    },
+    [selectedCategory, page, searchQuery, minPrice, maxPrice, locationFilter]
+  );
+
+  const handlePageChange = useCallback((event, value) => {
+    setPage(value);
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (isFetchingData.current) {
@@ -51,66 +149,104 @@ const Offers = () => {
       page,
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
-      locationFilter: locationFilter || undefined,
+      location: locationFilter || undefined,
+      category: selectedCategory || undefined,
+      limit: PAGINATION.OFFERS_PER_PAGE,
     };
+
+    console.log("[Offers] Starting fetch with params:", {
+      fetchId: currentFetchId,
+      params,
+      hasSearchQuery: !!searchQuery,
+      searchQuery,
+      isFetchingData: isFetchingData.current,
+      lastParams: fetchIdRef.lastParams,
+    });
 
     // Проверяем, не изменились ли параметры с прошлого запроса
     const paramsKey = JSON.stringify(params);
     if (fetchIdRef.current > 1 && fetchIdRef.lastParams === paramsKey) {
-      console.log("[Offers] Skipping fetch, params haven't changed");
+      console.log("[Offers] Skipping fetch, params haven't changed:", {
+        currentParams: paramsKey,
+        lastParams: fetchIdRef.lastParams,
+      });
       return;
     }
     fetchIdRef.lastParams = paramsKey;
 
-    console.log(`[Offers] Starting fetch #${currentFetchId}. Params:`, params);
+    console.log(`[Offers] Proceeding with fetch #${currentFetchId}`);
 
     isFetchingData.current = true;
     setLoading(true);
 
     try {
-      const promises = [
-        OfferService.getAll({
-          ...params,
-          limit: PAGINATION.OFFERS_PER_PAGE,
-        }),
-      ];
+      // Используем searchService для поиска при наличии поискового запроса
+      let offersResponse;
+      if (searchQuery && searchQuery.trim() !== "") {
+        console.log("[Offers] Using search service with query:", searchQuery);
+        offersResponse = await searchService.searchOffers(searchQuery, params);
+      } else {
+        console.log("[Offers] Using regular offers service");
+        offersResponse = await OfferService.getAll(params);
+      }
 
       // Загружаем категории только если их нет
       if (categories.length === 0) {
-        promises.push(OfferService.fetchCategories());
+        console.log("[Offers] Loading categories as they are empty");
+        const categoriesResponse = await OfferService.fetchCategories();
+        setCategories(categoriesResponse || []);
       }
-
-      // Загружаем избранное только если пользователь авторизован
-      if (isAuthenticated) {
-        promises.push(OfferService.fetchFavorites());
-      }
-
-      const [offersResponse, categoriesResponse, favoritesResponse] =
-        await Promise.all(promises);
 
       if (currentFetchId !== fetchIdRef.current) {
         console.log(
-          `[Offers] Fetch #${currentFetchId} was superseded by a newer fetch`
+          `[Offers] Fetch #${currentFetchId} was superseded by a newer fetch #${fetchIdRef.current}`
         );
         return;
       }
 
-      console.log(`[Offers] Fetch #${currentFetchId} completed successfully`);
+      console.log("[Offers] Fetch completed successfully:", {
+        fetchId: currentFetchId,
+        offersCount: offersResponse.offers?.length,
+        totalPages: offersResponse.pages,
+        totalResults: offersResponse.total,
+        category: selectedCategory,
+      });
 
       setOffers(offersResponse.offers || []);
-      setTotalPages(offersResponse.totalPages || 1);
+      setTotalPages(offersResponse.pages || 1);
+      setTotalResults(offersResponse.total || 0);
 
-      if (categoriesResponse && categories.length === 0) {
-        setCategories(categoriesResponse || []);
-      }
+      // Если результаты были отфильтрованы, показываем toast с количеством
+      if (
+        offersResponse.filteredTotal !== undefined &&
+        offersResponse.originalTotal !== undefined
+      ) {
+        const filteredCount = offersResponse.filteredTotal;
+        const totalCount = offersResponse.originalTotal;
 
-      if (isAuthenticated && favoritesResponse) {
-        setFavorites(favoritesResponse || {});
+        if (filteredCount < totalCount) {
+          toast.success(
+            `Найдено ${filteredCount} из ${totalCount} предложений по запросу "${searchQuery}"`
+          );
+        }
       }
     } catch (error) {
-      console.error(`[Offers] Fetch #${currentFetchId} failed:`, error);
+      console.error("[Offers] Fetch failed:", {
+        fetchId: currentFetchId,
+        error,
+        params,
+        category: selectedCategory,
+      });
       setMessage(error.response?.data?.error || "Error loading offers");
+      toast.error(
+        `Ошибка при загрузке данных: ${error.message || "Неизвестная ошибка"}`
+      );
     } finally {
+      console.log("[Offers] Fetch cleanup:", {
+        fetchId: currentFetchId,
+        isFetchingData: false,
+        loading: false,
+      });
       isFetchingData.current = false;
       setLoading(false);
     }
@@ -119,10 +255,50 @@ const Offers = () => {
     minPrice,
     maxPrice,
     locationFilter,
-    isAuthenticated,
     categories.length,
+    selectedCategory,
+    searchQuery,
   ]);
 
+  const handleSearch = useCallback(() => {
+    console.log("[Offers] Search initiated with query:", searchQuery);
+    setPage(1); // Сбрасываем страницу при поиске
+    fetchData();
+  }, [searchQuery, fetchData]);
+
+  const filteredOffers = useMemo(
+    () => filterOffers(offers, { searchQuery }),
+    [offers, searchQuery]
+  );
+
+  // Функция для загрузки категорий и их количества
+  const loadCategoriesData = useCallback(async () => {
+    try {
+      console.log("[Offers] Loading categories and counts");
+      const [categoriesResponse, countsResponse] = await Promise.all([
+        OfferService.fetchCategories(),
+        OfferService.fetchCategoryCounts(),
+      ]);
+
+      console.log("[Offers] Categories and counts loaded:", {
+        categories: categoriesResponse,
+        counts: countsResponse,
+      });
+
+      setCategories(categoriesResponse || []);
+      setCategoryCounts(countsResponse || {});
+    } catch (error) {
+      console.error("[Offers] Error loading categories data:", error);
+      toast.error(t("errors.categoriesLoadFailed"));
+    }
+  }, [t]);
+
+  // Эффект для начальной загрузки категорий
+  useEffect(() => {
+    loadCategoriesData();
+  }, [loadCategoriesData]);
+
+  // Эффект для обновления данных при изменении фильтров
   useEffect(() => {
     const controller = new AbortController();
 
@@ -130,12 +306,12 @@ const Offers = () => {
       clearTimeout(fetchTimeoutRef.current);
     }
 
-    // Используем разные задержки для разных типов изменений
     const delay = (() => {
-      if (page !== 1) return 0; // Мгновенная загрузка при смене страницы
+      if (page !== 1) return 0;
+      if (searchQuery) return 300;
       if (minPrice !== "" || maxPrice !== "" || locationFilter !== "")
-        return 500; // Задержка для фильтров
-      return 300; // Стандартная задержка
+        return 500;
+      return 300;
     })();
 
     fetchTimeoutRef.current = setTimeout(() => {
@@ -148,47 +324,110 @@ const Offers = () => {
         clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [fetchData]);
+  }, [fetchData, page, searchQuery, minPrice, maxPrice, locationFilter]);
 
-  const handleCategoryClick = useCallback(
-    (category) => {
-      setSelectedCategory(category === selectedCategory ? "" : category);
+  useEffect(() => {
+    const loadFavorites = async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          console.log("[Offers] Loading favorites separately");
+          const favoritesData = await OfferService.fetchFavorites();
+          setFavorites(favoritesData || {});
+          console.log("[Offers] Favorites loaded:", favoritesData);
+        } catch (error) {
+          console.error("[Offers] Error loading favorites:", error);
+        }
+      } else {
+        // Если токена нет, очищаем избранное
+        console.log("[Offers] No token, clearing favorites");
+        setFavorites({});
+      }
+    };
+
+    loadFavorites();
+  }, [isAuthenticated]);
+
+  const toggleFavorite = useCallback(
+    async (offerId, offerType) => {
+      if (!isAuthenticated) {
+        toast.error(t("offer.loginRequired"), {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      try {
+        // Преобразуем тип предложения к формату, ожидаемому сервером
+        const serverOfferType =
+          offerType === "offer"
+            ? "Offer"
+            : offerType === "service_offer"
+            ? "ServiceOffer"
+            : offerType || "Offer";
+
+        console.log(
+          `[Offers] Toggling favorite for offer ${offerId} (${offerType} → ${serverOfferType})`
+        );
+        const wasInFavorites = favorites[offerId];
+
+        // Оптимистичное обновление UI
+        setFavorites((prev) => {
+          const updated = { ...prev };
+          if (updated[offerId]) {
+            delete updated[offerId];
+          } else {
+            updated[offerId] = true;
+          }
+          return updated;
+        });
+
+        // Обновление на сервере
+        const result = await OfferService.toggleFavorite(
+          offerId,
+          serverOfferType
+        );
+        console.log("[Offers] Toggle favorite result:", result);
+
+        // Обновление избранного с сервера для синхронизации
+        if (result.success) {
+          // Кэш уже обновлен в OfferService
+        } else {
+          // Если запрос неуспешен, откатываем оптимистичное обновление
+          console.error("[Offers] Error toggling favorite:", result.error);
+          setFavorites((prev) => {
+            const updated = { ...prev };
+            if (wasInFavorites) {
+              updated[offerId] = true;
+            } else {
+              delete updated[offerId];
+            }
+            return updated;
+          });
+          toast.error(result.error || t("common.errorOccurred"));
+        }
+      } catch (error) {
+        console.error("[Offers] Error toggling favorite:", error);
+        toast.error(t("common.errorOccurred"));
+      }
     },
-    [selectedCategory]
-  );
-
-  const handlePageChange = useCallback((event, value) => {
-    setPage(value);
-  }, []);
-
-  const filteredOffers = useMemo(
-    () =>
-      filterOffers(offers, {
-        searchQuery,
-        selectedCategory,
-      }),
-    [offers, searchQuery, selectedCategory]
+    [isAuthenticated, favorites, t]
   );
 
   if (loading && categories.length === 0) {
-    return <Typography>{t("loading")}</Typography>;
+    return (
+      <LoadingContainer>
+        <Typography variant="h3" color="textSecondary">
+          {t("loading")}
+        </Typography>
+      </LoadingContainer>
+    );
   }
 
   return (
-    <Box sx={{ paddingY: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        {t("offers")}
-      </Typography>
-      {message && (
-        <Typography
-          variant="body2"
-          color="textSecondary"
-          align="center"
-          sx={{ marginBottom: 2 }}
-        >
-          {message}
-        </Typography>
-      )}
+    <ContentContainer maxWidth="lg">
+      <PageTitle variant="h1">{t("offers_and_services")}</PageTitle>
 
       <OfferFilters
         searchQuery={searchQuery}
@@ -199,45 +438,45 @@ const Offers = () => {
         setMaxPrice={setMaxPrice}
         locationFilter={locationFilter}
         setLocationFilter={setLocationFilter}
+        categories={categories}
+        selectedCategories={selectedCategory ? [selectedCategory] : []}
+        onCategoryChange={handleCategoryClick}
+        onSearch={handleSearch}
+        isSearching={loading}
       />
 
-      <Typography variant="h6" gutterBottom>
-        {t("categories")}
-      </Typography>
-      <Box sx={{ marginBottom: 4 }}>
-        <Swiper
-          modules={[Navigation]}
-          spaceBetween={16}
-          slidesPerView={1}
-          navigation
-          breakpoints={{
-            640: { slidesPerView: 2 },
-            768: { slidesPerView: 3 },
-            1024: { slidesPerView: 5 },
+      <CategoriesSection>
+        <Typography
+          variant="h6"
+          sx={{
+            mb: 1,
+            fontWeight: "medium",
+            paddingLeft: 4,
+            color: "text.primary",
           }}
         >
-          {categories.map((category) => (
-            <SwiperSlide key={category._id}>
-              <CategoryCard
-                category={category}
-                selected={selectedCategory === category.name}
-                onClick={handleCategoryClick}
-              />
-            </SwiperSlide>
-          ))}
-        </Swiper>
-      </Box>
+          {t("categories")}
+        </Typography>
+        <CategorySlider
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategorySelect={handleCategoryClick}
+          counts={categoryCounts}
+        />
+      </CategoriesSection>
 
       <OfferList
-        offers={filteredOffers || []}
-        favorites={favorites || {}}
+        offers={filteredOffers}
+        favorites={favorites}
         setFavorites={setFavorites}
         page={page}
         totalPages={totalPages}
         onPageChange={handlePageChange}
         loading={loading}
+        toggleFavorite={toggleFavorite}
+        searchQuery={searchQuery}
       />
-    </Box>
+    </ContentContainer>
   );
 };
 

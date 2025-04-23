@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { Grid, Box, Pagination, Typography } from "@mui/material";
+import { Grid, Box, Pagination, Typography, Paper } from "@mui/material";
 import PropTypes from "prop-types";
 import OfferCard from "./OfferCard/index";
 import OfferCardSkeleton from "./OfferCard/OfferCardSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import OfferService from "../services/OfferService";
-import debounce from "lodash/debounce";
+import SearchIcon from "@mui/icons-material/Search";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -30,6 +30,8 @@ const OfferList = ({
   totalPages = 1,
   onPageChange,
   loading = false,
+  toggleFavorite,
+  searchQuery = "",
 }) => {
   // Проверяем, что favorites - объект
   const safeFavorites =
@@ -47,75 +49,87 @@ const OfferList = ({
       favorites: safeFavorites,
       hasFavorites: !!safeFavorites,
       hasSetFavorites: typeof setFavorites === "function",
+      hasToggleFavorite: typeof toggleFavorite === "function",
     });
-  }, [safeOffers, safeFavorites, setFavorites]);
-
-  // Кэш для результатов запросов
-  const favoriteCache = useMemo(() => new Map(), []);
-
-  const debouncedToggleFavorite = useMemo(
-    () =>
-      debounce(async (offerId, offerType) => {
-        const cacheKey = `${offerId}-${offerType}`;
-
-        // Проверяем кэш
-        if (favoriteCache.has(cacheKey)) {
-          const cachedResult = favoriteCache.get(cacheKey);
-          if (Date.now() - cachedResult.timestamp < 5000) {
-            // 5 секунд
-            console.log("Using cached favorite result");
-            return cachedResult.data;
-          }
-        }
-
-        try {
-          const response = await OfferService.toggleFavorite(
-            offerId,
-            offerType
-          );
-
-          // Сохраняем в кэш
-          favoriteCache.set(cacheKey, {
-            data: response,
-            timestamp: Date.now(),
-          });
-
-          return response;
-        } catch (error) {
-          console.error("Error in debouncedToggleFavorite:", error);
-          throw error;
-        }
-      }, 300),
-    []
-  );
+  }, [safeOffers, safeFavorites, setFavorites, toggleFavorite]);
 
   const handleFavoriteClick = useCallback(
     async (offerId, offerType) => {
+      // Если предоставлен внешний обработчик toggleFavorite, используем его
+      if (typeof toggleFavorite === "function") {
+        console.log("Using external toggleFavorite handler");
+        return toggleFavorite(offerId, offerType);
+      }
+
+      // Иначе используем внутреннюю реализацию
       if (!offerId) {
         console.error("Missing required offerId for handleFavoriteClick");
         return;
       }
 
       const safeOfferId = String(offerId);
-      const safeOfferType = offerType || "offer";
+      // Преобразуем тип предложения к формату, ожидаемому сервером
+      const safeOfferType =
+        offerType === "offer"
+          ? "Offer"
+          : offerType === "service_offer"
+          ? "ServiceOffer"
+          : offerType || "Offer";
+
+      console.log(
+        `Toggling favorite for offer: ${safeOfferId}, current status:`,
+        safeFavorites[safeOfferId] ? "favorite" : "not favorite"
+      );
 
       try {
-        const response = await debouncedToggleFavorite(
+        // Вызываем напрямую, без debounce
+        const response = await OfferService.toggleFavorite(
           safeOfferId,
           safeOfferType
         );
 
         if (response && typeof setFavorites === "function") {
-          setFavorites((prev) => ({
-            ...prev,
-            [safeOfferId]: Boolean(response.isFavorite),
-          }));
+          const newIsFavorite = Boolean(response.isFavorite);
+          console.log(
+            `Favorite toggle response for ${safeOfferId}:`,
+            newIsFavorite ? "added to favorites" : "removed from favorites"
+          );
+
+          // Немедленно обновляем состояние
+          setFavorites((prev) => {
+            const updated = {
+              ...prev,
+              [safeOfferId]: newIsFavorite,
+            };
+            console.log("Updated favorites state:", updated);
+
+            // После каждого изменения избранного обновляем полностью список избранного
+            // Это гарантирует, что список всегда в актуальном состоянии
+            // Можно также сделать это через Promise.all([OfferService.fetchFavorites()])
+            OfferService.fetchFavorites()
+              .then((freshFavorites) => {
+                if (
+                  JSON.stringify(freshFavorites) !== JSON.stringify(updated)
+                ) {
+                  console.log(
+                    "Refreshed favorites from server:",
+                    freshFavorites
+                  );
+                  setFavorites(freshFavorites);
+                }
+              })
+              .catch((error) => {
+                console.error("Error refreshing favorites:", error);
+              });
+
+            return updated;
+          });
         }
       } catch (error) {
         console.error("Error in handleFavoriteClick:", error);
       }
     },
-    [setFavorites, debouncedToggleFavorite]
+    [setFavorites, safeFavorites, toggleFavorite]
   );
 
   if (loading) {
@@ -140,7 +154,28 @@ const OfferList = ({
         alignItems="center"
         minHeight="200px"
       >
-        <Typography variant="body1">Нет доступных предложений</Typography>
+        {searchQuery ? (
+          <Paper
+            elevation={3}
+            sx={{
+              p: 4,
+              borderRadius: 2,
+              textAlign: "center",
+              maxWidth: 600,
+              margin: "0 auto",
+            }}
+          >
+            <SearchIcon sx={{ fontSize: 60, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h5" gutterBottom>
+              По запросу "{searchQuery}" ничего не найдено
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Попробуйте изменить поисковый запрос или настройки фильтров
+            </Typography>
+          </Paper>
+        ) : (
+          <Typography variant="body1">Нет доступных предложений</Typography>
+        )}
       </Box>
     );
   }
@@ -235,6 +270,8 @@ OfferList.propTypes = {
   totalPages: PropTypes.number,
   onPageChange: PropTypes.func,
   loading: PropTypes.bool,
+  toggleFavorite: PropTypes.func,
+  searchQuery: PropTypes.string,
 };
 
 OfferList.defaultProps = {
@@ -245,6 +282,7 @@ OfferList.defaultProps = {
   loading: false,
   setFavorites: () => {},
   onPageChange: () => {},
+  toggleFavorite: () => {},
 };
 
 export default OfferList;

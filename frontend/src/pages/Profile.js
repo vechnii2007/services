@@ -10,7 +10,27 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Container,
+  Tabs,
+  Tab,
 } from "@mui/material";
+import NotificationSettings from "../components/Header/NotificationSettings";
+
+const TabPanel = (props) => {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`profile-tabpanel-${index}`}
+      aria-labelledby={`profile-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    </div>
+  );
+};
 
 const Profile = () => {
   const { t } = useTranslation();
@@ -23,6 +43,7 @@ const Profile = () => {
   });
   const [status, setStatus] = useState("offline");
   const [message, setMessage] = useState("");
+  const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -66,6 +87,10 @@ const Profile = () => {
     }
   };
 
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
   if (loading) {
     return <Typography>{t("loading")}</Typography>;
   }
@@ -79,7 +104,7 @@ const Profile = () => {
   }
 
   return (
-    <Box sx={{ paddingY: 4 }}>
+    <Container maxWidth="md" sx={{ paddingY: 4 }}>
       <Typography variant="h4" gutterBottom>
         {t("profile")}
       </Typography>
@@ -95,62 +120,87 @@ const Profile = () => {
       )}
       {user && (
         <>
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            sx={{ maxWidth: 600, margin: "0 auto" }}
-          >
-            <TextField
-              label={t("name")}
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label={t("email")}
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label={t("phone")}
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label={t("address")}
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>{t("status")}</InputLabel>
-              <Select value={status} onChange={handleStatusChange}>
-                <MenuItem value="online">{t("online")}</MenuItem>
-                <MenuItem value="offline">{t("offline")}</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              sx={{ mt: 2 }}
+          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              aria-label="profile tabs"
             >
-              {t("save")}
-            </Button>
+              <Tab
+                label={t("personal_info")}
+                id="profile-tab-0"
+                aria-controls="profile-tabpanel-0"
+              />
+              <Tab
+                label={t("notifications")}
+                id="profile-tab-1"
+                aria-controls="profile-tabpanel-1"
+              />
+            </Tabs>
           </Box>
+
+          <TabPanel value={tabValue} index={0}>
+            <Box
+              component="form"
+              onSubmit={handleSubmit}
+              sx={{ maxWidth: 600, margin: "0 auto" }}
+            >
+              <TextField
+                label={t("name")}
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label={t("email")}
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label={t("phone")}
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+              />
+              <TextField
+                label={t("address")}
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+              />
+              <FormControl fullWidth margin="normal">
+                <InputLabel>{t("status")}</InputLabel>
+                <Select value={status} onChange={handleStatusChange}>
+                  <MenuItem value="online">{t("online")}</MenuItem>
+                  <MenuItem value="offline">{t("offline")}</MenuItem>
+                </Select>
+              </FormControl>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                sx={{ mt: 2 }}
+              >
+                {t("save")}
+              </Button>
+            </Box>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={1}>
+            <NotificationSettings />
+          </TabPanel>
         </>
       )}
-    </Box>
+    </Container>
   );
 };
 

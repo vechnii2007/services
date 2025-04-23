@@ -1,30 +1,87 @@
-import React, { useState } from 'react';
-import { CardMedia } from '@mui/material';
-import PropTypes from 'prop-types';
+import React from "react";
+import PropTypes from "prop-types";
+import { Box } from "@mui/material";
+import { motion } from "framer-motion";
+import { styled } from "@mui/material/styles";
 
-const PLACEHOLDER_IMAGE = 'https://placehold.co/150x150?text=offer';
+const ImageWrapper = styled(Box)(({ theme }) => ({
+  position: "relative",
+  width: "100%",
+  height: 200,
+  overflow: "hidden",
+  borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius}px 0 0`,
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: `linear-gradient(180deg, 
+      rgba(0,0,0,0) 0%, 
+      rgba(0,0,0,0.02) 50%, 
+      rgba(0,0,0,0.1) 100%
+    )`,
+    opacity: 0,
+    transition: theme.transitions.create("opacity", {
+      duration: theme.transitions.duration.standard,
+    }),
+  },
+  "&:hover": {
+    "&::after": {
+      opacity: 1,
+    },
+    "& img": {
+      transform: "scale(1.05)",
+    },
+  },
+}));
+
+const Image = styled("img")(({ theme }) => ({
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  transition: theme.transitions.create("transform", {
+    duration: theme.transitions.duration.standard,
+  }),
+}));
+
+const LoadingPlaceholder = styled(Box)(({ theme }) => ({
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: theme.palette.grey[100],
+  color: theme.palette.text.secondary,
+  fontSize: theme.typography.body2.fontSize,
+}));
 
 const OfferImage = ({ image, title }) => {
-  const [hasError, setHasError] = useState(false);
-
-  const handleError = () => {
-    setHasError(true);
-  };
-
   return (
-    <CardMedia
-      component="img"
-      height="200"
-      image={hasError || !image ? PLACEHOLDER_IMAGE : image}
-      alt={title}
-      onError={handleError}
-      sx={{ 
-        objectFit: 'cover',
-        backgroundColor: 'grey.100',
-        borderTopLeftRadius: '12px',
-        borderTopRightRadius: '12px',
-      }}
-    />
+    <ImageWrapper
+      component={motion.div}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Image
+        src={
+          image ||
+          `https://placehold.co/600x400?text=${encodeURIComponent(
+            "Нет изображения"
+          )}`
+        }
+        alt={title}
+        loading="lazy"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = `https://placehold.co/600x400?text=${encodeURIComponent(
+            "Ошибка загрузки"
+          )}`;
+        }}
+      />
+    </ImageWrapper>
   );
 };
 
@@ -33,4 +90,4 @@ OfferImage.propTypes = {
   title: PropTypes.string.isRequired,
 };
 
-export default OfferImage; 
+export default OfferImage;
