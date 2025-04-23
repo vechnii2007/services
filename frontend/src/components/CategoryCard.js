@@ -49,67 +49,59 @@ const CategoryTitle = styled(Typography)({
   textShadow: "0 1px 2px rgba(0,0,0,0.3)",
 });
 
-const CategoryCount = styled(Typography)({
+const CategoryCount = styled(Typography)(({ theme }) => ({
   fontSize: "0.875rem",
   opacity: 0.9,
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  padding: theme.spacing(0.5, 1),
+  borderRadius: theme.shape.borderRadius,
+  display: "inline-block",
+  marginTop: theme.spacing(0.5),
+}));
+
+const CounterMotion = styled(motion.div)({
+  display: "inline-block",
 });
 
 const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
   const { t } = useTranslation();
 
-  console.log("[CategoryCard] Rendering:", {
-    categoryName: category.name,
-    selected,
-    count,
-    hasImage: !!category.image,
-    hasDescription: !!category.description,
-  });
+  const getFallbackImageUrl = (categoryName) =>
+    `https://placehold.co/300x180/e0e0e0/808080?text=${encodeURIComponent(
+      t(categoryName)
+    )}`;
 
-  const handleClick = (event) => {
-    console.log("[CategoryCard] Clicked:", {
-      categoryName: category.name,
-      wasSelected: selected,
-      count,
-      clickEvent: {
-        type: event.type,
-        target: event.target.tagName,
-        currentTarget: event.currentTarget.tagName,
-      },
-    });
-
-    onClick(event);
-  };
-
-  const handleImageError = (e) => {
-    console.log("[CategoryCard] Image load error:", {
-      categoryName: category.name,
-      originalSrc: e.target.src,
-    });
-
-    e.target.onerror = null;
-    const fallbackSrc = `https://placehold.co/300x300?text=${t(category.name)}`;
-    console.log("[CategoryCard] Using fallback image:", fallbackSrc);
-    e.target.src = fallbackSrc;
-  };
+  const imageUrl =
+    category.image && category.image.startsWith("http")
+      ? category.image
+      : category.image && category.image.startsWith("/")
+      ? `${process.env.REACT_APP_API_URL || "http://localhost:5001"}${
+          category.image
+        }`
+      : getFallbackImageUrl(category.name);
 
   return (
     <Tooltip title={t(category.description || "")} enterDelay={700}>
-      <CategoryCardWrapper onClick={handleClick}>
+      <CategoryCardWrapper onClick={onClick}>
         <CategoryImage
-          src={
-            category.image ||
-            `https://placehold.co/300x300?text=${t(category.name)}`
-          }
-          alt={category.label}
-          onError={handleImageError}
+          src={imageUrl}
+          alt={category.label || t(category.name)}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = getFallbackImageUrl(category.name);
+          }}
         />
         <CategoryContent>
           <CategoryTitle variant="h6">{t(category.name)}</CategoryTitle>
-          {count > 0 && (
+          <CounterMotion
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
             <CategoryCount>
               {count} {t("offers")}
             </CategoryCount>
-          )}
+          </CounterMotion>
         </CategoryContent>
       </CategoryCardWrapper>
     </Tooltip>

@@ -12,6 +12,7 @@ const Notification = require("../models/Notification");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const path = require("path");
+const categoryStatsService = require("../services/CategoryStatsService");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -342,7 +343,7 @@ router.post("/offers", auth, upload.single("image"), async (req, res) => {
       description,
       price: parseFloat(price),
       location,
-      category,
+      serviceType: category,
       provider: req.user._id,
     };
 
@@ -354,6 +355,10 @@ router.post("/offers", auth, upload.single("image"), async (req, res) => {
     console.log("[serviceRoutes] Creating new offer with data:", offerData);
     const offer = new Offer(offerData);
     await offer.save();
+
+    // Обновляем статистику категории
+    await categoryStatsService.incrementCategoryCount(category);
+
     console.log(
       "[serviceRoutes] Offer created successfully with ID:",
       offer._id
@@ -415,9 +420,12 @@ router.delete("/offers/:id", auth, async (req, res) => {
         .json({ error: "Access denied. You can only delete your own offers." });
     }
 
-    await Favorite.deleteMany({ offerId: offer._id, offerType: "Offer" });
+    // Обновляем статистику категории перед удалением
+    await categoryStatsService.decrementCategoryCount(offer.serviceType);
 
+    await Favorite.deleteMany({ offerId: offer._id, offerType: "Offer" });
     await offer.deleteOne();
+
     res.json({ message: "Offer deleted" });
   } catch (error) {
     console.error("Error deleting offer:", error);
@@ -940,33 +948,47 @@ router.get("/categories/counts", async (req, res) => {
   );
 
   try {
-    // Получаем все категории
+    // Проверяем наличие категорий
     const categories = await Category.find();
+    console.log(`[${requestId}] Found ${categories.length} categories`);
 
-    // Получаем количество предложений для каждой категории
-    const counts = {};
-    await Promise.all(
-      categories.map(async (category) => {
-        const count = await Offer.countDocuments({ category: category.name });
-        counts[category.name] = count;
-      })
-    );
-
+    // Получаем статистику
+    const counts = await categoryStatsService.getCategoryCounts();
     console.log(
-      `[${requestId}][serviceRoutes] Category counts calculated:`,
+      `[${requestId}][serviceRoutes] Category counts retrieved:`,
       counts
     );
+
+    // Если статистика пуста, делаем полную синхронизацию
+    if (Object.keys(counts).length === 0) {
+      console.log(`[${requestId}] No counts found, running full sync`);
+      await categoryStatsService.fullSync();
+      const updatedCounts = await categoryStatsService.getCategoryCounts();
+      console.log(`[${requestId}] Updated counts after sync:`, updatedCounts);
+      return res.json(updatedCounts);
+    }
 
     res.json(counts);
   } catch (error) {
     console.error(
-      `[${requestId}][serviceRoutes] Error calculating category counts:`,
+      `[${requestId}][serviceRoutes] Error retrieving category counts:`,
       {
         error: error.message,
         stack: error.stack,
       }
     );
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /categories/stats - получить статистику по категориям
+router.get("/categories/stats", async (req, res) => {
+  try {
+    const stats = await categoryStatsService.getCategoryCounts();
+    res.json(stats);
+  } catch (error) {
+    console.error("[CategoryStats] Error getting category stats:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 

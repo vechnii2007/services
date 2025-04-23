@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Grid, Box, Pagination, Typography, Paper } from "@mui/material";
 import PropTypes from "prop-types";
 import OfferCard from "./OfferCard/index";
@@ -6,6 +6,9 @@ import OfferCardSkeleton from "./OfferCard/OfferCardSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import OfferService from "../services/OfferService";
 import SearchIcon from "@mui/icons-material/Search";
+import styled from "@emotion/styled";
+import { useTranslation } from "react-i18next";
+import { CircularProgress } from "@mui/material";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,232 +25,119 @@ const itemVariants = {
   show: { opacity: 1, y: 0 },
 };
 
-const OfferList = ({
-  offers = [],
-  favorites = {},
-  setFavorites,
-  page = 1,
-  totalPages = 1,
-  onPageChange,
-  loading = false,
-  toggleFavorite,
-  searchQuery = "",
-}) => {
-  // Проверяем, что favorites - объект
-  const safeFavorites =
-    favorites && typeof favorites === "object" ? favorites : {};
+const OfferListContainer = styled(Box)(({ theme }) => ({
+  width: "100%",
+  padding: theme.spacing(2),
+  marginTop: theme.spacing(2),
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+  "& .MuiGrid-container": {
+    width: "100%",
+    margin: 0,
+  },
+  "& .MuiGrid-item": {
+    display: "flex",
+    justifyContent: "center",
+    [theme.breakpoints.up("sm")]: {
+      maxWidth: "50%",
+      flexBasis: "50%",
+    },
+    [theme.breakpoints.up("md")]: {
+      maxWidth: "33.333%",
+      flexBasis: "33.333%",
+    },
+    [theme.breakpoints.up("lg")]: {
+      maxWidth: "25%",
+      flexBasis: "25%",
+    },
+  },
+}));
 
-  // Мемоизируем обработанный список предложений
-  const safeOffers = useMemo(() => {
-    console.log("Recalculating safeOffers");
-    return Array.isArray(offers) ? offers : [];
-  }, [offers]);
+const LoadingContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: "200px",
+}));
+
+const EmptyStateContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: "200px",
+}));
+
+const PaginationContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  marginTop: theme.spacing(3),
+  marginBottom: theme.spacing(3),
+}));
+
+const OfferList = ({
+  offers,
+  favorites,
+  page,
+  totalPages,
+  onPageChange,
+  loading,
+  toggleFavorite,
+  searchQuery,
+}) => {
+  const { t } = useTranslation();
+  const [safeOffers, setSafeOffers] = useState([]);
 
   useEffect(() => {
-    console.log("OfferList mounted/updated with:", {
-      offersCount: safeOffers.length,
-      favorites: safeFavorites,
-      hasFavorites: !!safeFavorites,
-      hasSetFavorites: typeof setFavorites === "function",
-      hasToggleFavorite: typeof toggleFavorite === "function",
-    });
-  }, [safeOffers, safeFavorites, setFavorites, toggleFavorite]);
-
-  const handleFavoriteClick = useCallback(
-    async (offerId, offerType) => {
-      // Если предоставлен внешний обработчик toggleFavorite, используем его
-      if (typeof toggleFavorite === "function") {
-        console.log("Using external toggleFavorite handler");
-        return toggleFavorite(offerId, offerType);
-      }
-
-      // Иначе используем внутреннюю реализацию
-      if (!offerId) {
-        console.error("Missing required offerId for handleFavoriteClick");
-        return;
-      }
-
-      const safeOfferId = String(offerId);
-      // Преобразуем тип предложения к формату, ожидаемому сервером
-      const safeOfferType =
-        offerType === "offer"
-          ? "Offer"
-          : offerType === "service_offer"
-          ? "ServiceOffer"
-          : offerType || "Offer";
-
-      console.log(
-        `Toggling favorite for offer: ${safeOfferId}, current status:`,
-        safeFavorites[safeOfferId] ? "favorite" : "not favorite"
-      );
-
-      try {
-        // Вызываем напрямую, без debounce
-        const response = await OfferService.toggleFavorite(
-          safeOfferId,
-          safeOfferType
-        );
-
-        if (response && typeof setFavorites === "function") {
-          const newIsFavorite = Boolean(response.isFavorite);
-          console.log(
-            `Favorite toggle response for ${safeOfferId}:`,
-            newIsFavorite ? "added to favorites" : "removed from favorites"
-          );
-
-          // Немедленно обновляем состояние
-          setFavorites((prev) => {
-            const updated = {
-              ...prev,
-              [safeOfferId]: newIsFavorite,
-            };
-            console.log("Updated favorites state:", updated);
-
-            // После каждого изменения избранного обновляем полностью список избранного
-            // Это гарантирует, что список всегда в актуальном состоянии
-            // Можно также сделать это через Promise.all([OfferService.fetchFavorites()])
-            OfferService.fetchFavorites()
-              .then((freshFavorites) => {
-                if (
-                  JSON.stringify(freshFavorites) !== JSON.stringify(updated)
-                ) {
-                  console.log(
-                    "Refreshed favorites from server:",
-                    freshFavorites
-                  );
-                  setFavorites(freshFavorites);
-                }
-              })
-              .catch((error) => {
-                console.error("Error refreshing favorites:", error);
-              });
-
-            return updated;
-          });
-        }
-      } catch (error) {
-        console.error("Error in handleFavoriteClick:", error);
-      }
-    },
-    [setFavorites, safeFavorites, toggleFavorite]
-  );
+    setSafeOffers(offers.filter((offer) => offer && offer._id));
+  }, [offers]);
 
   if (loading) {
     return (
-      <Box>
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {[...Array(8)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={`skeleton-${index}`}>
-              <OfferCardSkeleton />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      <OfferListContainer>
+        <LoadingContainer>
+          <CircularProgress />
+        </LoadingContainer>
+      </OfferListContainer>
     );
   }
 
   if (safeOffers.length === 0) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="200px"
-      >
-        {searchQuery ? (
-          <Paper
-            elevation={3}
-            sx={{
-              p: 4,
-              borderRadius: 2,
-              textAlign: "center",
-              maxWidth: 600,
-              margin: "0 auto",
-            }}
-          >
-            <SearchIcon sx={{ fontSize: 60, color: "text.secondary", mb: 2 }} />
-            <Typography variant="h5" gutterBottom>
-              По запросу "{searchQuery}" ничего не найдено
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Попробуйте изменить поисковый запрос или настройки фильтров
-            </Typography>
-          </Paper>
-        ) : (
-          <Typography variant="body1">Нет доступных предложений</Typography>
-        )}
-      </Box>
+      <OfferListContainer>
+        <EmptyStateContainer>
+          <Typography variant="h6" color="textSecondary">
+            {searchQuery ? t("no_results_found") : t("no_offers_available")}
+          </Typography>
+        </EmptyStateContainer>
+      </OfferListContainer>
     );
   }
 
   return (
-    <Box>
-      <AnimatePresence>
-        <Grid
-          container
-          spacing={3}
-          sx={{ mb: 4 }}
-          component={motion.div}
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-        >
-          {safeOffers.map((offer, index) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
-              lg={3}
-              key={offer?._id || `offer-${index}`}
-              component={motion.div}
-              variants={itemVariants}
-              layout
-            >
-              <OfferCard
-                offer={offer || {}}
-                isFavorite={
-                  offer && offer._id ? Boolean(safeFavorites[offer._id]) : false
-                }
-                onFavoriteClick={() => {
-                  if (offer && offer._id) {
-                    handleFavoriteClick(offer._id, offer.type || "offer");
-                  }
-                }}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </AnimatePresence>
+    <OfferListContainer>
+      <Grid container spacing={3}>
+        {safeOffers.map((offer) => (
+          <Grid item xs={12} sm={6} md={4} key={offer._id}>
+            <OfferCard
+              offer={offer}
+              isFavorite={favorites[offer._id]}
+              onFavoriteClick={() => toggleFavorite(offer._id, offer.type)}
+            />
+          </Grid>
+        ))}
+      </Grid>
       {totalPages > 1 && (
-        <Box
-          component={motion.div}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          display="flex"
-          justifyContent="center"
-          mb={3}
-        >
+        <PaginationContainer>
           <Pagination
             count={totalPages}
             page={page}
             onChange={onPageChange}
-            disabled={loading}
             color="primary"
             size="large"
-            sx={{
-              "& .MuiPaginationItem-root": {
-                transition: "all 0.2s",
-                "&:hover": {
-                  transform: "scale(1.1)",
-                },
-              },
-            }}
           />
-        </Box>
+        </PaginationContainer>
       )}
-    </Box>
+    </OfferListContainer>
   );
 };
 
@@ -265,7 +155,6 @@ OfferList.propTypes = {
     })
   ),
   favorites: PropTypes.object,
-  setFavorites: PropTypes.func,
   page: PropTypes.number,
   totalPages: PropTypes.number,
   onPageChange: PropTypes.func,
@@ -280,7 +169,6 @@ OfferList.defaultProps = {
   page: 1,
   totalPages: 1,
   loading: false,
-  setFavorites: () => {},
   onPageChange: () => {},
   toggleFavorite: () => {},
 };

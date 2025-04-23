@@ -6,6 +6,7 @@ const path = require("path");
 const http = require("http");
 const { initializeSocket } = require("./socket");
 const NotificationService = require("./services/NotificationService");
+const categoryStatsService = require("./services/CategoryStatsService");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
@@ -85,6 +86,9 @@ NotificationService.setup()
     console.error("Error setting up push notifications:", error);
   });
 
+// Инициализируем cron-задачу для обновления статистики
+categoryStatsService.initCronJob();
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -101,6 +105,9 @@ mongoose
     console.log("Connected to MongoDB");
     // Логируем текущую базу данных
     console.log("Database name:", mongoose.connection.db.databaseName);
+
+    // Выполняем первичную синхронизацию статистики
+    categoryStatsService.fullSync();
 
     // Start server
     const PORT = process.env.PORT || 5001;

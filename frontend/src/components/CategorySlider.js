@@ -27,6 +27,8 @@ const SliderContainer = styled(Box)(({ theme }) => ({
   "& .swiper-slide": {
     width: "auto",
     height: "auto",
+    display: "flex",
+    justifyContent: "center",
   },
   "& .swiper-button-next, & .swiper-button-prev": {
     color: theme.palette.primary.main,
@@ -34,7 +36,7 @@ const SliderContainer = styled(Box)(({ theme }) => ({
     width: 40,
     height: 40,
     borderRadius: "50%",
-    boxShadow: theme.shadows[2],
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
     "&:after": {
       fontSize: "20px",
     },
@@ -49,10 +51,10 @@ const SliderContainer = styled(Box)(({ theme }) => ({
     },
   },
   "& .swiper-button-prev": {
-    left: theme.spacing(1),
+    left: 0,
   },
   "& .swiper-button-next": {
-    right: theme.spacing(1),
+    right: 0,
   },
 }));
 
@@ -64,31 +66,7 @@ const CategorySlider = ({
 }) => {
   const { t } = useTranslation();
 
-  console.log("[CategorySlider] Rendering with props:", {
-    categoriesCount: categories?.length,
-    selectedCategory,
-    categoriesWithCounts: categories?.map((cat) => ({
-      name: cat.name,
-      count: counts[cat.name] || 0,
-      isSelected: selectedCategory === cat.name,
-    })),
-  });
-
-  if (!categories?.length) {
-    console.log("[CategorySlider] No categories available, returning null");
-    return null;
-  }
-
-  const handleCategoryClick = (category) => {
-    console.log("[CategorySlider] Category clicked:", {
-      category: category.name,
-      wasSelected: selectedCategory === category.name,
-      willBeSelected: selectedCategory !== category.name,
-      currentCount: counts[category.name] || 0,
-    });
-
-    onCategorySelect?.(category);
-  };
+  if (!categories?.length) return null;
 
   return (
     <SliderContainer>
@@ -97,31 +75,19 @@ const CategorySlider = ({
         spaceBetween={16}
         slidesPerView="auto"
         navigation={true}
-        mousewheel={true}
+        mousewheel={false}
         keyboard={{
           enabled: true,
         }}
         grabCursor={true}
-        onSlideChange={(swiper) => {
-          console.log("[CategorySlider] Slide changed:", {
-            activeIndex: swiper.activeIndex,
-            activeCategory: categories[swiper.activeIndex]?.name,
-          });
-        }}
-        onSwiper={(swiper) => {
-          console.log("[CategorySlider] Swiper initialized:", {
-            slidesCount: swiper.slides.length,
-            activeIndex: swiper.activeIndex,
-          });
-        }}
       >
         {categories.map((category) => (
           <SwiperSlide key={category.name}>
             <CategoryCard
               category={category}
               selected={selectedCategory === category.name}
-              onClick={() => handleCategoryClick(category)}
-              count={counts?.[category.name] || 0}
+              onClick={() => onCategorySelect?.(category)}
+              count={counts[category.name] || 0}
             />
           </SwiperSlide>
         ))}

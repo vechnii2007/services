@@ -146,7 +146,7 @@ const OfferDetails = () => {
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Box sx={{ maxWidth: 1260, mx: "auto" }}>
           <Skeleton variant="text" width="50%" height={60} />
           <Grid container spacing={3} sx={{ mt: 2 }}>
             <Grid item xs={12} md={5}>
@@ -235,7 +235,7 @@ const OfferDetails = () => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+      <Box sx={{ maxWidth: 1260, mx: "auto" }}>
         {/* Верхняя навигация */}
         <Box
           sx={{
