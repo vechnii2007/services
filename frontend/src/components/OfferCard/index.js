@@ -1,4 +1,4 @@
-import React, { memo, useEffect } from "react";
+import React, { memo, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -23,6 +23,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import CategoryIcon from "@mui/icons-material/Category";
 import { formatPrice } from "../../utils/formatters";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
+import PromoteOfferModal from "../PromoteOfferModal";
+import { useTranslation } from "react-i18next";
+import OfferService from "../../services/OfferService";
 
 // Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
@@ -41,16 +47,34 @@ const StatusChip = styled(Chip)(({ theme, status }) => ({
   },
 }));
 
-const CategoryChip = styled(Chip)(({ theme }) => ({
+const PromoteButton = styled(IconButton)(({ theme }) => ({
   position: "absolute",
-  bottom: 16,
-  left: 16,
-  zIndex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.7)",
-  color: theme.palette.common.white,
-  "& .MuiChip-icon": {
-    color: theme.palette.common.white,
+  top: 16,
+  right: 16,
+  zIndex: 2,
+  backgroundColor: theme.palette.background.paper,
+  "&:hover": {
+    backgroundColor: theme.palette.background.default,
   },
+  "&.promoted": {
+    color: theme.palette.success.main,
+  },
+}));
+
+const PromotedBadge = styled(Box)(({ theme }) => ({
+  position: "absolute",
+  top: 0,
+  right: 0,
+  backgroundColor: theme.palette.success.main,
+  color: theme.palette.common.white,
+  padding: theme.spacing(0.5, 1),
+  borderRadius: `0 ${theme.shape.borderRadius}px 0 ${theme.shape.borderRadius}px`,
+  fontSize: "0.75rem",
+  fontWeight: "bold",
+  zIndex: 5,
+  display: "flex",
+  alignItems: "center",
+  gap: theme.spacing(0.5),
 }));
 
 // Фолбэк-компонент, который показывается вместо ошибки
@@ -92,8 +116,21 @@ const EmptyOfferCard = () => {
 };
 
 const OfferCard = memo(
-  ({ offer = {}, isFavorite = false, onFavoriteClick = () => {} }) => {
+  ({
+    offer = {},
+    isFavorite = false,
+    onFavoriteClick = () => {},
+    isOwner = false,
+    showPromoteButton = false,
+    canPromote = false,
+    userId,
+    userRole,
+    onUpdate,
+  }) => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
+    const [promoteModalOpen, setPromoteModalOpen] = useState(false);
+    const [promotionStatus, setPromotionStatus] = useState(null);
 
     // Безопасный доступ к свойствам
     const safeOfferId = offer?._id || "";
@@ -107,11 +144,36 @@ const OfferCard = memo(
     const safeProvider = offer?.provider || {};
     const safeServiceType = offer?.serviceType || "Общее";
 
-    // Если нет ID, показываем пустую карточку
-    if (!safeOfferId) {
-      console.warn("OfferCard received offer without ID:", offer);
-      return <EmptyOfferCard />;
-    }
+    // Используем проп canPromote вместо повторной проверки
+    const shouldShowPromoteButton = canPromote;
+
+    useEffect(() => {
+      const checkPromotionStatus = async () => {
+        try {
+          console.log("Checking promotion status for offer:", {
+            offerId: safeOfferId,
+            shouldShowPromoteButton,
+            canPromote,
+            isOwner,
+            userRole,
+          });
+
+          if (!safeOfferId) {
+            return;
+          }
+
+          const status = await OfferService.getPromotionStatus(safeOfferId);
+          setPromotionStatus(status);
+        } catch (error) {
+          // Устанавливаем статус в null при ошибке, но не блокируем отображение карточки
+          setPromotionStatus(null);
+        }
+      };
+
+      if (safeOfferId && shouldShowPromoteButton) {
+        checkPromotionStatus();
+      }
+    }, [safeOfferId, shouldShowPromoteButton, canPromote, isOwner, userRole]);
 
     const handleCardClick = (e) => {
       if (!safeOfferId || e.target.closest("button")) {
@@ -143,40 +205,73 @@ const OfferCard = memo(
       }
     };
 
+    const handlePromoteClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!canPromote) {
+        console.warn("Promote button clicked but canPromote is false");
+        return;
+      }
+      setPromoteModalOpen(true);
+    };
+
+    const handlePromoteSuccess = async () => {
+      const status = await OfferService.getPromotionStatus(safeOfferId);
+      setPromotionStatus(status);
+      if (onUpdate) {
+        onUpdate({ ...offer, promotionStatus: status });
+      }
+    };
+
+    // Добавляем промо-статус для отображения в карточке
+    const isPromoted =
+      promotionStatus?.isPromoted ||
+      (offer?.promoted?.isPromoted &&
+        new Date(offer.promoted.promotedUntil) > new Date());
+
+    // Если нет ID, показываем пустую карточку
+    if (!safeOfferId) {
+      console.warn("OfferCard received offer without ID:", offer);
+      return <EmptyOfferCard />;
+    }
+
     return (
-      <MotionCard
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        whileHover={{
-          scale: 1.03,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-        }}
-        transition={{
-          duration: 0.2,
-          boxShadow: {
-            duration: 0.1,
-          },
-        }}
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          maxWidth: "275px",
-          borderRadius: "12px",
-          position: "relative",
-          cursor: "pointer",
-          backgroundColor: "background.paper",
-          overflow: "visible",
-        }}
-        onClick={handleCardClick}
-      >
-        <Box sx={{ position: "relative" }}>
+      <>
+        <MotionCard
+          whileHover={{
+            y: -5,
+            boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          layout
+          transition={{
+            opacity: { duration: 0.2 },
+            layout: { duration: 0.2 },
+          }}
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            maxWidth: "275px",
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            backgroundColor: "background.paper",
+            position: "relative",
+            overflow: "hidden",
+          }}
+          onClick={handleViewClick}
+        >
+          {isPromoted && (
+            <PromotedBadge>
+              <TrendingUpIcon fontSize="small" />
+              TOP
+            </PromotedBadge>
+          )}
+
           <StatusChip
-            label={offer.status === "active" ? "Активно" : "Неактивно"}
-            status={offer.status}
-            size="small"
             icon={
               offer.status === "active" ? (
                 <CheckCircleIcon />
@@ -184,76 +279,44 @@ const OfferCard = memo(
                 <PauseCircleIcon />
               )
             }
+            label={t(`offer.status.${offer.status || "inactive"}`)}
+            status={offer.status}
           />
-          <OfferImage image={safeOfferImage} title={safeOfferTitle} />
-          <CategoryChip
-            icon={<CategoryIcon />}
-            label={safeServiceType || "Общее"}
-            size="small"
-          />
-        </Box>
 
-        <CardContent
-          sx={{
-            p: 2,
-            flexGrow: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            position: "relative",
-          }}
-        >
-          <Box
-            component={motion.div}
-            whileHover={{ scale: 1.1 }}
-            sx={{
-              position: "absolute",
-              right: 8,
-              top: 8,
-              zIndex: 2,
-            }}
-          >
-            <IconButton
-              onClick={handleFavoriteClick}
-              size="small"
-              sx={{
-                transition: "all 0.2s",
-                backgroundColor: "background.paper",
-                "&:hover": {
-                  transform: "scale(1.1)",
-                  backgroundColor: "background.paper",
-                },
-              }}
+          {shouldShowPromoteButton && (
+            <PromoteButton
+              onClick={handlePromoteClick}
+              className={promotionStatus?.isPromoted ? "promoted" : ""}
+              title={t("offer.promote")}
             >
-              {isFavorite ? (
-                <FavoriteIcon
-                  color="error"
-                  component={motion.svg}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                />
-              ) : (
-                <FavoriteBorderIcon
-                  component={motion.svg}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                />
-              )}
-            </IconButton>
-          </Box>
+              <TrendingUpIcon />
+            </PromoteButton>
+          )}
 
-          <Box sx={{ mb: 2 }}>
-            <ProviderInfo provider={safeProvider} variant="compact" />
-          </Box>
+          {promotionStatus?.isPromoted && (
+            <PromotedBadge>{t("offer.promoted")}</PromotedBadge>
+          )}
 
-          <Box
-            sx={{
-              position: "relative",
-              pr: 4,
-            }}
-          >
+          <OfferImage
+            image={safeOfferImage}
+            images={offer?.images}
+            title={safeOfferTitle}
+          />
+
+          <CardContent sx={{ p: 2, flexGrow: 1 }}>
+            <Box sx={{ mb: 1 }}>
+              <Chip
+                icon={<CategoryIcon />}
+                label={t(safeServiceType)}
+                size="small"
+                sx={{
+                  backgroundColor: (theme) => theme.palette.grey[200],
+                  color: (theme) => theme.palette.text.secondary,
+                  fontWeight: "medium",
+                }}
+              />
+            </Box>
+
             <OfferInfo
               title={safeOfferTitle}
               description={safeOfferDescription}
@@ -261,54 +324,55 @@ const OfferCard = memo(
               location={safeOfferLocation}
               createdAt={safeOfferCreatedAt}
             />
-          </Box>
-          <Box sx={{ mt: 2 }}>
-            <Button
-              component={motion.button}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              variant="contained"
-              fullWidth
-              startIcon={<VisibilityIcon />}
-              onClick={handleViewClick}
-              sx={{
-                textTransform: "none",
-                borderRadius: "8px",
-                transition: "all 0.2s",
-                background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-                boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
-              }}
+
+            <ProviderInfo provider={safeProvider} />
+
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}
             >
-              Подробнее
-            </Button>
-          </Box>
-        </CardContent>
-      </MotionCard>
+              <IconButton onClick={handleViewClick} size="small">
+                <VisibilityIcon />
+              </IconButton>
+              <Button
+                variant="contained"
+                size="small"
+                color="primary"
+                onClick={handleViewClick}
+              >
+                {t("view")}
+              </Button>
+              <IconButton onClick={handleFavoriteClick} size="small">
+                {isFavorite ? (
+                  <FavoriteIcon color="error" />
+                ) : (
+                  <FavoriteBorderIcon />
+                )}
+              </IconButton>
+            </Box>
+          </CardContent>
+        </MotionCard>
+
+        <PromoteOfferModal
+          open={promoteModalOpen}
+          onClose={() => setPromoteModalOpen(false)}
+          offerId={safeOfferId}
+          onSuccess={handlePromoteSuccess}
+        />
+      </>
     );
   }
 );
 
-OfferCard.displayName = "OfferCard";
-
 OfferCard.propTypes = {
-  offer: PropTypes.shape({
-    _id: PropTypes.string,
-    title: PropTypes.string,
-    description: PropTypes.string,
-    price: PropTypes.number,
-    image: PropTypes.string,
-    location: PropTypes.string,
-    createdAt: PropTypes.string,
-    type: PropTypes.string,
-  }),
+  offer: PropTypes.object.isRequired,
   isFavorite: PropTypes.bool,
   onFavoriteClick: PropTypes.func,
-};
-
-OfferCard.defaultProps = {
-  offer: {},
-  isFavorite: false,
-  onFavoriteClick: () => {},
+  isOwner: PropTypes.bool,
+  showPromoteButton: PropTypes.bool,
+  canPromote: PropTypes.bool,
+  userId: PropTypes.string,
+  userRole: PropTypes.string,
+  onUpdate: PropTypes.func,
 };
 
 export default OfferCard;

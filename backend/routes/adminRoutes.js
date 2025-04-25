@@ -8,6 +8,8 @@ const Category = require("../models/Category");
 const auth = require("../middleware/auth");
 const { isAdmin } = require("../middleware/authMiddleware");
 const { upload, UPLOADS_PATH } = require("../config/uploadConfig");
+const path = require("path");
+const categoryController = require("../controllers/categoryController");
 
 // Получение списка пользователей с фильтрацией и пагинацией
 router.get("/users", auth, isAdmin, async (req, res) => {
@@ -436,73 +438,32 @@ router.delete("/offers/:id", auth, isAdmin, async (req, res) => {
 });
 
 // Получение списка категорий
-router.get("/categories", auth, isAdmin, async (req, res) => {
-  try {
-    const categories = await Category.find();
-    res.json(categories);
-  } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
+router.get("/categories", auth, isAdmin, categoryController.getAllCategories);
 
 // Создание новой категории
 router.post(
   "/categories",
+  auth,
   isAdmin,
   upload.single("image"),
-  async (req, res) => {
-    try {
-      const imagePath = req.file
-        ? `${UPLOADS_PATH}/${req.file.filename}`
-        : null;
-      const category = new Category({
-        name: req.body.name,
-        image: imagePath,
-      });
-      await category.save();
-      res.json(category);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
+  categoryController.createCategory
 );
 
 // Обновление категории
 router.put(
   "/categories/:id",
+  auth,
   isAdmin,
   upload.single("image"),
-  async (req, res) => {
-    try {
-      const category = await Category.findById(req.params.id);
-      if (!category) {
-        return res.status(404).json({ message: "Категория не найдена" });
-      }
-
-      if (req.file) {
-        category.image = `${UPLOADS_PATH}/${req.file.filename}`;
-      }
-      if (req.body.name) category.name = req.body.name;
-      if (req.body.label) category.label = req.body.label;
-      await category.save();
-      res.json(category);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
+  categoryController.updateCategory
 );
 
 // Удаление категории
-router.delete("/categories/:id", auth, isAdmin, async (req, res) => {
-  try {
-    const category = await Category.findByIdAndDelete(req.params.id);
-    if (!category) {
-      return res.status(404).json({ error: "Category not found" });
-    }
-    res.json({ message: "Category deleted" });
-  } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
+router.delete(
+  "/categories/:id",
+  auth,
+  isAdmin,
+  categoryController.deleteCategory
+);
 
 module.exports = router;

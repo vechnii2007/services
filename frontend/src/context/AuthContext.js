@@ -1,8 +1,17 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import api from "../middleware/api";
 import { useUser } from "../hooks/useUser";
 
 export const AuthContext = createContext(null);
+
+// Добавляем хук useAuth для удобного доступа к контексту
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth должен использоваться внутри AuthProvider");
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const { user, loading: userLoading, error, updateUser } = useUser();

@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Box } from "@mui/material";
 import { motion } from "framer-motion";
 import { styled } from "@mui/material/styles";
+import { formatImagePath } from "../../utils/formatters";
 
 const ImageWrapper = styled(Box)(({ theme }) => ({
   position: "relative",
@@ -57,7 +58,21 @@ const LoadingPlaceholder = styled(Box)(({ theme }) => ({
   fontSize: theme.typography.body2.fontSize,
 }));
 
-const OfferImage = ({ image, title }) => {
+/**
+ * Компонент для отображения изображения предложения
+ * @param {Object} props - Свойства компонента
+ * @param {string} props.image - Устаревшее поле с одиночным изображением
+ * @param {Array} props.images - Массив изображений
+ * @param {string} props.title - Заголовок предложения
+ */
+const OfferImage = ({ image, images, title }) => {
+  // Получаем первое изображение из массива или используем устаревшее поле image
+  const imageToShow =
+    Array.isArray(images) && images.length > 0 ? images[0] : image;
+
+  // Форматируем путь к изображению
+  const formattedImagePath = formatImagePath(imageToShow);
+
   return (
     <ImageWrapper
       component={motion.div}
@@ -67,7 +82,7 @@ const OfferImage = ({ image, title }) => {
     >
       <Image
         src={
-          image ||
+          formattedImagePath ||
           `https://placehold.co/600x400?text=${encodeURIComponent(
             "Нет изображения"
           )}`
@@ -87,6 +102,7 @@ const OfferImage = ({ image, title }) => {
 
 OfferImage.propTypes = {
   image: PropTypes.string,
+  images: PropTypes.arrayOf(PropTypes.string),
   title: PropTypes.string.isRequired,
 };
 

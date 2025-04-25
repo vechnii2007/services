@@ -31,6 +31,11 @@ instance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Добавляем /api к URL, если его нет
+    if (!config.url.startsWith("/api/")) {
+      config.url = `/api${config.url}`;
+    }
+
     // Логируем запрос для отладки
     console.log("Request:", {
       url: config.url,

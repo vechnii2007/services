@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const { isProvider, isAdmin } = require("../middleware/authMiddleware");
 const { upload, UPLOADS_PATH } = require("../config/uploadConfig");
 const ServiceRequest = require("../models/ServiceRequest");
@@ -13,51 +14,16 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const path = require("path");
 const categoryStatsService = require("../services/CategoryStatsService");
+const promotionService = require("../services/promotionService");
+const categoryController = require("../controllers/categoryController");
+const fs = require("fs");
+const NotificationService = require("../services/NotificationService");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
 
 // Получение всех категорий (доступно всем)
-router.get("/categories", async (req, res) => {
-  const requestId = Math.random().toString(36).substring(7);
-  console.log(
-    `[${requestId}][serviceRoutes] GET /categories request started:`,
-    {
-      headers: {
-        "user-agent": req.headers["user-agent"],
-        accept: req.headers["accept"],
-        referer: req.headers["referer"],
-      },
-    }
-  );
-
-  try {
-    const startTime = Date.now();
-    const categories = await Category.find();
-    const queryTime = Date.now() - startTime;
-
-    console.log(
-      `[${requestId}][serviceRoutes] Categories fetched in ${queryTime}ms:`,
-      {
-        totalCategories: categories.length,
-        categoriesList: categories.map((cat) => ({
-          id: cat._id,
-          name: cat.name,
-          label: cat.label,
-          hasImage: !!cat.image,
-        })),
-      }
-    );
-
-    res.json(categories);
-  } catch (error) {
-    console.error(`[${requestId}][serviceRoutes] Error fetching categories:`, {
-      error: error.message,
-      stack: error.stack,
-    });
-    res.status(500).json({ error: "Server error" });
-  }
-});
+router.get("/categories", categoryController.getAllCategories);
 
 // Получение уникальных местоположений (доступно всем)
 router.get("/locations", async (req, res) => {
@@ -80,27 +46,7 @@ router.post(
   auth,
   isAdmin,
   upload.single("image"),
-  async (req, res) => {
-    try {
-      const { name, label } = req.body;
-      if (!name || !label || !req.file) {
-        return res
-          .status(400)
-          .json({ error: "Name, label, and image are required" });
-      }
-
-      const category = new Category({
-        name,
-        label,
-        image: `${UPLOADS_PATH}/${req.file.filename}`,
-      });
-      await category.save();
-      res.status(201).json(category);
-    } catch (error) {
-      console.error("Error creating category:", error);
-      res.status(500).json({ error: "Server error" });
-    }
-  }
+  categoryController.createCategory
 );
 
 // Обновление категории (доступно только admin)
@@ -109,165 +55,178 @@ router.put(
   auth,
   isAdmin,
   upload.single("image"),
-  async (req, res) => {
-    try {
-      const category = await Category.findById(req.params.id);
-      if (!category) {
-        return res.status(404).json({ error: "Category not found" });
-      }
-
-      const { name, label } = req.body;
-      category.name = name || category.name;
-      category.label = label || category.label;
-      if (req.file) {
-        category.image = `${UPLOADS_PATH}/${req.file.filename}`;
-      }
-
-      await category.save();
-      res.json(category);
-    } catch (error) {
-      console.error("Error updating category:", error);
-      res.status(500).json({ error: "Server error" });
-    }
-  }
+  categoryController.updateCategory
 );
 
-// Получение всех предложений с пагинацией и фильтрацией (доступно всем, включая гостей)
+// Получение всех предложений с фильтрацией по категории и поиском по тексту
 router.get("/offers", async (req, res) => {
-  const requestId = Math.random().toString(36).substring(7);
-  console.log(`[${requestId}][serviceRoutes] GET /offers request started:`, {
-    query: req.query,
-    headers: {
-      "user-agent": req.headers["user-agent"],
-      accept: req.headers["accept"],
-      referer: req.headers["referer"],
-    },
-  });
+  console.log("[serviceRoutes] GET /offers request received");
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const filter = {};
+
+  // Фильтрация по категории
+  if (req.query.category) {
+    filter.serviceType = req.query.category;
+  }
+
+  // Поиск по текстовому запросу в заголовке и описании
+  if (req.query.search) {
+    const searchRegex = new RegExp(req.query.search, "i");
+    filter.$or = [
+      { title: searchRegex },
+      { description: searchRegex },
+      { location: searchRegex },
+    ];
+  }
+
+  // Фильтрация по цене
+  if (req.query.minPrice || req.query.maxPrice) {
+    filter.price = {};
+    if (req.query.minPrice) filter.price.$gte = parseInt(req.query.minPrice);
+    if (req.query.maxPrice) filter.price.$lte = parseInt(req.query.maxPrice);
+  }
+
+  // Фильтрация по местоположению
+  if (req.query.location) {
+    filter.location = new RegExp(req.query.location, "i");
+  }
+
+  // Получаем только активные предложения
+  filter.status = "active";
 
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const minPrice = req.query.minPrice
-      ? parseFloat(req.query.minPrice)
-      : undefined;
-    const maxPrice = req.query.maxPrice
-      ? parseFloat(req.query.maxPrice)
-      : undefined;
-    const location = req.query.location;
-    const category = req.query.category;
+    console.log("[serviceRoutes] Fetching offers with filter:", filter);
 
-    console.log(`[${requestId}][serviceRoutes] Parsed query parameters:`, {
-      page,
-      limit,
-      minPrice,
-      maxPrice,
-      location,
-      category,
-    });
+    // Получаем предложения с учетом фильтрации, пагинации и сортировки
+    const offers = await Offer.find(filter)
+      .populate("providerId", "name email phone address status")
+      .skip(skip)
+      .limit(limit)
+      .sort({ "promoted.isPromoted": -1, createdAt: -1 });
 
-    const skip = (page - 1) * limit;
-    const query = {};
-
-    // Строим запрос
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      query.price = {};
-      if (minPrice !== undefined) {
-        query.price.$gte = minPrice;
-        console.log(
-          `[${requestId}][serviceRoutes] Adding min price filter:`,
-          minPrice
-        );
-      }
-      if (maxPrice !== undefined) {
-        query.price.$lte = maxPrice;
-        console.log(
-          `[${requestId}][serviceRoutes] Adding max price filter:`,
-          maxPrice
-        );
-      }
-    }
-
-    if (location) {
-      query.location = location;
-      console.log(
-        `[${requestId}][serviceRoutes] Adding location filter:`,
-        location
-      );
-    }
-
-    if (category) {
-      query.serviceType = category;
-      console.log(
-        `[${requestId}][serviceRoutes] Adding category filter:`,
-        category
-      );
-    }
+    // Получаем общее количество предложений для пагинации
+    const totalOffers = await Offer.countDocuments(filter);
+    const totalPages = Math.ceil(totalOffers / limit);
 
     console.log(
-      `[${requestId}][serviceRoutes] Final MongoDB query:`,
-      JSON.stringify(query, null, 2)
+      `[serviceRoutes] Found ${offers.length} offers out of ${totalOffers} total`
     );
 
-    const startTime = Date.now();
-    const [offers, total] = await Promise.all([
-      Offer.find(query)
-        .skip(skip)
-        .limit(limit)
-        .populate("providerId", "name email")
-        .lean(),
-      Offer.countDocuments(query),
-    ]);
-    const queryTime = Date.now() - startTime;
-
-    console.log(
-      `[${requestId}][serviceRoutes] Query executed in ${queryTime}ms:`,
-      {
-        offersFound: offers.length,
-        totalOffers: total,
-        appliedFilters: Object.keys(query),
-        page,
-        totalPages: Math.ceil(total / limit),
-      }
-    );
-
-    // Логируем детали каждого найденного предложения
-    offers.forEach((offer, index) => {
+    // Логируем несколько предложений для отладки
+    offers.slice(0, 5).forEach((offer, index) => {
       console.log(
-        `[${requestId}][serviceRoutes] Offer ${index + 1}/${offers.length}:`,
+        `[serviceRoutes] Offer ${index + 1}/${Math.min(5, offers.length)}:`,
         {
           id: offer._id,
-          category: offer.category,
+          category: offer.serviceType,
           location: offer.location,
           price: offer.price,
-          provider: offer.providerId?.name || "Unknown",
+          provider: offer.providerId
+            ? offer.providerId.name || "Unknown"
+            : "Unknown",
         }
       );
     });
 
-    const response = {
-      offers,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    };
+    // Форматируем предложения для ответа клиенту
+    const formattedOffers = offers.map((offer) => {
+      // Создаем базовый объект предложения
+      const formattedOffer = {
+        ...offer._doc,
+        provider: offer.providerId || null,
+      };
 
-    console.log(`[${requestId}][serviceRoutes] Sending response:`, {
-      totalOffers: response.total,
-      currentPage: response.page,
-      totalPages: response.pages,
-      offersInResponse: response.offers.length,
+      // Убедимся, что provider и providerId правильно установлены
+      if (offer.providerId) {
+        if (typeof offer.providerId === "object" && offer.providerId._id) {
+          formattedOffer.providerId = offer.providerId._id;
+        }
+      }
+
+      // Преобразуем URL изображений
+      if (offer.image) {
+        formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+      }
+
+      return formattedOffer;
     });
 
-    res.json(response);
+    res.json({
+      offers: formattedOffers,
+      totalPages,
+      currentPage: page,
+      totalOffers,
+    });
   } catch (error) {
-    console.error(`[${requestId}][serviceRoutes] Error processing request:`, {
+    console.error("[serviceRoutes] Error fetching offers:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Получение списка поднятых объявлений
+router.get("/offers/promoted", async (req, res) => {
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(
+    `[${requestId}][Promotion] GET /offers/promoted request received:`,
+    {
+      query: req.query,
+      userAgent: req.headers["user-agent"],
+      referer: req.headers["referer"],
+    }
+  );
+
+  try {
+    // Извлекаем и валидируем параметры запроса
+    const limit =
+      req.query.limit !== undefined ? parseInt(req.query.limit) : 10;
+    const skip = req.query.skip !== undefined ? parseInt(req.query.skip) : 0;
+
+    console.log(`[${requestId}][Promotion] Parsed query parameters:`, {
+      limit,
+      skip,
+    });
+
+    if (isNaN(limit) || isNaN(skip) || limit < 1 || skip < 0) {
+      console.warn(`[${requestId}][Promotion] Invalid query parameters:`, {
+        rawLimit: req.query.limit,
+        rawSkip: req.query.skip,
+        parsedLimit: limit,
+        parsedSkip: skip,
+      });
+      return res.status(400).json({
+        error:
+          "Invalid parameters. Limit must be at least 1, skip must be at least 0.",
+        params: { limit, skip },
+      });
+    }
+
+    // Засекаем время выполнения запроса
+    const startTime = Date.now();
+    const promotedOffers = await promotionService.getPromotedOffers(
+      limit,
+      skip
+    );
+    const queryTime = Date.now() - startTime;
+
+    console.log(`[${requestId}][Promotion] Query executed in ${queryTime}ms:`, {
+      offersFound: promotedOffers.offers.length,
+      totalPromoted: promotedOffers.total,
+    });
+
+    res.json(promotedOffers);
+  } catch (error) {
+    console.error(`[${requestId}][Promotion] Error getting promoted offers:`, {
       error: error.message,
       stack: error.stack,
       query: req.query,
     });
-    res
-      .status(500)
-      .json({ message: "Error fetching offers", error: error.message });
+    res.status(500).json({
+      error: "Failed to retrieve promoted offers",
+      message: error.message,
+    });
   }
 });
 
@@ -278,13 +237,42 @@ router.get("/offers/:id", async (req, res) => {
     if (service) {
       return res.json({ ...service._doc, type: "ServiceOffer" });
     }
-    const offer = await Offer.findById(req.params.id).populate(
-      "providerId",
-      "name email"
-    );
+
+    const offer = await Offer.findById(req.params.id).populate({
+      path: "providerId",
+      select: "name email phone address status providerInfo createdAt",
+    });
+
     if (offer) {
-      return res.json({ ...offer._doc, type: "Offer" });
+      // Форматируем ответ
+      const formattedOffer = {
+        ...offer._doc,
+        type: "Offer",
+        provider: {
+          _id: offer.providerId._id,
+          name: offer.providerId.name,
+          email: offer.providerId.email,
+          phone: offer.providerId.phone,
+          address: offer.providerId.address,
+          status: offer.providerId.status,
+          createdAt: offer.providerId.createdAt,
+          providerInfo: offer.providerId.providerInfo,
+        },
+      };
+
+      // Добавляем URL для изображений
+      if (offer.image) {
+        formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+      }
+      if (offer.images && offer.images.length > 0) {
+        formattedOffer.images = offer.images.map(
+          (img) => `${BASE_URL}${UPLOADS_PATH}/${img}`
+        );
+      }
+
+      return res.json(formattedOffer);
     }
+
     res.status(404).json({ error: "Offer not found" });
   } catch (error) {
     console.error("Error fetching offer by ID:", error);
@@ -301,97 +289,284 @@ router.get("/my-offers", auth, async (req, res) => {
         .json({ error: "Access denied. Providers and admins only." });
     }
 
-    const offers = await Offer.find({ providerId: req.user.id }).populate(
-      "providerId",
-      "name email phone address status"
+    console.log("[serviceRoutes] GET /my-offers request received");
+    console.log("[serviceRoutes] User details:", {
+      userId: req.user.id,
+      userIdUnderscored: req.user._id,
+      userRole: req.user.role,
+      userHeaders: {
+        authorization: req.headers.authorization ? "Bearer [REDACTED]" : "none",
+      },
+    });
+
+    // Проверка внутренней структуры req.user
+    console.log(
+      "[serviceRoutes] req.user structure:",
+      JSON.stringify({
+        id: req.user.id,
+        _id: req.user._id,
+        role: req.user.role,
+        keys: Object.keys(req.user),
+      })
     );
-    const formattedOffers = offers.map((offer) => ({
-      ...offer._doc,
-      images: offer.images.map((image) =>
-        image
-          ? `${BASE_URL}${image}`
-          : "https://via.placeholder.com/150?text=Offer"
-      ),
-    }));
+
+    // Используем ID пользователя, учитывая оба возможных формата
+    const userId = req.user._id || req.user.id;
+
+    // Для отладки - покажем как выглядит запрос к базе данных
+    console.log("[serviceRoutes] Querying MongoDB with:", {
+      providerId: userId,
+    });
+
+    // Ищем предложения с любым из возможных идентификаторов пользователя
+    const offers = await Offer.find({
+      $or: [{ providerId: userId }, { providerId: userId.toString() }],
+    }).populate("providerId", "name email phone address status");
+
+    console.log(
+      `[serviceRoutes] Found ${offers.length} offers for user ${userId}`
+    );
+
+    // Если предложений не найдено, проверим, есть ли вообще какие-то предложения в базе
+    if (offers.length === 0) {
+      const allOffers = await Offer.find({}).limit(5);
+      console.log(
+        "[serviceRoutes] No offers found for user. Total offers in DB:",
+        allOffers.length
+      );
+
+      if (allOffers.length > 0) {
+        allOffers.forEach((offer, index) => {
+          console.log(`[serviceRoutes] DB Offer ${index + 1}:`, {
+            _id: offer._id,
+            providerId: offer.providerId ? offer.providerId.toString() : "null",
+            title: offer.title || "untitled",
+            matches:
+              offer.providerId &&
+              (offer.providerId.toString() === userId.toString() ||
+                offer.providerId.toString() === req.user.id)
+                ? "YES"
+                : "NO",
+          });
+        });
+      }
+    }
+
+    // Логируем каждое предложение
+    offers.forEach((offer, index) => {
+      console.log(`[serviceRoutes] Offer ${index + 1}/${offers.length}:`, {
+        _id: offer._id,
+        providerId: offer.providerId
+          ? (offer.providerId._id || offer.providerId).toString()
+          : "null",
+        title: offer.title,
+        category: offer.category || offer.serviceType,
+        price: offer.price,
+      });
+    });
+
+    const formattedOffers = offers.map((offer) => {
+      const offerData = {
+        ...offer._doc,
+        providerId: userId, // Явно добавляем providerId
+      };
+
+      // Проверяем наличие изображений и форматируем их URL
+      if (offer.image) {
+        offerData.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+      }
+      if (Array.isArray(offer.images)) {
+        offerData.images = offer.images.map((image) =>
+          image
+            ? `${BASE_URL}${UPLOADS_PATH}/${image}`
+            : "https://via.placeholder.com/150?text=Offer"
+        );
+      } else {
+        offerData.images = [];
+      }
+      return offerData;
+    });
+
+    console.log(
+      "[serviceRoutes] Returning formatted offers:",
+      formattedOffers.length
+    );
     res.json(formattedOffers);
   } catch (error) {
-    console.error("Error fetching my offers:", error);
+    console.error("[serviceRoutes] Error fetching my offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Создание нового предложения
-router.post("/offers", auth, upload.single("image"), async (req, res) => {
-  console.log("[serviceRoutes] POST /offers request received");
-  try {
-    const { title, description, price, location, category } = req.body;
-    console.log("[serviceRoutes] Received offer data:", {
-      title,
-      description,
-      price,
-      location,
-      category,
-    });
+// Создание предложения (доступно только провайдерам)
+router.post(
+  "/offers",
+  auth,
+  isProvider,
+  upload.array("images", 10),
+  async (req, res) => {
+    try {
+      console.log("Creating new offer:", req.body);
 
-    if (!title || !description || !price || !location || !category) {
-      console.log("[serviceRoutes] Missing required fields");
-      return res.status(400).json({ message: "All fields are required" });
+      const { title, category, location, description, price, providerId } =
+        req.body;
+
+      // Проверяем, что все необходимые поля присутствуют
+      if (!title || !category || !location || !description || !price) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+
+      // Если указан providerId (для админов), используем его, иначе используем ID текущего пользователя
+      const actualProviderId = providerId || req.user.id;
+
+      // Проверяем существование провайдера
+      const provider = await User.findById(actualProviderId);
+      if (
+        !provider ||
+        (provider.role !== "provider" && provider.role !== "admin")
+      ) {
+        return res.status(400).json({ error: "Invalid provider" });
+      }
+
+      // Обрабатываем загруженные изображения
+      const images = req.files ? req.files.map((file) => file.filename) : [];
+      const mainImage = images.length > 0 ? images[0] : null;
+
+      // Создаем новое предложение
+      const offer = new Offer({
+        title,
+        serviceType: category,
+        location,
+        description,
+        price: Number(price),
+        providerId: actualProviderId,
+        images,
+        image: mainImage,
+        status: "active",
+      });
+
+      await offer.save();
+
+      // Обновляем статистику категории
+      await categoryStatsService.incrementCategoryCount(category);
+
+      // Обновляем статистику провайдера
+      await provider.incrementTotalRequests();
+      await provider.incrementTotalResponses();
+
+      console.log("Offer created successfully:", offer._id);
+
+      // Форматируем ответ
+      const formattedOffer = {
+        ...offer._doc,
+        provider: {
+          _id: provider._id,
+          name: provider.name,
+          email: provider.email,
+        },
+      };
+
+      if (mainImage) {
+        formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${mainImage}`;
+      }
+      if (images.length > 0) {
+        formattedOffer.images = images.map(
+          (img) => `${BASE_URL}${UPLOADS_PATH}/${img}`
+        );
+      }
+
+      res.status(201).json(formattedOffer);
+    } catch (error) {
+      console.error("Error creating offer:", error);
+      res.status(500).json({ error: "Server error" });
     }
-
-    const offerData = {
-      title,
-      description,
-      price: parseFloat(price),
-      location,
-      serviceType: category,
-      provider: req.user._id,
-    };
-
-    if (req.file) {
-      console.log("[serviceRoutes] Image file received:", req.file.filename);
-      offerData.image = path.join(UPLOADS_PATH, req.file.filename);
-    }
-
-    console.log("[serviceRoutes] Creating new offer with data:", offerData);
-    const offer = new Offer(offerData);
-    await offer.save();
-
-    // Обновляем статистику категории
-    await categoryStatsService.incrementCategoryCount(category);
-
-    console.log(
-      "[serviceRoutes] Offer created successfully with ID:",
-      offer._id
-    );
-
-    res.status(201).json(offer);
-  } catch (error) {
-    console.error("[serviceRoutes] Error creating offer:", error);
-    res
-      .status(500)
-      .json({ message: "Error creating offer", error: error.message });
   }
-});
+);
 
 // Обновление предложения
 router.put(
   "/offers/:id",
   auth,
   isProvider,
-  upload.single("image"),
+  upload.array("images", 5),
   async (req, res) => {
     try {
+      console.log("[serviceRoutes] PUT /offers/:id request received");
+      const { title, description, price, location, category, existingImages } =
+        req.body;
+
       const offer = await Offer.findById(req.params.id);
       if (!offer) {
+        console.log("[serviceRoutes] Offer not found:", req.params.id);
         return res.status(404).json({ message: "Предложение не найдено" });
       }
 
-      if (req.file) {
-        offer.image = `${UPLOADS_PATH}/${req.file.filename}`;
+      // Проверяем, принадлежит ли предложение текущему пользователю
+      if (
+        offer.providerId.toString() !== req.user.id &&
+        req.user.role !== "admin"
+      ) {
+        return res.status(403).json({
+          message: "У вас нет доступа к редактированию этого предложения",
+        });
       }
+
+      console.log("[serviceRoutes] Updating offer:", {
+        id: req.params.id,
+        providerId: offer.providerId,
+        currentUser: req.user.id,
+        title,
+        description,
+        price,
+        location,
+        category,
+      });
+
+      // Обновляем поля, если они присутствуют в запросе
+      if (title) offer.title = title;
+      if (description) offer.description = description;
+      if (price) offer.price = parseFloat(price);
+      if (location) offer.location = location;
+      if (category) {
+        offer.serviceType = category;
+        offer.category = category;
+      }
+
+      // Обработка изображений
+      let updatedImages = [];
+
+      // Добавляем существующие изображения, если они были переданы
+      if (existingImages) {
+        // Преобразуем в массив, если пришла строка
+        const existingImagesArray = Array.isArray(existingImages)
+          ? existingImages
+          : [existingImages].filter(Boolean);
+        updatedImages = [...existingImagesArray];
+      }
+
+      // Добавляем новые загруженные изображения
+      if (req.files && req.files.length > 0) {
+        console.log(
+          "[serviceRoutes] Adding new images:",
+          req.files.map((f) => f.filename)
+        );
+        const newImages = req.files.map((file) => file.filename);
+        updatedImages = [...updatedImages, ...newImages];
+      }
+
+      // Обновляем массив изображений в предложении
+      offer.images = updatedImages;
+
+      // Для обратной совместимости обновляем поле image
+      if (updatedImages.length > 0) {
+        offer.image = updatedImages[0];
+      }
+
       await offer.save();
+      console.log("[serviceRoutes] Offer updated successfully:", offer._id);
       res.json(offer);
     } catch (error) {
+      console.error("[serviceRoutes] Error updating offer:", error);
       res.status(500).json({ message: error.message });
     }
   }
@@ -469,7 +644,7 @@ router.post(
         providerId: req.user.id,
         message,
         price,
-        image: req.file ? `/uploads/${req.file.filename}` : null,
+        image: req.file ? req.file.filename : null,
       });
       await offer.save();
 
@@ -591,61 +766,415 @@ router.get("/my-requests", auth, async (req, res) => {
 
 // Получение сообщений
 router.get("/messages/:requestId", auth, async (req, res) => {
+  const startTime = Date.now();
+  console.log("=== GET MESSAGES REQUEST ===");
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log(`User: ${req.user.id} (${req.user.name}, ${req.user.role})`);
+  console.log(`RequestId: ${req.params.requestId}`);
+  console.log(
+    `Headers: ${JSON.stringify({
+      authorization: req.headers.authorization ? "Bearer [REDACTED]" : "None",
+      "content-type": req.headers["content-type"],
+      "user-agent": req.headers["user-agent"],
+    })}`
+  );
+
   try {
-    const messages = await Message.find({
+    console.log("Fetching messages for request:", {
       requestId: req.params.requestId,
-    }).populate("userId", "name status");
-    res.json(messages);
+      userId: req.user.id,
+      userRole: req.user.role,
+    });
+
+    // Проверяем валидность ID запроса
+    if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+      console.error("Invalid request ID format:", req.params.requestId);
+      return res.status(400).json({ error: "Invalid request ID format" });
+    }
+
+    // Проверяем существование запроса и права доступа
+    const request = await ServiceRequest.findById(req.params.requestId)
+      .populate("userId", "name email")
+      .populate("providerId", "name email");
+
+    if (!request) {
+      console.log("Request not found, trying offer:", req.params.requestId);
+      // Если запрос не найден, пробуем найти по offerId
+      const offer = await Offer.findById(req.params.requestId);
+      if (!offer) {
+        console.error("Neither request nor offer found:", req.params.requestId);
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      console.log("Found offer:", {
+        id: offer._id,
+        userId: offer.userId,
+        providerId: offer.providerId,
+      });
+
+      // Проверяем права доступа для оффера
+      const userIdStr = offer.userId.toString();
+      const providerIdStr = offer.providerId.toString();
+      const currentUserIdStr = req.user.id.toString();
+
+      if (
+        req.user.role === "user" &&
+        userIdStr !== currentUserIdStr &&
+        providerIdStr !== currentUserIdStr
+      ) {
+        console.warn("Access denied for user:", {
+          userId: currentUserIdStr,
+          requestUserId: userIdStr,
+          requestProviderId: providerIdStr,
+        });
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (
+        req.user.role === "provider" &&
+        providerIdStr !== currentUserIdStr &&
+        userIdStr !== currentUserIdStr
+      ) {
+        console.warn("Access denied for provider:", {
+          providerId: currentUserIdStr,
+          requestUserId: userIdStr,
+          requestProviderId: providerIdStr,
+        });
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Ищем все сообщения, связанные с этим offerId
+      console.log(
+        `Searching for messages with offerId: ${req.params.requestId}`
+      );
+      const messages = await Message.find({
+        $or: [
+          { requestId: req.params.requestId },
+          { offerId: req.params.requestId },
+        ],
+      }).populate("senderId", "name status");
+
+      console.log(
+        `Found ${messages.length} messages for offer. First few messages:`
+      );
+      messages.slice(0, 3).forEach((msg, i) => {
+        console.log(`Message ${i + 1}:`, {
+          id: msg._id,
+          senderId: msg.senderId,
+          recipientId: msg.recipientId,
+          message:
+            msg.message &&
+            msg.message.substring(0, 30) +
+              (msg.message.length > 30 ? "..." : ""),
+          timestamp: msg.timestamp,
+          requestId: msg.requestId,
+        });
+      });
+
+      const endTime = Date.now();
+      console.log(`Request completed in ${endTime - startTime}ms`);
+      console.log("=== END MESSAGES REQUEST ===");
+
+      return res.json(messages);
+    }
+
+    console.log("Found request:", {
+      id: request._id,
+      userId: request.userId?._id,
+      providerId: request.providerId?._id,
+    });
+
+    // Проверяем наличие userId и providerId в запросе
+    if (!request.userId || !request.providerId) {
+      console.error("Request missing user or provider ID:", {
+        requestId: request._id,
+        hasUserId: !!request.userId,
+        hasProviderId: !!request.providerId,
+      });
+      return res.status(400).json({ error: "Request data is incomplete" });
+    }
+
+    // Проверяем права доступа
+    const userIdStr = request.userId._id.toString();
+    const providerIdStr = request.providerId._id.toString();
+    const currentUserIdStr = req.user.id.toString();
+
+    console.log("Checking access rights:", {
+      currentUserId: currentUserIdStr,
+      requestUserId: userIdStr,
+      requestProviderId: providerIdStr,
+      userRole: req.user.role,
+    });
+
+    if (
+      req.user.role === "user" &&
+      userIdStr !== currentUserIdStr &&
+      providerIdStr !== currentUserIdStr
+    ) {
+      console.warn("Access denied for user:", {
+        userId: currentUserIdStr,
+        requestUserId: userIdStr,
+        requestProviderId: providerIdStr,
+      });
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (
+      req.user.role === "provider" &&
+      providerIdStr !== currentUserIdStr &&
+      userIdStr !== currentUserIdStr
+    ) {
+      console.warn("Access denied for provider:", {
+        providerId: currentUserIdStr,
+        requestUserId: userIdStr,
+        requestProviderId: providerIdStr,
+      });
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Получаем сообщения
+    console.log(
+      `Searching for messages with requestId: ${req.params.requestId}`
+    );
+    const messages = await Message.find({
+      $or: [
+        { requestId: req.params.requestId },
+        { offerId: req.params.requestId },
+      ],
+    }).populate("senderId", "name status");
+
+    console.log(
+      `Found ${messages.length} messages for request. First few messages:`
+    );
+    messages.slice(0, 3).forEach((msg, i) => {
+      console.log(`Message ${i + 1}:`, {
+        id: msg._id,
+        senderId: msg.senderId
+          ? (msg.senderId._id || msg.senderId).toString()
+          : "null",
+        recipientId: msg.recipientId ? msg.recipientId.toString() : "null",
+        message:
+          msg.message &&
+          msg.message.substring(0, 30) + (msg.message.length > 30 ? "..." : ""),
+        timestamp: msg.timestamp,
+        requestId: msg.requestId ? msg.requestId.toString() : "null",
+      });
+    });
+
+    // Проверка структуры сообщений перед отправкой
+    const safeMessages = messages.map((msg) => {
+      // Убедимся, что все ID преобразованы в строки для консистентности
+      const formattedMsg = {
+        ...msg.toObject(),
+        _id: msg._id.toString(),
+        requestId: msg.requestId ? msg.requestId.toString() : null,
+        senderId: msg.senderId
+          ? typeof msg.senderId === "object"
+            ? msg.senderId._id
+              ? msg.senderId._id.toString()
+              : null
+            : msg.senderId.toString()
+          : null,
+        recipientId: msg.recipientId ? msg.recipientId.toString() : null,
+      };
+      return formattedMsg;
+    });
+
+    const endTime = Date.now();
+    console.log(`Request completed in ${endTime - startTime}ms`);
+    console.log("=== END MESSAGES REQUEST ===");
+
+    res.json(safeMessages);
   } catch (error) {
     console.error("Error fetching messages:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Stack trace:", error.stack);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 });
 
 // Отправка сообщения в чате запроса
 router.post("/messages/:requestId", auth, async (req, res) => {
+  const startTime = Date.now();
+  console.log("=== POST MESSAGE REQUEST ===");
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log(`User: ${req.user.id} (${req.user.name}, ${req.user.role})`);
+  console.log(`RequestId: ${req.params.requestId}`);
+  console.log(`Request Body:`, {
+    messageLength: req.body.message ? req.body.message.length : 0,
+    messageSample: req.body.message
+      ? req.body.message.substring(0, 30) +
+        (req.body.message.length > 30 ? "..." : "")
+      : null,
+    recipientId: req.body.recipientId,
+  });
+
   try {
     const { message, recipientId } = req.body;
 
     if (!message || !recipientId) {
+      console.error("Missing required fields:", {
+        message: !!message,
+        recipientId: !!recipientId,
+      });
       return res
         .status(400)
         .json({ error: "Message and recipientId are required" });
     }
 
-    // Проверяем существование запроса
+    // Проверяем валидность ObjectId запроса
+    if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+      console.error("Invalid request ID format:", req.params.requestId);
+      return res.status(400).json({ error: "Invalid request ID format" });
+    }
+
+    // Нормализуем recipientId, если это необходимо
+    let normalizedRecipientId = recipientId;
+    if (typeof recipientId === "object") {
+      if (recipientId._id) {
+        normalizedRecipientId = recipientId._id.toString();
+      } else {
+        console.error("Invalid recipientId format:", recipientId);
+        return res.status(400).json({ error: "Invalid recipientId format" });
+      }
+    }
+
+    console.log("Normalized recipientId:", normalizedRecipientId);
+
+    // Проверяем существование запроса или оффера
+    let requestOrOffer = null;
+    let entityType = "";
+
+    // Сначала ищем запрос
     const request = await ServiceRequest.findById(req.params.requestId);
-    if (!request) {
-      return res.status(404).json({ error: "Request not found" });
+    if (request) {
+      requestOrOffer = request;
+      entityType = "request";
+      console.log("Found request:", {
+        id: request._id,
+        userId: request.userId,
+        providerId: request.providerId,
+        status: request.status,
+      });
+    } else {
+      // Если запрос не найден, пробуем найти оффер
+      const offer = await Offer.findById(req.params.requestId);
+      if (offer) {
+        requestOrOffer = offer;
+        entityType = "offer";
+        console.log("Found offer:", {
+          id: offer._id,
+          userId: offer.userId,
+          providerId: offer.providerId,
+          title: offer.title,
+        });
+      } else {
+        console.error("Neither request nor offer found:", req.params.requestId);
+        return res.status(404).json({ error: "Request or offer not found" });
+      }
+    }
+
+    // Проверяем права доступа
+    const userIdStr = requestOrOffer.userId.toString();
+    const providerIdStr = requestOrOffer.providerId.toString();
+    const currentUserIdStr = req.user.id.toString();
+
+    console.log("Checking access rights:", {
+      userIdStr,
+      providerIdStr,
+      currentUserIdStr,
+      userRole: req.user.role,
+    });
+
+    if (
+      req.user.role === "user" &&
+      userIdStr !== currentUserIdStr &&
+      providerIdStr !== currentUserIdStr
+    ) {
+      console.warn("Access denied for user:", {
+        userId: currentUserIdStr,
+        entityUserId: userIdStr,
+        entityProviderId: providerIdStr,
+      });
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (
+      req.user.role === "provider" &&
+      providerIdStr !== currentUserIdStr &&
+      userIdStr !== currentUserIdStr
+    ) {
+      console.warn("Access denied for provider:", {
+        providerId: currentUserIdStr,
+        entityUserId: userIdStr,
+        entityProviderId: providerIdStr,
+      });
+      return res.status(403).json({ error: "Access denied" });
     }
 
     // Создаем новое сообщение с полем requestId
-    const newMessage = await Message.create({
+    const messageData = {
       senderId: req.user.id,
-      recipientId,
-      requestId: req.params.requestId,
+      recipientId: normalizedRecipientId,
       message,
+    };
+
+    // Устанавливаем соответствующее поле в зависимости от типа сущности
+    if (entityType === "request") {
+      messageData.requestId = req.params.requestId;
+    } else {
+      messageData.offerId = req.params.requestId;
+    }
+
+    console.log("Creating message with data:", {
+      ...messageData,
+      message:
+        messageData.message.substring(0, 30) +
+        (messageData.message.length > 30 ? "..." : ""),
     });
+
+    const newMessage = await Message.create(messageData);
 
     console.log("Created new message:", {
       id: newMessage._id,
       senderId: newMessage.senderId,
       recipientId: newMessage.recipientId,
       requestId: newMessage.requestId,
-      message: newMessage.message,
+      offerId: newMessage.offerId,
+      messageLength: newMessage.message.length,
     });
 
     // Отправляем через WebSocket
     const io = require("../socket").getIO();
-    io.to(recipientId).emit("private_message", {
+    io.to(normalizedRecipientId).emit("private_message", {
       ...newMessage.toObject(),
       senderName: req.user.name,
     });
 
+    console.log(
+      `WebSocket: Emitted 'private_message' to ${normalizedRecipientId}`
+    );
+
+    // Отправляем уведомление о новом сообщении
+    await NotificationService.sendNotification(normalizedRecipientId, {
+      type: "message",
+      message: `Новое сообщение от ${req.user.name}`,
+      relatedId: newMessage._id,
+      senderId: req.user.id,
+      requestId: messageData.requestId || null,
+      offerId: messageData.offerId || null,
+    });
+
+    console.log(`Notification: Sent to ${normalizedRecipientId}`);
+
+    const endTime = Date.now();
+    console.log(`Request completed in ${endTime - startTime}ms`);
+    console.log("=== END POST MESSAGE REQUEST ===");
+
     res.status(201).json(newMessage);
   } catch (error) {
     console.error("Error sending message:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Stack trace:", error.stack);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 });
 
@@ -941,54 +1470,277 @@ router.post("/requests", auth, async (req, res) => {
 });
 
 // Получение количества предложений по категориям
-router.get("/categories/counts", async (req, res) => {
-  const requestId = Math.random().toString(36).substring(7);
-  console.log(
-    `[${requestId}][serviceRoutes] GET /categories/counts request started`
-  );
+router.get("/categories/counts", categoryController.getCategoryCounts);
 
+// GET /categories/stats - получить статистику по категориям
+router.get("/categories/stats", categoryController.getCategoryStats);
+
+// Новый маршрут для получения топ-категорий
+router.get("/categories/top", categoryController.getTopCategories);
+
+// Поднятие объявления в топ
+router.post("/offers/:id/promote", auth, async (req, res) => {
   try {
-    // Проверяем наличие категорий
-    const categories = await Category.find();
-    console.log(`[${requestId}] Found ${categories.length} categories`);
+    const { promotionType } = req.body;
+    const offerId = req.params.id;
 
-    // Получаем статистику
-    const counts = await categoryStatsService.getCategoryCounts();
-    console.log(
-      `[${requestId}][serviceRoutes] Category counts retrieved:`,
-      counts
-    );
-
-    // Если статистика пуста, делаем полную синхронизацию
-    if (Object.keys(counts).length === 0) {
-      console.log(`[${requestId}] No counts found, running full sync`);
-      await categoryStatsService.fullSync();
-      const updatedCounts = await categoryStatsService.getCategoryCounts();
-      console.log(`[${requestId}] Updated counts after sync:`, updatedCounts);
-      return res.json(updatedCounts);
+    // Проверяем валидность ObjectId
+    if (!mongoose.Types.ObjectId.isValid(offerId)) {
+      return res.status(400).json({ error: "Invalid offer ID format" });
     }
 
-    res.json(counts);
-  } catch (error) {
-    console.error(
-      `[${requestId}][serviceRoutes] Error retrieving category counts:`,
-      {
-        error: error.message,
-        stack: error.stack,
-      }
+    console.log("[Promotion] Received promotion request:", {
+      offerId,
+      userId: req.user.id,
+      promotionType,
+      body: req.body,
+    });
+
+    // Валидация типа поднятия
+    if (!promotionType || !["DAY", "WEEK"].includes(promotionType)) {
+      console.log("[Promotion] Invalid promotion type:", promotionType);
+      return res
+        .status(400)
+        .json({ error: "Invalid promotion type. Must be 'DAY' or 'WEEK'" });
+    }
+
+    // Проверяем существование предложения
+    const offer = await Offer.findById(offerId).lean();
+    if (!offer) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+
+    // Проверяем права доступа
+    if (offer.providerId.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: "You can only promote your own offers" });
+    }
+
+    // Вызываем сервис для продвижения
+    const result = await promotionService.promoteOffer(
+      offerId,
+      promotionType,
+      req.user.id
     );
+
+    console.log("[Promotion] Promotion successful:", result);
+    res.json(result);
+  } catch (error) {
+    console.error("[Promotion] Error promoting offer:", {
+      error: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
+
+    // Если это ошибка валидации, возвращаем детали
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        error: "Validation error",
+        details: error.errors,
+      });
+    }
+
+    // Если это наша ApiError, используем её статус
+    if (error.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+
+    // Для всех остальных ошибок
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
+// Проверка статуса поднятия
+router.get("/offers/:id/promotion-status", async (req, res) => {
+  const id = req.params.id;
+  console.log(`[Promotion] Checking status for offer: ${id}`);
+
+  try {
+    // Проверяем валидность ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.warn(`[Promotion] Invalid offer ID format: ${id}`);
+      return res.status(400).json({
+        error: "Invalid offer ID format",
+        isPromoted: false,
+      });
+    }
+
+    const status = await promotionService.checkPromotionStatus(id);
+    console.log(`[Promotion] Status for offer ${id}:`, status);
+    res.json(status);
+  } catch (error) {
+    console.error(`[Promotion] Error checking promotion status for ${id}:`, {
+      error: error.message,
+      stack: error.stack,
+    });
+
+    // Отправляем корректный статус ошибки и объект с сообщением об ошибке
+    const statusCode = error.message.includes("not found") ? 404 : 500;
+    res.status(statusCode).json({
+      error: error.message,
+      isPromoted: false,
+    });
+  }
+});
+
+// Тестовый маршрут для проверки доступа к изображениям
+router.get("/check-images", (req, res) => {
+  try {
+    const imagesDir = path.join(__dirname, "..", "uploads", "images");
+    const files = fs.readdirSync(imagesDir);
+
+    res.json({
+      success: true,
+      message: "Изображения доступны",
+      imagesCount: files.length,
+      sampleImages: files.slice(0, 5),
+      uploadsPath: UPLOADS_PATH,
+      baseUrl: BASE_URL,
+    });
+  } catch (error) {
+    console.error("Error checking images:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack,
+    });
+  }
+});
+
+// Обновление статуса предложения
+router.put("/offers/:id/status", auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const offerId = req.params.id;
+
+    // Проверяем валидность статуса
+    const validStatuses = ["active", "completed", "cancelled", "inactive"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    // Находим предложение
+    const offer = await Offer.findById(offerId);
+    if (!offer) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+
+    // Проверяем права доступа (только владелец или админ могут менять статус)
+    if (
+      req.user.role !== "admin" &&
+      offer.providerId.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    // Если предложение завершается, обновляем статистику провайдера
+    if (status === "completed" && offer.status !== "completed") {
+      const provider = await User.findById(offer.providerId);
+      if (provider) {
+        await provider.incrementCompletedOffers();
+      }
+    }
+
+    // Обновляем статус
+    offer.status = status;
+    await offer.save();
+
+    res.json({ message: "Status updated successfully", offer });
+  } catch (error) {
+    console.error("Error updating offer status:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// GET /categories/stats - получить статистику по категориям
-router.get("/categories/stats", async (req, res) => {
+// Получение запроса чата по ID
+router.get("/requests/:id", auth, async (req, res) => {
   try {
-    const stats = await categoryStatsService.getCategoryCounts();
-    res.json(stats);
+    const requestId = req.params.id;
+    const userId = req.user.id;
+
+    console.log(
+      `[GET /requests/${requestId}] Request info requested by user: ${userId}`
+    );
+
+    // Проверка валидности ID
+    if (!mongoose.Types.ObjectId.isValid(requestId)) {
+      return res.status(400).json({ error: "Invalid request ID format" });
+    }
+
+    // Находим запрос
+    const request = await ServiceRequest.findById(requestId)
+      .populate("userId", "name _id")
+      .populate("providerId", "name _id")
+      .populate({
+        path: "offerId",
+        select: "title serviceType",
+      });
+
+    if (!request) {
+      console.log(`[GET /requests/${requestId}] Request not found`);
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    console.log(`[GET /requests/${requestId}] Found request:`, {
+      id: request._id,
+      userId: request.userId._id.toString(),
+      providerId: request.providerId._id.toString(),
+      status: request.status,
+    });
+
+    // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером)
+    const userIdStr = userId.toString();
+    const requestUserIdStr = request.userId._id.toString();
+    const requestProviderIdStr = request.providerId._id.toString();
+
+    console.log(`[GET /requests/${requestId}] Checking access:`, {
+      userId: userIdStr,
+      requestUserId: requestUserIdStr,
+      requestProviderId: requestProviderIdStr,
+    });
+
+    if (userIdStr !== requestUserIdStr && userIdStr !== requestProviderIdStr) {
+      console.log(
+        `[GET /requests/${requestId}] Access denied for user: ${userIdStr}`
+      );
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Если дошли сюда, значит доступ разрешен
+    console.log(
+      `[GET /requests/${requestId}] Access granted to user: ${userIdStr}`
+    );
+
+    // Формируем объект с информацией о запросе, который будет совместим с ChatRequest
+    const chatRequestData = {
+      _id: request._id,
+      userId: request.userId,
+      providerId: request.providerId,
+      offerId: request.offerId,
+      serviceType: request.serviceType,
+      description: request.description,
+      status: request.status,
+      createdAt: request.createdAt,
+      // Добавляем поля, совместимые с форматом ChatRequest
+      service: request.offerId
+        ? {
+            title: request.offerId.title,
+            type: request.offerId.serviceType,
+          }
+        : {
+            title: request.description,
+            type: request.serviceType,
+          },
+    };
+
+    res.json(chatRequestData);
   } catch (error) {
-    console.error("[CategoryStats] Error getting category stats:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error(`[GET /requests/${req.params.id}] Error:`, error);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 });
 

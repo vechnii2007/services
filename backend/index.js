@@ -42,26 +42,36 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());
 
 // Настройка статических путей с использованием абсолютного пути
 app.use(
-  "/images",
+  "/uploads/images",
   (req, res, next) => {
+    // Устанавливаем правильные CORS-заголовки
+    res.set("Access-Control-Allow-Origin", "*");
     res.set("Cache-Control", "no-store");
     next();
   },
-  express.static(UPLOADS_DIR)
+  express.static(path.join(__dirname, "uploads/images"))
 );
 
+// Также добавляем маршрут для совместимости со старыми путями
 app.use(
-  UPLOADS_PATH,
+  "/images",
   (req, res, next) => {
+    res.set("Access-Control-Allow-Origin", "*");
     res.set("Cache-Control", "no-store");
     next();
   },
-  express.static(UPLOADS_DIR)
+  express.static(path.join(__dirname, "uploads/images"))
 );
 
 // Routes

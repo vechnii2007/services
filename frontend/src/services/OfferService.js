@@ -23,6 +23,18 @@ class OfferService extends BaseService {
     });
   }
 
+  async getMyOffers() {
+    try {
+      console.log("Fetching my offers...");
+      const response = await this.get("/my-offers");
+      console.log("My offers response:", response);
+      return response;
+    } catch (error) {
+      console.error("Error fetching my offers:", error);
+      throw error;
+    }
+  }
+
   async getById(id) {
     return this.get(`/offers/${id}`);
   }
@@ -98,10 +110,20 @@ class OfferService extends BaseService {
 
   async toggleFavorite(offerId, offerType = "offer") {
     if (!offerId) {
-      return { isFavorite: false };
+      console.warn("[OfferService] toggleFavorite called without offerId");
+      return {
+        success: false,
+        isFavorite: false,
+        error: "No offer ID provided",
+      };
     }
 
     try {
+      console.log("[OfferService] Toggling favorite status:", {
+        offerId,
+        offerType,
+      });
+
       const serverOfferType =
         offerType === "offer"
           ? "Offer"
@@ -114,10 +136,9 @@ class OfferService extends BaseService {
         offerType: serverOfferType,
       });
 
-      const isFavorite =
-        response && typeof response.isFavorite === "boolean"
-          ? response.isFavorite
-          : response?.message?.includes("Added to favorites");
+      console.log("[OfferService] Toggle favorite response:", response);
+
+      const isFavorite = response?.message?.includes("Added to favorites");
 
       try {
         const cachedFavorites = localStorage.getItem("userFavorites");
@@ -130,24 +151,215 @@ class OfferService extends BaseService {
         }
 
         localStorage.setItem("userFavorites", JSON.stringify(favorites));
-      } catch (e) {}
+        console.log("[OfferService] Updated localStorage favorites:", {
+          isFavorite,
+          offerId,
+        });
+      } catch (e) {
+        console.error("[OfferService] Error updating localStorage:", e);
+      }
 
       return {
-        isFavorite,
+        success: true,
+        isFavorite: isFavorite,
         message: response?.message || "",
       };
     } catch (error) {
-      return { isFavorite: false, error: error.message };
+      console.error("[OfferService] Error in toggleFavorite:", error);
+      return {
+        success: false,
+        isFavorite: false,
+        error: error.message || "Error toggling favorite status",
+      };
     }
   }
 
   async getCategoryStats() {
     try {
-      const response = await this.api.get("/categories/stats");
-      return response.data;
+      const response = await this.get("/categories/stats");
+      console.log("[OfferService] Category stats:", response);
+      return response;
     } catch (error) {
       console.error("[OfferService] Error getting category stats:", error);
-      return {};
+      return {
+        stats: [],
+        totalOffers: 0,
+        totalCategories: 0,
+      };
+    }
+  }
+
+  async promoteOffer(offerId, promotionType) {
+    return this.post(`/offers/${offerId}/promote`, { promotionType });
+  }
+
+  async getPromotionStatus(offerId) {
+    if (!offerId) {
+      console.warn("[OfferService] getPromotionStatus called without offerId");
+      return { isPromoted: false };
+    }
+
+    try {
+      console.log(
+        `[OfferService] Checking promotion status for offer: ${offerId}`
+      );
+      const response = await this.get(`/offers/${offerId}/promotion-status`);
+      return response || { isPromoted: false };
+    } catch (error) {
+      console.error("[OfferService] Error checking promotion status:", {
+        offerId,
+        error: error.message,
+        status: error.response?.status,
+      });
+
+      // Возвращаем базовый объект, чтобы не ломать UI
+      return {
+        isPromoted: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async getPromotedOffers(limit = 10, skip = 0) {
+    const retryAttempts = 2;
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+      try {
+        console.log(
+          `[OfferService] Getting promoted offers (attempt ${attempt + 1}/${
+            retryAttempts + 1
+          }):`,
+          { limit, skip }
+        );
+        const response = await this.get("/offers/promoted", { limit, skip });
+        console.log("[OfferService] Promoted offers received:", {
+          count: response?.offers?.length || 0,
+          total: response?.total || 0,
+        });
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.error(
+          `[OfferService] Error getting promoted offers (attempt ${
+            attempt + 1
+          }/${retryAttempts + 1}):`,
+          {
+            error: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+          }
+        );
+
+        // Если это последняя попытка или код ошибки не 500, прекращаем попытки
+        if (
+          attempt === retryAttempts ||
+          (error.response && error.response.status !== 500)
+        ) {
+          break;
+        }
+
+        // Ждем перед следующей попыткой
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * (attempt + 1))
+        );
+      }
+    }
+
+    // Если все попытки неудачны, возвращаем пустой результат
+    console.warn("[OfferService] All attempts to get promoted offers failed");
+    return { offers: [], total: 0, hasMore: false };
+  }
+
+  // Получение списка категорий
+  static async fetchCategories() {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || ""}/api/services/categories`
+      );
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("[OfferService] Error fetching categories:", error);
+      return [];
+    }
+  }
+
+  // Получение статистики категорий
+  static async getCategoryStats() {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || ""}/api/services/categories/stats`
+      );
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("[OfferService] Error fetching category stats:", error);
+      return { stats: [] };
+    }
+  }
+
+  // Получение топ-категорий
+  static async getTopCategories(limit = 5) {
+    try {
+      console.log(`[OfferService] Fetching top ${limit} categories`);
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_URL || ""
+        }/api/services/categories/top?limit=${limit}`
+      );
+      const data = await response.json();
+      console.log("[OfferService] Top categories response:", data);
+      return data;
+    } catch (error) {
+      console.error("[OfferService] Error fetching top categories:", error);
+      console.log("[OfferService] Returning mock data for top categories");
+      return {
+        categories: [
+          {
+            id: "1",
+            name: "healthcare",
+            label: "Медицина",
+            count: 12,
+            hasImage: true,
+            imageUrl: "/uploads/images/healthcare.jpg",
+          },
+          {
+            id: "2",
+            name: "household",
+            label: "Бытовые услуги",
+            count: 8,
+            hasImage: true,
+            imageUrl: "/uploads/images/household.jpg",
+          },
+          {
+            id: "3",
+            name: "finance",
+            label: "Финансы",
+            count: 6,
+            hasImage: true,
+            imageUrl: "/uploads/images/finance.jpg",
+          },
+          {
+            id: "4",
+            name: "education",
+            label: "Образование",
+            count: 5,
+            hasImage: true,
+            imageUrl: "/uploads/images/education.jpg",
+          },
+          {
+            id: "5",
+            name: "transport",
+            label: "Транспорт",
+            count: 3,
+            hasImage: true,
+            imageUrl: "/uploads/images/transport.jpg",
+          },
+        ],
+        totalCategories: 10,
+        timestamp: new Date().toISOString(),
+      };
     }
   }
 }

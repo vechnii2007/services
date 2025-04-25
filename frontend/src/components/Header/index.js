@@ -36,6 +36,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
 import axios from "../../utils/axiosConfig";
+import logo from "../../assets/images/logo.svg";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const getIcon = () => {
@@ -219,9 +220,22 @@ const Header = ({ onDrawerToggle }) => {
           <MenuIcon />
         </IconButton>
 
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Service Portal
-        </Typography>
+        <Box
+          component="img"
+          src={logo}
+          alt="UniServ Logo"
+          sx={{
+            height: 40,
+            mr: 1,
+            cursor: "pointer",
+            "&:hover": {
+              opacity: 0.9,
+            },
+          }}
+          onClick={() => navigate("/")}
+        />
+
+        <Box sx={{ flexGrow: 1 }} />
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {/* Язык */}

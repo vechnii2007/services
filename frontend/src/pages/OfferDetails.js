@@ -1,42 +1,62 @@
 // src/pages/OfferDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import api from "../middleware/api";
 import { useTranslation } from "react-i18next";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination, Zoom } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import "swiper/css/zoom";
 import {
-  Typography,
   Box,
   Container,
-  Card,
-  CardContent,
+  Typography,
   Button,
   Grid,
-  Paper,
-  Divider,
-  Avatar,
-  Chip,
-  IconButton,
-  Skeleton,
-  Alert,
-  Rating,
+  Card,
   CardMedia,
+  CardContent,
+  Alert,
+  Divider,
+  IconButton,
+  Chip,
+  Skeleton,
   Stack,
+  Avatar,
+  Paper,
+  Rating,
+  Dialog,
+  Menu,
+  MenuItem,
+  Tooltip,
+  Badge,
 } from "@mui/material";
 import {
-  ArrowBack as ArrowBackIcon,
-  LocationOn as LocationIcon,
-  EventAvailable as EventIcon,
-  Category as CategoryIcon,
-  Info as InfoIcon,
-  Chat as ChatIcon,
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
+  ArrowBack as ArrowBackIcon,
   Share as ShareIcon,
-  Call as CallIcon,
+  Room as RoomIcon,
+  Category as CategoryIcon,
   Email as EmailIcon,
+  Info as InfoIcon,
+  Event as EventIcon,
+  Chat as ChatIcon,
+  Call as CallIcon,
+  ZoomIn as ZoomInIcon,
+  Star as StarIcon,
+  Facebook as FacebookIcon,
+  Twitter as TwitterIcon,
+  LinkedIn as LinkedInIcon,
+  WhatsApp as WhatsAppIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
-import { motion } from "framer-motion";
-import { formatDate, formatPrice } from "../utils/formatters";
+import { motion, AnimatePresence } from "framer-motion";
+import { formatDate, formatPrice, formatImagePath } from "../utils/formatters";
+import api from "../middleware/api";
+import { useSocket } from "../hooks/useSocket";
+import ChatService from "../services/ChatService";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -53,6 +73,10 @@ const OfferDetails = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [shareAnchorEl, setShareAnchorEl] = useState(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const { socket } = useSocket();
 
   useEffect(() => {
     let isMounted = true;
@@ -92,6 +116,31 @@ const OfferDetails = () => {
     };
   }, [id, t]);
 
+  // Отдельный эффект для работы с сокетами
+  useEffect(() => {
+    if (!socket || !offer?.providerId?._id) return;
+
+    const providerId = offer.providerId._id;
+    // Используем ID предложения вместо ID пользователя для комнаты
+    // Это будет совместимо с логикой сервера
+    const roomId = offer._id;
+    console.log(`[Socket] Joining room for offer ${roomId}`);
+    socket.emit("joinRoom", roomId);
+
+    const handleNewMessage = (data) => {
+      if (data.senderId === providerId) {
+        setUnreadMessages((prev) => prev + 1);
+      }
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+      socket.emit("leaveRoom", roomId);
+    };
+  }, [socket, offer?.providerId?._id, offer?._id]);
+
   const handleFavoriteToggle = async () => {
     try {
       if (isFavorite) {
@@ -122,24 +171,95 @@ const OfferDetails = () => {
     }
   };
 
-  const handleShareOffer = () => {
+  const handleShare = (platform) => {
     const url = window.location.href;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
+    const title = offer?.title;
+    let shareUrl;
+
+    switch (platform) {
+      case "facebook":
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+          url
+        )}`;
+        break;
+      case "twitter":
+        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(
+          url
+        )}&text=${encodeURIComponent(title)}`;
+        break;
+      case "linkedin":
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+          url
+        )}`;
+        break;
+      case "whatsapp":
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(
+          title + " " + url
+        )}`;
+        break;
+      default:
+        navigator.clipboard.writeText(url);
         setSuccess(t("link_copied"));
-        setTimeout(() => setSuccess(""), 3000);
-      })
-      .catch((err) => {
-        setError(t("error_copying_link"));
-        setTimeout(() => setError(""), 3000);
-      });
+        setShareAnchorEl(null);
+        return;
+    }
+
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
+    setShareAnchorEl(null);
   };
 
-  const handleContactProvider = () => {
-    // Здесь может быть переход в чат с провайдером
-    if (offer?.provider?._id) {
-      navigate(`/chat/${offer.provider._id}`);
+  const handleContactProvider = async () => {
+    try {
+      const providerId = offer.providerId._id;
+      const offerId = offer._id;
+
+      console.log("[OfferDetails] Checking existing chat request:", {
+        providerId,
+        offerId,
+      });
+
+      // Сначала проверяем, существует ли уже запрос для этого предложения
+      const existingRequests = await api.get("/services/requests", {
+        params: {
+          offerId,
+          providerId,
+        },
+      });
+
+      let requestId;
+
+      if (existingRequests.data && existingRequests.data.length > 0) {
+        // Используем существующий запрос
+        requestId = existingRequests.data[0]._id;
+        console.log("[OfferDetails] Using existing request:", requestId);
+      } else {
+        // Создаем новый запрос
+        console.log("[OfferDetails] Creating new chat request:", {
+          providerId,
+          serviceType: offer.serviceType,
+          description: `Запрос по предложению: ${offer.title}`,
+          offerId,
+        });
+
+        const response = await api.post("/services/requests", {
+          providerId,
+          serviceType: offer.serviceType,
+          description: `Запрос по предложению: ${offer.title}`,
+          offerId,
+        });
+
+        requestId = response.data._id;
+        console.log("[OfferDetails] Created new request:", requestId);
+      }
+
+      // Переходим в чат
+      navigate(`/chat/${requestId}`);
+
+      // Сбрасываем счетчик непрочитанных сообщений
+      setUnreadMessages(0);
+    } catch (error) {
+      console.error("[OfferDetails] Error handling chat request:", error);
+      setError(error.response?.data?.error || t("error_creating_chat"));
     }
   };
 
@@ -216,8 +336,16 @@ const OfferDetails = () => {
   const safeServiceType = offer.serviceType || "";
   const safeLocation = offer.location || "";
   const safeCreatedAt = offer.createdAt || "";
-  const safeImage =
-    offer.image || "https://placehold.co/600x400?text=Нет+изображения";
+
+  // Получаем изображения
+  const safeImages =
+    offer.images && Array.isArray(offer.images) && offer.images.length > 0
+      ? offer.images.map(formatImagePath)
+      : [
+          formatImagePath(offer.image) ||
+            "https://placehold.co/600x400?text=Нет+изображения",
+        ];
+
   const safeProvider = offer.provider || {};
   // Определяем тип предложения, если есть поле type, используем его и приводим к правильному формату, иначе предполагаем ServiceOffer
   const offerType =
@@ -266,7 +394,7 @@ const OfferDetails = () => {
             </IconButton>
 
             <IconButton
-              onClick={handleShareOffer}
+              onClick={(e) => setShareAnchorEl(e.currentTarget)}
               sx={{
                 transition: "all 0.3s ease",
                 "&:hover": { transform: "scale(1.1)" },
@@ -278,52 +406,95 @@ const OfferDetails = () => {
         </Box>
 
         {/* Сообщения об успехе/ошибке */}
-        {success && (
-          <MotionBox
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            sx={{ mb: 2 }}
-          >
-            <Alert severity="success" onClose={() => setSuccess("")}>
-              {success}
-            </Alert>
-          </MotionBox>
-        )}
+        <AnimatePresence>
+          {success && (
+            <MotionBox
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              sx={{ mb: 2 }}
+            >
+              <Alert severity="success" onClose={() => setSuccess("")}>
+                {success}
+              </Alert>
+            </MotionBox>
+          )}
 
-        {error && (
-          <MotionBox
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            sx={{ mb: 2 }}
-          >
-            <Alert severity="error" onClose={() => setError("")}>
-              {error}
-            </Alert>
-          </MotionBox>
-        )}
+          {error && (
+            <MotionBox
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              sx={{ mb: 2 }}
+            >
+              <Alert severity="error" onClose={() => setError("")}>
+                {error}
+              </Alert>
+            </MotionBox>
+          )}
+        </AnimatePresence>
 
-        <Grid container spacing={3}>
+        <Box sx={{ display: "flex", gap: 3, position: "relative" }}>
           {/* Левая колонка с изображением */}
-          <Grid item xs={12} md={5}>
+          <Box sx={{ flex: "0 0 50%", maxWidth: "50%" }}>
             <MotionCard
-              sx={{ borderRadius: 2, overflow: "hidden" }}
+              sx={{
+                borderRadius: 2,
+                overflow: "hidden",
+                position: "sticky",
+                top: 24,
+              }}
+              elevation={1}
               whileHover={{ boxShadow: "0 8px 20px rgba(0,0,0,0.15)" }}
             >
-              <CardMedia
-                component="img"
-                image={safeImage}
-                alt={safeTitle}
-                sx={{
-                  height: 400,
-                  objectFit: "cover",
-                  backgroundColor: "grey.100",
+              <Swiper
+                modules={[Navigation, Pagination, Zoom]}
+                pagination={{
+                  type: "fraction",
                 }}
-              />
+                navigation
+                zoom
+                spaceBetween={0}
+                slidesPerView={1}
+              >
+                {safeImages.map((image, index) => (
+                  <SwiperSlide key={`image-${index}`}>
+                    <Box sx={{ position: "relative" }}>
+                      <CardMedia
+                        component="img"
+                        image={image}
+                        alt={`${safeTitle} - изображение ${index + 1}`}
+                        sx={{
+                          height: 600,
+                          objectFit: "cover",
+                          backgroundColor: "grey.100",
+                          cursor: "zoom-in",
+                        }}
+                        onClick={() => setFullscreenImage(image)}
+                      />
+                      <IconButton
+                        sx={{
+                          position: "absolute",
+                          right: 8,
+                          top: 8,
+                          backgroundColor: "rgba(0,0,0,0.4)",
+                          "&:hover": {
+                            backgroundColor: "rgba(0,0,0,0.6)",
+                          },
+                        }}
+                        onClick={() => setFullscreenImage(image)}
+                      >
+                        <ZoomInIcon sx={{ color: "white" }} />
+                      </IconButton>
+                    </Box>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
             </MotionCard>
-          </Grid>
+          </Box>
 
           {/* Правая колонка с информацией */}
-          <Grid item xs={12} md={7}>
+          <Box sx={{ flex: "0 0 50%", maxWidth: "50%" }}>
             <MotionBox
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -355,7 +526,7 @@ const OfferDetails = () => {
                   sx={{ mr: 1, mb: 1 }}
                 />
                 <Chip
-                  icon={<LocationIcon />}
+                  icon={<RoomIcon />}
                   label={safeLocation}
                   variant="outlined"
                   sx={{ mb: 1 }}
@@ -367,7 +538,7 @@ const OfferDetails = () => {
               </Typography>
 
               <MotionPaper
-                elevation={0}
+                elevation={1}
                 sx={{
                   p: 2,
                   mb: 3,
@@ -389,11 +560,12 @@ const OfferDetails = () => {
               </Typography>
 
               <MotionCard
+                elevation={1}
                 sx={{ mb: 3, borderRadius: 2 }}
                 whileHover={{ boxShadow: "0 8px 15px rgba(0,0,0,0.1)" }}
               >
                 <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <Box sx={{ display: "flex", alignItems: "flex-start" }}>
                     <Avatar
                       src={safeProvider.avatar}
                       alt={safeProvider.name}
@@ -404,63 +576,131 @@ const OfferDetails = () => {
                         border: 2,
                         borderColor: "primary.main",
                       }}
-                    />
-                    <Box>
+                    >
+                      {safeProvider.name
+                        ? safeProvider.name[0].toUpperCase()
+                        : "P"}
+                    </Avatar>
+                    <Box sx={{ flex: 1 }}>
                       <Typography variant="h6">{safeProvider.name}</Typography>
-                      {safeProvider.rating && (
-                        <Box sx={{ display: "flex", alignItems: "center" }}>
-                          <Rating
-                            value={safeProvider.rating}
-                            readOnly
-                            precision={0.5}
-                            sx={{ mr: 1 }}
-                          />
-                          <Typography variant="body2" color="text.secondary">
-                            (
-                            {safeProvider.rating !== undefined &&
-                            safeProvider.rating !== null
-                              ? safeProvider.rating.toFixed(1)
-                              : "0.0"}
-                            )
-                          </Typography>
-                        </Box>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          mb: 0.5,
+                        }}
+                      >
+                        <EmailIcon fontSize="small" />
+                        {safeProvider.email}
+                      </Typography>
+                      {safeProvider.phone && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            mb: 0.5,
+                          }}
+                        >
+                          <CallIcon fontSize="small" />
+                          {safeProvider.phone}
+                        </Typography>
                       )}
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        {t("member_since", {
+                          date: formatDate(safeProvider.createdAt),
+                        })}
+                      </Typography>
                     </Box>
                   </Box>
 
-                  <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<ChatIcon />}
-                      onClick={handleContactProvider}
-                      sx={{ flex: 1 }}
-                    >
-                      {t("contact_provider")}
-                    </Button>
+                  <Box sx={{ mt: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Paper
+                          elevation={0}
+                          variant="outlined"
+                          sx={{ p: 1.5, textAlign: "center" }}
+                        >
+                          <Typography variant="h6" color="primary">
+                            {safeProvider.providerInfo?.completedOffers || 0}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {t("completed_offers")}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Paper
+                          elevation={0}
+                          variant="outlined"
+                          sx={{ p: 1.5, textAlign: "center" }}
+                        >
+                          <Typography variant="h6" color="primary">
+                            {safeProvider.providerInfo?.responseRate || 0}%
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {t("response_rate")}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+                  </Box>
 
-                    {safeProvider.phone && (
-                      <IconButton
-                        color="primary"
-                        sx={{ bgcolor: "primary.light", color: "white" }}
+                  <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+                    <Badge badgeContent={unreadMessages} color="error">
+                      <Button
+                        variant="contained"
+                        startIcon={<ChatIcon />}
+                        onClick={handleContactProvider}
+                        sx={{ flex: 1 }}
                       >
-                        <CallIcon />
-                      </IconButton>
-                    )}
+                        {t("chat")}
+                      </Button>
+                    </Badge>
 
                     {safeProvider.email && (
-                      <IconButton
-                        color="primary"
-                        sx={{ bgcolor: "primary.light", color: "white" }}
+                      <Button
+                        variant="outlined"
+                        startIcon={<EmailIcon />}
+                        onClick={() =>
+                          (window.location.href = `mailto:${safeProvider.email}`)
+                        }
+                        sx={{ flex: 1 }}
                       >
-                        <EmailIcon />
-                      </IconButton>
+                        {t("send_email")}
+                      </Button>
+                    )}
+
+                    {safeProvider.phone && (
+                      <Tooltip title={t("call_provider")}>
+                        <IconButton
+                          color="primary"
+                          sx={{ bgcolor: "primary.light", color: "white" }}
+                          onClick={() =>
+                            (window.location.href = `tel:${safeProvider.phone}`)
+                          }
+                        >
+                          <CallIcon />
+                        </IconButton>
+                      </Tooltip>
                     )}
                   </Box>
                 </CardContent>
               </MotionCard>
 
               {/* Дополнительная информация */}
-              <Box
+              <Paper
+                elevation={0}
                 sx={{
                   backgroundColor: "background.default",
                   p: 2,
@@ -484,11 +724,70 @@ const OfferDetails = () => {
                   <InfoIcon fontSize="small" sx={{ mr: 1 }} />
                   ID: {safeId}
                 </Typography>
-              </Box>
+              </Paper>
             </MotionBox>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Box>
+
+      {/* Fullscreen image dialog */}
+      <Dialog
+        fullScreen
+        open={Boolean(fullscreenImage)}
+        onClose={() => setFullscreenImage(null)}
+      >
+        <Box sx={{ position: "relative", height: "100%" }}>
+          <IconButton
+            sx={{
+              position: "absolute",
+              right: 16,
+              top: 16,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              "&:hover": {
+                backgroundColor: "rgba(0,0,0,0.6)",
+              },
+              zIndex: 1,
+            }}
+            onClick={() => setFullscreenImage(null)}
+          >
+            <CloseIcon sx={{ color: "white" }} />
+          </IconButton>
+          <Box
+            component="img"
+            src={fullscreenImage}
+            alt="Fullscreen view"
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              backgroundColor: "rgba(0,0,0,0.9)",
+            }}
+          />
+        </Box>
+      </Dialog>
+
+      {/* Share menu */}
+      <Menu
+        anchorEl={shareAnchorEl}
+        open={Boolean(shareAnchorEl)}
+        onClose={() => setShareAnchorEl(null)}
+      >
+        <MenuItem onClick={() => handleShare("facebook")}>
+          <FacebookIcon sx={{ mr: 1 }} /> Facebook
+        </MenuItem>
+        <MenuItem onClick={() => handleShare("twitter")}>
+          <TwitterIcon sx={{ mr: 1 }} /> Twitter
+        </MenuItem>
+        <MenuItem onClick={() => handleShare("linkedin")}>
+          <LinkedInIcon sx={{ mr: 1 }} /> LinkedIn
+        </MenuItem>
+        <MenuItem onClick={() => handleShare("whatsapp")}>
+          <WhatsAppIcon sx={{ mr: 1 }} /> WhatsApp
+        </MenuItem>
+        <MenuItem onClick={() => handleShare("copy")}>
+          <ShareIcon sx={{ mr: 1 }} /> {t("copy_link")}
+        </MenuItem>
+      </Menu>
     </MotionContainer>
   );
 };

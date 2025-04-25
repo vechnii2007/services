@@ -1,4 +1,4 @@
-import api from "../middleware/api";
+import api from "./api";
 
 export class BaseService {
   constructor(basePath) {

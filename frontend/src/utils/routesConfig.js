@@ -9,9 +9,11 @@ import MyRequests from "../pages/MyRequests";
 import ProviderRequests from "../pages/ProviderRequests";
 import ChatList from "../pages/ChatList";
 import Chat from "../pages/Chat";
+import ChatTester from "../pages/ChatTester";
 import Favorites from "../pages/Favorites";
 import PaymentDashboard from "../pages/PaymentDashboard";
 import Profile from "../pages/Profile";
+import Landing from "../pages/Landing";
 import AdminPanel from "../components/AdminPanel/AdminPanelTabs";
 import React, { useContext } from "react";
 import { Navigate } from "react-router-dom";
@@ -36,6 +38,7 @@ const FavoritesWithAuth = () => {
 };
 
 export const routesConfig = [
+  { path: "/", element: <Landing />, requiredRole: null },
   { path: "/offers", element: <Offers />, requiredRole: null },
   { path: "/offers/:id", element: <OfferDetails />, requiredRole: null },
   { path: "/register", element: <Register />, requiredRole: null },
@@ -70,6 +73,16 @@ export const routesConfig = [
     path: "/chat/:requestId",
     element: <Chat />,
     requiredRole: ["user", "provider"],
+  },
+  {
+    path: "/chat-tester",
+    element: <ChatTester />,
+    requiredRole: ["user", "provider", "admin"],
+  },
+  {
+    path: "/chat-tester/:requestId",
+    element: <ChatTester />,
+    requiredRole: ["user", "provider", "admin"],
   },
   {
     path: "/favorites",

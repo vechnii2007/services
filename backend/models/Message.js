@@ -29,8 +29,24 @@ const messageSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+// Виртуальные поля для совместимости с фронтендом
+messageSchema.virtual("userId").get(function () {
+  return {
+    _id: this.senderId,
+    name: this.senderName || "Unknown",
+  };
+});
+
+messageSchema.virtual("text").get(function () {
+  return this.message;
+});
 
 // Индексы для оптимизации запросов
 messageSchema.index({ senderId: 1, recipientId: 1 });

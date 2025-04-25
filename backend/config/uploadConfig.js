@@ -4,7 +4,7 @@ const fs = require("fs");
 
 // Константы для путей
 const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
-const UPLOADS_PATH = "/uploads";
+const UPLOADS_PATH = "/uploads/images";
 const IMAGES_DIR = path.join(UPLOADS_DIR, "images");
 
 // Создаем папку для изображений, если её нет

@@ -12,13 +12,94 @@ import {
   FormControl,
   InputLabel,
   Card,
-  CardContent,
   Grid,
   IconButton,
+  Paper,
+  Divider,
+  Alert,
+  Stack,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { Autocomplete, LoadScript } from "@react-google-maps/api";
+import { styled } from "@mui/material/styles";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import CategoryIcon from "@mui/icons-material/Category";
+import DescriptionIcon from "@mui/icons-material/Description";
+import EuroIcon from "@mui/icons-material/Euro";
+import { useDropzone } from "react-dropzone";
+
+const VisuallyHiddenInput = styled("input")({
+  clip: "rect(0 0 0 0)",
+  clipPath: "inset(50%)",
+  height: 1,
+  overflow: "hidden",
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  whiteSpace: "nowrap",
+  width: 1,
+});
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  marginBottom: theme.spacing(3),
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
+}));
+
+const StyledFormControl = styled(FormControl)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+}));
+
+const ImagePreviewCard = styled(Card)(({ theme }) => ({
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  borderRadius: theme.shape.borderRadius * 1.5,
+  overflow: "hidden",
+  transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+  "&:hover": {
+    transform: "translateY(-4px)",
+    boxShadow: theme.shadows[8],
+  },
+}));
+
+const ImageContainer = styled(Box)({
+  width: "100%",
+  height: 200, // фиксированная высота
+  position: "relative",
+  overflow: "hidden",
+});
+
+const StyledImage = styled("img")({
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+});
+
+const DropzoneArea = styled(Box)(({ theme, isDragActive }) => ({
+  border: `2px dashed ${
+    isDragActive ? theme.palette.primary.main : theme.palette.grey[300]
+  }`,
+  borderRadius: theme.shape.borderRadius * 2,
+  backgroundColor: isDragActive
+    ? theme.palette.primary.light + "10"
+    : theme.palette.grey[50],
+  cursor: "pointer",
+  transition: "all 0.2s ease-in-out",
+  minHeight: 300,
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: theme.spacing(3),
+  "&:hover": {
+    backgroundColor: theme.palette.primary.light + "10",
+    borderColor: theme.palette.primary.light,
+  },
+}));
 
 const CreateOffer = () => {
   const { t } = useTranslation();
@@ -89,34 +170,73 @@ const CreateOffer = () => {
     }
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    const newImages = [...formData.images, ...files];
-    setFormData({ ...formData, images: newImages });
+  const onDrop = React.useCallback((acceptedFiles) => {
+    // Создаем URL для превью для каждого файла
+    const newPreviews = acceptedFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
 
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews([...imagePreviews, ...previews]);
-  };
+    setFormData((prev) => ({
+      ...prev,
+      images: [...prev.images, ...acceptedFiles],
+    }));
+
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".jpeg", ".jpg", ".png", ".gif", ".webp"],
+    },
+    multiple: true,
+  });
 
   const handleImageDelete = (index) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    setFormData({ ...formData, images: newImages });
-    setImagePreviews(newPreviews);
+    // Очищаем URL превью перед удалением
+    URL.revokeObjectURL(imagePreviews[index].preview);
+
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleImageEdit = (index) => (e) => {
-    const newImage = e.target.files[0];
-    if (newImage) {
-      const newImages = [...formData.images];
-      newImages[index] = newImage;
-      setFormData({ ...formData, images: newImages });
+    const file = e.target.files[0];
+    if (file) {
+      // Очищаем старый URL превью
+      URL.revokeObjectURL(imagePreviews[index].preview);
 
-      const newPreviews = [...imagePreviews];
-      newPreviews[index] = URL.createObjectURL(newImage);
-      setImagePreviews(newPreviews);
+      const newPreview = URL.createObjectURL(file);
+      const newImages = [...formData.images];
+      newImages[index] = file;
+
+      setFormData((prev) => ({
+        ...prev,
+        images: newImages,
+      }));
+
+      setImagePreviews((prev) => {
+        const newPreviews = [...prev];
+        newPreviews[index] = { file, preview: newPreview };
+        return newPreviews;
+      });
     }
   };
+
+  // Очистка URL объектов при размонтировании
+  React.useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => {
+        if (preview.preview) {
+          URL.revokeObjectURL(preview.preview);
+        }
+      });
+    };
+  }, [imagePreviews]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,15 +249,32 @@ const CreateOffer = () => {
       }
 
       const data = new FormData();
-      data.append("serviceType", formData.serviceType);
+      data.append("title", t(formData.serviceType) || formData.serviceType);
+      data.append("category", formData.serviceType);
       data.append("location", formData.location);
       data.append("description", formData.description);
       data.append("price", formData.price);
+
+      // Если админ указал providerId, используем его
       if (userRole === "admin" && formData.providerId) {
         data.append("providerId", formData.providerId);
+        console.log(`Admin setting providerId: ${formData.providerId}`);
       }
+
+      // Добавляем все изображения с именем "images"
       formData.images.forEach((image) => {
         data.append("images", image);
+      });
+
+      console.log("Sending offer data:", {
+        title: t(formData.serviceType) || formData.serviceType,
+        category: formData.serviceType,
+        location: formData.location,
+        description: formData.description.substring(0, 30) + "...",
+        price: formData.price,
+        providerId:
+          userRole === "admin" ? formData.providerId : "using current user",
+        imagesCount: formData.images.length,
       });
 
       const res = await axios.post(`/services/offers`, data, {
@@ -145,6 +282,8 @@ const CreateOffer = () => {
           "Content-Type": "multipart/form-data",
         },
       });
+
+      console.log("Offer created successfully:", res.data);
       setMessage(t("offer_created"));
       setFormData({
         serviceType: "",
@@ -157,6 +296,10 @@ const CreateOffer = () => {
       setImagePreviews([]);
       setTimeout(() => navigate("/offers"), 2000);
     } catch (error) {
+      console.error(
+        "Error creating offer:",
+        error.response?.data || error.message
+      );
       if (error.response) {
         setMessage(
           "Error: " + (error.response.data.error || t("something_went_wrong"))
@@ -174,25 +317,44 @@ const CreateOffer = () => {
   };
 
   return (
-    <Box sx={{ paddingY: 4 }}>
-      <Typography variant="h5" gutterBottom>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 900, mx: "auto" }}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{
+          mb: 4,
+          fontWeight: "bold",
+          textAlign: "center",
+          color: (theme) => theme.palette.primary.main,
+        }}
+      >
         {t("create_offer")}
       </Typography>
+
       {message && (
-        <Typography
-          variant="body2"
-          color="textSecondary"
-          align="center"
-          sx={{ marginBottom: 2 }}
+        <Alert
+          severity={message.includes("Error") ? "error" : "success"}
+          sx={{ mb: 3 }}
         >
           {message}
-        </Typography>
+        </Alert>
       )}
-      <Card>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
+
+      <form onSubmit={handleSubmit}>
+        <Stack spacing={3}>
+          {/* Основная информация */}
+          <StyledPaper elevation={0}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <CategoryIcon color="primary" />
+              {t("basic_information")}
+            </Typography>
+
             {userRole === "admin" && (
-              <FormControl fullWidth sx={{ marginBottom: 2 }}>
+              <StyledFormControl fullWidth>
                 <InputLabel>{t("provider")}</InputLabel>
                 <Select
                   name="providerId"
@@ -207,9 +369,10 @@ const CreateOffer = () => {
                     </MenuItem>
                   ))}
                 </Select>
-              </FormControl>
+              </StyledFormControl>
             )}
-            <FormControl fullWidth sx={{ marginBottom: 2 }}>
+
+            <StyledFormControl fullWidth>
               <InputLabel>{t("service_type")}</InputLabel>
               <Select
                 name="serviceType"
@@ -232,7 +395,20 @@ const CreateOffer = () => {
                 <MenuItem value="shopping">{t("shopping")}</MenuItem>
                 <MenuItem value="travel">{t("travel")}</MenuItem>
               </Select>
-            </FormControl>
+            </StyledFormControl>
+          </StyledPaper>
+
+          {/* Местоположение */}
+          <StyledPaper elevation={0}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <LocationOnIcon color="primary" />
+              {t("location")}
+            </Typography>
+
             <LoadScript
               googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
               libraries={["places"]}
@@ -245,10 +421,22 @@ const CreateOffer = () => {
                   onChange={handleChange}
                   fullWidth
                   required
-                  sx={{ marginBottom: 2 }}
                 />
               </Autocomplete>
             </LoadScript>
+          </StyledPaper>
+
+          {/* Описание и цена */}
+          <StyledPaper elevation={0}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <DescriptionIcon color="primary" />
+              {t("details")}
+            </Typography>
+
             <TextField
               label={t("description")}
               name="description"
@@ -258,8 +446,9 @@ const CreateOffer = () => {
               multiline
               rows={4}
               required
-              sx={{ marginBottom: 2 }}
+              sx={{ mb: 3 }}
             />
+
             <TextField
               label={t("price")}
               name="price"
@@ -268,63 +457,206 @@ const CreateOffer = () => {
               onChange={handleChange}
               fullWidth
               required
-              sx={{ marginBottom: 2 }}
+              InputProps={{
+                startAdornment: <EuroIcon color="action" sx={{ mr: 1 }} />,
+              }}
             />
-            <Box sx={{ marginBottom: 2 }}>
-              <Button variant="contained" component="label">
-                {t("upload_images")}
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-              </Button>
-            </Box>
-            {imagePreviews.length > 0 && (
-              <Grid container spacing={2} sx={{ marginBottom: 2 }}>
-                {imagePreviews.map((preview, index) => (
-                  <Grid item xs={4} key={index}>
-                    <Box sx={{ position: "relative" }}>
-                      <img
-                        src={preview}
-                        alt={`Preview ${index}`}
-                        style={{
-                          width: "100%",
-                          height: "100px",
-                          objectFit: "cover",
+          </StyledPaper>
+
+          {/* Изображения */}
+          <StyledPaper elevation={0}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <CloudUploadIcon color="primary" />
+              {t("images")}
+            </Typography>
+
+            {imagePreviews.length === 0 ? (
+              <DropzoneArea {...getRootProps()} isDragActive={isDragActive}>
+                <input {...getInputProps()} />
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 2,
+                    width: "100%",
+                    textAlign: "center",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: "50%",
+                      backgroundColor: "primary.light",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 2,
+                    }}
+                  >
+                    <CloudUploadIcon
+                      sx={{ fontSize: 30, color: "primary.main" }}
+                    />
+                  </Box>
+                  {isDragActive ? (
+                    <Typography variant="h6" color="primary.main">
+                      {t("drop_files_here")}
+                    </Typography>
+                  ) : (
+                    <>
+                      <Typography
+                        variant="h6"
+                        color="text.primary"
+                        sx={{ fontWeight: 500 }}
+                      >
+                        {t("drag_drop_images")}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1 }}
+                      >
+                        {t("or")}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        size="large"
+                        sx={{
+                          borderStyle: "dashed",
+                          px: 4,
+                          "&:hover": {
+                            borderStyle: "dashed",
+                            backgroundColor: "primary.light",
+                            borderColor: "primary.main",
+                          },
                         }}
-                      />
-                      <IconButton
-                        sx={{ position: "absolute", top: 0, right: 0 }}
-                        onClick={() => handleImageDelete(index)}
                       >
-                        <DeleteIcon color="error" />
-                      </IconButton>
-                      <IconButton
-                        sx={{ position: "absolute", top: 0, left: 0 }}
-                        component="label"
-                      >
-                        <EditIcon />
-                        <input
-                          type="file"
-                          hidden
-                          accept="image/*"
-                          onChange={handleImageEdit(index)}
-                        />
-                      </IconButton>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
+                        {t("browse_files")}
+                      </Button>
+                    </>
+                  )}
+                </Box>
+              </DropzoneArea>
+            ) : (
+              <Box sx={{ width: "100%" }}>
+                <Box {...getRootProps()} sx={{ mb: 3 }}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    fullWidth
+                    startIcon={<CloudUploadIcon />}
+                    sx={{
+                      py: 2,
+                      borderStyle: "dashed",
+                      "&:hover": {
+                        borderStyle: "dashed",
+                        backgroundColor: "primary.light",
+                        borderColor: "primary.main",
+                      },
+                    }}
+                  >
+                    {t("add_more_images")}
+                  </Button>
+                  <input {...getInputProps()} />
+                </Box>
+
+                <Grid container spacing={2}>
+                  {imagePreviews.map((preview, index) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+                      <ImagePreviewCard>
+                        <ImageContainer>
+                          <StyledImage
+                            src={preview.preview}
+                            alt={`Preview ${index + 1}`}
+                          />
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              display: "flex",
+                              justifyContent: "flex-end",
+                              p: 1,
+                              background:
+                                "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)",
+                              zIndex: 1,
+                            }}
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleImageDelete(index);
+                              }}
+                              sx={{
+                                color: "white",
+                                backgroundColor: "rgba(0,0,0,0.2)",
+                                backdropFilter: "blur(4px)",
+                                mr: 1,
+                                "&:hover": {
+                                  backgroundColor: "rgba(255,255,255,0.2)",
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              component="label"
+                              size="small"
+                              onClick={(e) => e.stopPropagation()}
+                              sx={{
+                                color: "white",
+                                backgroundColor: "rgba(0,0,0,0.2)",
+                                backdropFilter: "blur(4px)",
+                                "&:hover": {
+                                  backgroundColor: "rgba(255,255,255,0.2)",
+                                },
+                              }}
+                            >
+                              <EditIcon fontSize="small" />
+                              <VisuallyHiddenInput
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageEdit(index)}
+                              />
+                            </IconButton>
+                          </Box>
+                        </ImageContainer>
+                      </ImagePreviewCard>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
             )}
-            <Button type="submit" variant="contained" color="primary">
-              {t("create_offer")}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </StyledPaper>
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            size="large"
+            fullWidth
+            disabled={
+              !formData.serviceType || !formData.location || !formData.price
+            }
+            sx={{
+              py: 1.5,
+              borderRadius: 2,
+              fontSize: "1.1rem",
+              textTransform: "none",
+            }}
+          >
+            {t("create_offer_button")}
+          </Button>
+        </Stack>
+      </form>
     </Box>
   );
 };

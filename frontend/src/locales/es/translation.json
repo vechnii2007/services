@@ -1,5 +1,5 @@
 {
-  "welcome": "¡Bienvenido a Service Portal!",
+  "welcome": "¡Bienvenido a UniServ!",
   "register": "Registrarse",
   "login": "Iniciar sesión",
   "logout": "Cerrar sesión",
@@ -81,7 +81,7 @@
   "cleaning": "Limpieza",
   "taro": "Tarot",
   "evacuation": "Evacuación",
-  "currency": "RUB",
+  "currency": "EUR",
   "image": "Imagen",
   "login_successful": "Inicio de sesión exitoso",
   "something_went_wrong": "Algo salió mal",
@@ -93,8 +93,8 @@
   "russian": "Ruso",
   "ukrainian": "Ucraniano",
   "spanish": "Español",
-  "welcome_to_service_portal": "Bienvenido al Portal de Servicios",
-  "welcome_message": "¡Bienvenido al Portal de Servicios! Aquí puedes encontrar u ofrecer servicios.",
+  "welcome_to_service_portal": "Bienvenido a UniServ",
+  "welcome_message": "¡Bienvenido a UniServ! Aquí puedes encontrar u ofrecer servicios.",
   "loading": "Cargando...",
   "admin_panel": "Panel de administración",
   "favorites": "Favoritos",
@@ -120,5 +120,264 @@
   "no_payments": "No hay pagos",
   "invalid_amount": "Cantidad inválida",
   "deposit_successful": "Depósito exitoso",
-  "payments_loaded": "Pagos cargados"
+  "payments_loaded": "Pagos cargados",
+  "users": "Usuarios",
+  "requests": "Solicitudes",
+  "search_by_name_or_email": "Buscar por nombre o email",
+  "admin": "Administrador",
+  "actions": "Acciones",
+  "block": "Bloquear",
+  "unblock": "Desbloquear",
+  "confirm_block_user": "¿Estás seguro de que deseas bloquear/desbloquear a este usuario?",
+  "confirm_delete_user": "¿Estás seguro de que deseas eliminar a este usuario?",
+  "accepted": "Aceptado",
+  "confirm_delete_request": "¿Estás seguro de que deseas eliminar esta solicitud?",
+  "active": "Activo",
+  "inactive": "Inactivo",
+  "add_category": "Añadir categoría",
+  "edit_category": "Editar categoría",
+  "confirm_delete_category": "¿Estás seguro de que deseas eliminar esta categoría?",
+  "label": "Etiqueta",
+  "min_price": "Precio mínimo",
+  "no_notifications": "No hay notificaciones",
+  "notification_settings": "Configuración de notificaciones",
+  "notification_types": "Tipos de notificaciones",
+  "notification_channels": "Canales de notificaciones",
+  "message_notifications": "Notificaciones de mensajes",
+  "offer_notifications": "Notificaciones de ofertas",
+  "status_notifications": "Notificaciones de cambio de estado",
+  "email_notifications": "Notificaciones por email",
+  "push_notifications": "Notificaciones push",
+  "enable_push": "Habilitar notificaciones push",
+  "disable_push": "Deshabilitar notificaciones push",
+  "preferences_updated": "Preferencias de notificaciones actualizadas",
+  "error_loading_preferences": "Error al cargar preferencias de notificaciones",
+  "error_updating_preferences": "Error al actualizar preferencias de notificaciones",
+  "push_subscribed": "Te has suscrito a notificaciones push",
+  "push_unsubscribed": "Te has desuscrito de notificaciones push",
+  "error_push_permission": "Error al solicitar permiso para notificaciones",
+  "error_push_unsubscribe": "Error al cancelar suscripción de notificaciones push",
+  "notifications_blocked": "Has bloqueado las notificaciones en el navegador. Permite las notificaciones en la configuración del navegador.",
+  "all_notifications": "Todas las notificaciones",
+  "unread": "No leídas",
+  "notifications": "Notificaciones",
+  "personal_info": "Información personal",
+  "service_offer": "Oferta de servicio",
+  "independent_offer": "Oferta independiente",
+  "request_id": "ID de solicitud",
+  "back": "Volver",
+  "contact_provider": "Contactar al proveedor",
+  "added_to_favorites": "Añadido a favoritos",
+  "removed_from_favorites": "Eliminado de favoritos",
+  "link_copied": "Enlace copiado al portapapeles",
+  "error_copying_link": "Error al copiar enlace",
+  "offers_and_services": "Ofertas y servicios",
+  "what_service_looking_for": "¿Qué servicio estás buscando?",
+  "popular_searches": "Búsquedas populares",
+  "recent_searches": "Búsquedas recientes",
+  "top_offers": "Ofertas destacadas",
+  "promoted_offers": "Ofertas promocionadas",
+  "advanced_filters": "Filtros avanzados",
+  "price_range": "Rango de precios",
+  "results_count": "Se encontraron {filtered} de {total} ofertas por la consulta \"{query}\"",
+  "no_results": "No se encontraron resultados para tu búsqueda",
+  "offer": {
+    "status": {
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "promote": "Promocionar",
+    "promoted": "Destacado"
+  },
+  "category_count": "{count} ofertas",
+
+  "landing": {
+    "hero": {
+      "title": {
+        "part1": "Encuentra",
+        "highlight": "los mejores servicios",
+        "part2": "para tus necesidades"
+      },
+      "subtitle": "Bienvenido a UniServ - tu asistente confiable para encontrar y solicitar servicios de proveedores verificados.",
+      "search_button": "Buscar servicios",
+      "find_button": "Buscar servicios",
+      "provide_button": "Ofrecer servicios",
+      "card": {
+        "title": "¿Necesitas ayuda para encontrar un servicio?",
+        "description": "Permítenos ayudarte a encontrar el mejor especialista para tus necesidades.",
+        "button": "Comenzar búsqueda",
+        "users_count": "usuarios ya han encontrado los servicios que necesitaban"
+      },
+      "stats": {
+        "providers": "+ Proveedores verificados",
+        "services": "+ Servicios diversos",
+        "clients": "+ Clientes satisfechos"
+      }
+    },
+    "features": {
+      "overline": "POR QUÉ ELEGIRNOS",
+      "title": "Tu camino hacia los mejores servicios",
+      "subtitle": "Service Portal ofrece herramientas convenientes para buscar y ordenar servicios en Europa que satisfagan tus necesidades.",
+      "search": {
+        "title": "Búsqueda fácil",
+        "description": "Encuentra los servicios que necesitas rápida y fácilmente con filtros avanzados y categorías."
+      },
+      "security": {
+        "title": "Seguridad",
+        "description": "Garantizamos la seguridad de todas las transacciones y la protección de datos personales."
+      },
+      "multilingual": {
+        "title": "Multilingüe",
+        "description": "Nuestra plataforma está disponible en varios idiomas para la comodidad de todos los usuarios."
+      },
+      "payments": {
+        "title": "Pagos cómodos",
+        "description": "Sistema de pago seguro y sencillo con diferentes métodos de pago."
+      },
+      "items": {
+        "verified": {
+          "title": "Proveedores verificados",
+          "description": "Todos los proveedores de servicios pasan por verificación para garantizar calidad y seguridad."
+        },
+        "selection": {
+          "title": "Gran selección",
+          "description": "Amplia gama de servicios para satisfacer necesidades diversas."
+        },
+        "multilingual": {
+          "title": "Multilingüe",
+          "description": "Utiliza la plataforma en el idioma que te resulte conveniente."
+        },
+        "support": {
+          "title": "Soporte 24/7",
+          "description": "Nuestro equipo de soporte está listo para ayudarte 24/7, resolviendo cualquier problema que surja."
+        }
+      },
+      "ratings": {
+        "title": "Sistema de calificaciones",
+        "description": "Reseñas y calificaciones te ayudan a elegir los mejores proveedores de servicios basados en la experiencia de otros usuarios."
+      }
+    },
+    "categories": {
+      "overline": "CATEGORÍAS MÁS POPULARES",
+      "title": "Encuentra servicios por categorías",
+      "subtitle": "Explora nuestras categorías más populares o utiliza la búsqueda para encontrar servicios específicos.",
+      "explore": "Explorar categoría",
+      "view_services": "Ver todos los servicios",
+      "view_all": "Ver todas las categorías",
+      "healthcare": "Medicina",
+      "education": "Educación",
+      "finance": "Finanzas",
+      "household": "Servicios domésticos",
+      "transport": "Transporte",
+      "legal": "Servicios legales",
+      "explore_category": "Explorar categoría",
+      "services_count": "{{count}} servicios",
+      "services_count_one": "{{count}} servicio",
+      "services_count_other": "{{count}} servicios",
+      "popularity": "Popularidad",
+      "top_services": "Servicios populares",
+      "service_examples": "Por ejemplo: {{examples}}"
+    },
+    "how_it_works": {
+      "overline": "CÓMO FUNCIONA",
+      "title": "Encuentra el servicio que necesitas en 3 pasos",
+      "subtitle": "Proceso rápido y conveniente para buscar y ordenar servicios a través de nuestra plataforma.",
+      "steps": {
+        "search": {
+          "title": "Encuentra un servicio",
+          "description": "Encuentra un servicio que satisfaga tus necesidades utilizando la búsqueda o categorías."
+        },
+        "connect": {
+          "title": "Conéctate con el proveedor",
+          "description": "Comunícate directamente con el proveedor a través del chat integrado para discutir detalles."
+        },
+        "book": {
+          "title": "Reserva el servicio",
+          "description": "Completa tu orden y recibe confirmación del proveedor."
+        },
+        "complete": {
+          "title": "Recibe el servicio",
+          "description": "Disfruta de un servicio de calidad de un proveedor verificado."
+        },
+        "pay": {
+          "title": "Paga por el servicio",
+          "description": "Paga de forma segura por el servicio recibido a través de nuestro sistema de pago protegido."
+        }
+      }
+    },
+    "testimonials": {
+      "overline": "TESTIMONIOS DE CLIENTES",
+      "title": "Lo que dicen de nosotros",
+      "subtitle": "Opiniones de nuestros clientes que ya han utilizado servicios a través de nuestro portal.",
+      "roles": {
+        "business_owner": "Dueño de negocio",
+        "freelancer": "Freelancer",
+        "developer": "Desarrollador",
+        "designer": "Diseñador",
+        "marketing": "Especialista en marketing"
+      },
+      "content": {
+        "1": "UniServ me ayudó a encontrar profesionales calificados para mi negocio. El servicio es fácil de usar y solo ofrece proveedores verificados.",
+        "2": "Como freelancer, encontré muchas oportunidades de trabajo aquí. La plataforma realmente conecta profesionales con clientes de la mejor manera.",
+        "3": "Servicio muy conveniente para buscar especialistas. Encontré rápidamente un desarrollador para mi proyecto y quedé satisfecho con el resultado.",
+        "4": "¡Gran experiencia de uso! Encontré un excelente diseñador para actualizar mi marca. Lo recomiendo a todos.",
+        "5": "Esta plataforma simplificó significativamente la búsqueda de servicios de marketing para mi startup. Rápido, confiable y profesional."
+      },
+      "names": {
+        "1": "Alejandro Pérez",
+        "2": "Elena Martínez",
+        "3": "Miguel González",
+        "4": "Tatiana Rodríguez",
+        "5": "Sergio Fernández"
+      }
+    },
+    "cta": {
+      "title": "¿Listo para comenzar?",
+      "subtitle": "Regístrate ahora y obtén acceso a miles de servicios y proveedores confiables.",
+      "sign_up_button": "Registrarse gratis",
+      "browse_button": "Explorar servicios"
+    },
+    "footer": {
+      "about": {
+        "title": "Sobre nosotros",
+        "description": "UniServ es una plataforma que conecta a las personas con proveedores de servicios en toda Europa."
+      },
+      "links": {
+        "title": "Enlaces",
+        "services": "Servicios",
+        "about_us": "Sobre nosotros",
+        "contact": "Contacto",
+        "privacy": "Política de privacidad",
+        "terms": "Términos de uso",
+        "providers": "Para proveedores",
+        "blog": "Blog",
+        "login": "Iniciar sesión",
+        "register": "Registrarse",
+        "faq": "FAQ"
+      },
+      "support": {
+        "title": "Soporte",
+        "help_center": "Centro de ayuda",
+        "contact_us": "Contáctanos",
+        "privacy_policy": "Política de privacidad",
+        "terms": "Términos de uso"
+      },
+      "language": {
+        "title": "Idioma",
+        "description": "Elige tu idioma preferido"
+      },
+      "newsletter": {
+        "title": "Suscríbete al boletín",
+        "description": "Recibe noticias actuales y ofertas especiales.",
+        "placeholder": "Tu correo electrónico",
+        "button": "Suscribirse"
+      },
+      "rights": "Todos los derechos reservados.",
+      "privacy": "Política de privacidad",
+      "terms": "Términos de uso",
+      "cookies": "Política de cookies",
+      "copyright": "© 2023 UniServ. Todos los derechos reservados.",
+      "social": "Síguenos"
+    }
+  }
 }
