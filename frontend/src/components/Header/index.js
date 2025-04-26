@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   AppBar,
   Toolbar,
@@ -37,6 +37,9 @@ import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
 import axios from "../../utils/axiosConfig";
 import logo from "../../assets/images/logo.svg";
+import NotificationService from "../../services/NotificationService";
+import ChatService from "../../services/ChatService";
+import { useSocket } from "../../hooks/useSocket";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const getIcon = () => {
@@ -127,6 +130,7 @@ const Header = ({ onDrawerToggle }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { socket, isConnected } = useSocket();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [langAnchorEl, setLangAnchorEl] = useState(null);
@@ -134,6 +138,9 @@ const Header = ({ onDrawerToggle }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [serviceWorkerRegistration, setServiceWorkerRegistration] =
+    useState(null);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleLangMenu = (event) => setLangAnchorEl(event.currentTarget);
@@ -149,13 +156,176 @@ const Header = ({ onDrawerToggle }) => {
   const handleLangClose = () => setLangAnchorEl(null);
   const handleNotificationsClose = () => setNotificationsAnchor(null);
 
+  // Функция для получения количества непрочитанных сообщений
+  const fetchUnreadMessagesCount = useCallback(async () => {
+    try {
+      // Используем новый метод из ChatService
+      const count = await ChatService.getUnreadMessagesCount();
+      setUnreadMessagesCount(count);
+    } catch (error) {
+      console.error("[Header] Error fetching unread messages count:", error);
+    }
+  }, []);
+
+  // Загружаем количество непрочитанных сообщений при монтировании
+  useEffect(() => {
+    if (user) {
+      fetchUnreadMessagesCount();
+    }
+  }, [user, fetchUnreadMessagesCount]);
+
+  // Регистрация сервис-воркера при монтировании компонента
+  useEffect(() => {
+    const registerSW = async () => {
+      try {
+        const registration = await NotificationService.registerServiceWorker();
+        setServiceWorkerRegistration(registration);
+
+        // Если сервис-воркер зарегистрирован, передаем ему токен для авторизации
+        if (registration && registration.active) {
+          const token = localStorage.getItem("token");
+          registration.active.postMessage({
+            type: "SET_TOKEN",
+            token,
+          });
+        }
+      } catch (error) {
+        console.error("[Header] Error registering service worker:", error);
+      }
+    };
+
+    registerSW();
+  }, []);
+
+  // Настройка WebSocket для получения уведомлений в реальном времени
+  useEffect(() => {
+    if (!socket || !isConnected || !user) return;
+
+    console.log("[Header] Setting up real-time notifications");
+
+    // Функция обработки полученного уведомления
+    const handleNewNotification = (notification) => {
+      console.log("[Header] Received real-time notification:", notification);
+
+      // Проверяем, нет ли такого уведомления уже в списке
+      setNotifications((prev) => {
+        const exists = prev.some((n) => n._id === notification._id);
+        if (exists) {
+          return prev;
+        }
+        // Добавляем новое уведомление в начало списка
+        return [notification, ...prev];
+      });
+    };
+
+    // Функция обработки нового сообщения
+    const handleNewMessage = (messageData) => {
+      console.log("[Header] Received private message:", messageData);
+
+      // Если сообщение от другого пользователя (не от текущего)
+      if (messageData.senderId && user && messageData.senderId !== user._id) {
+        // Обновляем полный счетчик непрочитанных сообщений
+        fetchUnreadMessagesCount();
+
+        // Показываем уведомление, если страница не активна
+        if (
+          document.visibilityState !== "visible" &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          const sender = messageData.senderName || "Пользователь";
+          const message =
+            messageData.message || messageData.text || "Новое сообщение";
+
+          const notification = new Notification(`Сообщение от ${sender}`, {
+            body: message,
+            icon: "/favicon.ico",
+          });
+
+          notification.onclick = () => {
+            window.focus();
+
+            // Проверяем наличие ID запроса для перехода к чату
+            if (messageData.requestId) {
+              console.log(
+                `[Header] Navigating to chat with requestId: ${messageData.requestId}`
+              );
+              navigate(`/chat/${messageData.requestId}`);
+            } else {
+              console.log(
+                `[Header] No requestId found in message, navigating to chat list`
+              );
+              navigate(`/chat-list`);
+            }
+          };
+        }
+      }
+    };
+
+    // Подписываемся на уведомления через WebSocket
+    const notificationsCleanup =
+      NotificationService.setupWebSocketNotifications(
+        socket,
+        handleNewNotification
+      );
+
+    // Подписываемся на сообщения чата
+    socket.on("private_message", handleNewMessage);
+
+    return () => {
+      // Дополнительная проверка, что notificationsCleanup - это функция
+      if (notificationsCleanup && typeof notificationsCleanup === "function") {
+        try {
+          console.log("[Header] Running notification cleanup function");
+          notificationsCleanup();
+        } catch (error) {
+          console.error("[Header] Error cleaning up notifications:", error);
+        }
+      } else {
+        console.warn(
+          "[Header] No valid cleanup function available for notifications"
+        );
+      }
+
+      // Проверка доступности сокета перед отписыванием от событий
+      if (socket) {
+        try {
+          socket.off("private_message", handleNewMessage);
+          console.log(
+            "[Header] Successfully unsubscribed from private_message events"
+          );
+        } catch (error) {
+          console.error(
+            "[Header] Error unsubscribing from private_message:",
+            error
+          );
+        }
+      } else {
+        console.warn("[Header] Socket not available during cleanup");
+      }
+    };
+  }, [socket, isConnected, user, fetchUnreadMessagesCount, navigate]);
+
+  // Периодическое обновление счетчика непрочитанных сообщений
+  useEffect(() => {
+    if (user) {
+      // Первоначальная загрузка
+      fetchUnreadMessagesCount();
+
+      // Устанавливаем интервал обновления каждые 30 секунд
+      const interval = setInterval(() => {
+        fetchUnreadMessagesCount();
+      }, 30000);
+
+      return () => clearInterval(interval);
+    }
+  }, [user, fetchUnreadMessagesCount]);
+
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/services/notifications`, {
-        params: { limit: 5 },
-      });
-      setNotifications(response.data.notifications || []);
+      const response = await NotificationService.getNotifications({ limit: 5 });
+      setNotifications(response.notifications || []);
     } catch (err) {
       console.error("Error loading notifications:", err);
       setError(err.message);
@@ -166,7 +336,7 @@ const Header = ({ onDrawerToggle }) => {
 
   const handleMarkAsRead = async (notificationId) => {
     try {
-      await axios.put(`/services/notifications/${notificationId}/read`);
+      await NotificationService.markAsRead(notificationId);
       setNotifications((prev) =>
         prev.map((notif) =>
           notif._id === notificationId ? { ...notif, read: true } : notif
@@ -179,12 +349,26 @@ const Header = ({ onDrawerToggle }) => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`/services/notifications/${id}`);
+      await NotificationService.deleteNotification(id);
       setNotifications((prev) =>
         prev.filter((notification) => notification._id !== id)
       );
     } catch (error) {
       console.error("Error deleting notification:", error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      setLoading(true);
+      await NotificationService.markAllAsRead();
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, read: true }))
+      );
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -238,6 +422,22 @@ const Header = ({ onDrawerToggle }) => {
         <Box sx={{ flexGrow: 1 }} />
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {/* Чаты */}
+          {user && (
+            <IconButton
+              color="inherit"
+              onClick={() => {
+                console.log("[Header] Navigating to chat list");
+                navigate("/chat-list");
+              }}
+              aria-label={t("chat")}
+            >
+              <Badge badgeContent={unreadMessagesCount} color="error">
+                <MessageIcon />
+              </Badge>
+            </IconButton>
+          )}
+
           {/* Язык */}
           <IconButton color="inherit" onClick={handleLangMenu}>
             <LanguageIcon />
@@ -305,15 +505,26 @@ const Header = ({ onDrawerToggle }) => {
               }}
             >
               <Typography variant="h6">{t("notifications")}</Typography>
-              <Button
-                size="small"
-                onClick={() => {
-                  navigate("/notifications");
-                  handleNotificationsClose();
-                }}
-              >
-                {t("view_all")}
-              </Button>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                {unreadCount > 0 && (
+                  <Button
+                    size="small"
+                    onClick={handleMarkAllAsRead}
+                    disabled={loading}
+                  >
+                    {t("mark_all_read")}
+                  </Button>
+                )}
+                <Button
+                  size="small"
+                  onClick={() => {
+                    navigate("/notifications");
+                    handleNotificationsClose();
+                  }}
+                >
+                  {t("view_all")}
+                </Button>
+              </Box>
             </Box>
             <Divider />
             {loading ? (

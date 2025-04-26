@@ -460,5 +460,54 @@
   "call_provider": "Позвонить",
   "contact_provider": "Связаться",
   "no_messages_yet": "Сообщений пока нет",
-  "reconnecting_to_chat": "Переподключение к чату..."
+  "reconnecting_to_chat": "Переподключение к чату...",
+
+  "chat_title": "Чат с {{name}}",
+  "no_connection": "Соединение отсутствует. Переподключение...",
+  "no_messages": "Нет сообщений. Начните общение прямо сейчас!",
+  "enter_message": "Введите сообщение...",
+  "sending": "отправляется...",
+  "send_error": "ошибка отправки",
+  "message_read": "прочитано",
+  "typing": "печатает...",
+  "loading_messages": "Загрузка сообщений...",
+  "error_loading_messages": "Не удалось загрузить сообщения",
+  "connection_error": "Ошибка соединения",
+
+  "view_all": "Показать все",
+  "mark_all_read": "Отметить все прочитанными",
+  "notification_mark_read_success": "Уведомление отмечено как прочитанное",
+  "notification_mark_read_error": "Ошибка при отметке уведомления",
+  "notification_delete_success": "Уведомление удалено",
+  "notification_delete_error": "Ошибка при удалении уведомления",
+
+  "new_message_from": "Новое сообщение от {{name}}",
+  "new_offer_for_request": "Новое предложение по запросу {{requestId}}",
+  "request_status_changed": "Статус запроса {{requestId}} изменен на {{status}}",
+  "offer_status_changed": "Статус предложения {{offerId}} изменен на {{status}}",
+
+  "offline_mode": "Режим офлайн, данные загружены из кеша",
+  "sync_pending": "Есть несинхронизированные данные",
+  "sync_complete": "Синхронизация завершена",
+  "sync_failed": "Ошибка синхронизации",
+
+  "clear_cache": "Очистить кеш",
+  "cache_cleared": "Кеш очищен",
+  "cache_clear_error": "Ошибка при очистке кеша",
+
+  "socket_disconnected": "Соединение потеряно",
+  "socket_reconnecting": "Попытка переподключения...",
+  "socket_reconnected": "Соединение восстановлено",
+  "socket_connection_failed": "Не удалось подключиться к серверу",
+
+  "offer_title": "Название предложения",
+  "enter_fixed_price": "Введите фиксированную цену",
+  "fixed_price": "Фиксированная цена",
+  "price_range": "Диапазон цен",
+  "price_options": "Опции цены",
+  "price_from": "Цена от",
+  "price_to": "Цена до",
+  "min_price": "Минимальная цена",
+  "max_price": "Максимальная цена",
+  "or_price_range": "или укажите диапазон цен"
 }

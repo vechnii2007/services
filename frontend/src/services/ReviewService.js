@@ -1,0 +1,94 @@
+import BaseService from "./BaseService";
+
+class ReviewService extends BaseService {
+  constructor() {
+    super("api/reviews");
+  }
+
+  /**
+   * Получение отзывов для предложения
+   * @param {string} offerId - ID предложения
+   */
+  async getReviewsByOffer(offerId) {
+    try {
+      console.log(
+        `[ReviewService] Getting reviews for offer: ${offerId}, path: ${this.basePath}/offer/${offerId}`
+      );
+      const result = await this.get(`/offer/${offerId}`);
+      console.log(`[ReviewService] Got reviews:`, result);
+      return result;
+    } catch (error) {
+      console.error("[ReviewService] Error getting reviews by offer:", error);
+      console.error(
+        "[ReviewService] Error details:",
+        error.response?.data || error.message
+      );
+      console.error("[ReviewService] Error status:", error.response?.status);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение отзывов для поставщика
+   * @param {string} providerId - ID поставщика
+   */
+  async getReviewsByProvider(providerId) {
+    try {
+      return await this.get(`/provider/${providerId}`);
+    } catch (error) {
+      console.error(
+        "[ReviewService] Error getting reviews by provider:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Создание нового отзыва
+   * @param {object} reviewData - Данные отзыва
+   * @param {string} reviewData.offerId - ID предложения
+   * @param {string} reviewData.offerType - Тип предложения (Offer, ServiceOffer)
+   * @param {number} reviewData.rating - Рейтинг (1-5)
+   * @param {string} reviewData.comment - Комментарий
+   */
+  async createReview(reviewData) {
+    try {
+      return await this.post("/", reviewData);
+    } catch (error) {
+      console.error("[ReviewService] Error creating review:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Обновление отзыва
+   * @param {string} reviewId - ID отзыва
+   * @param {object} reviewData - Данные для обновления
+   * @param {number} [reviewData.rating] - Рейтинг (1-5)
+   * @param {string} [reviewData.comment] - Комментарий
+   */
+  async updateReview(reviewId, reviewData) {
+    try {
+      return await this.put(`/${reviewId}`, reviewData);
+    } catch (error) {
+      console.error("[ReviewService] Error updating review:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Удаление отзыва
+   * @param {string} reviewId - ID отзыва
+   */
+  async deleteReview(reviewId) {
+    try {
+      return await this.delete(`/${reviewId}`);
+    } catch (error) {
+      console.error("[ReviewService] Error deleting review:", error);
+      throw error;
+    }
+  }
+}
+
+export default new ReviewService();

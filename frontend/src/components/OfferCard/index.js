@@ -134,10 +134,12 @@ const OfferCard = memo(
 
     // Безопасный доступ к свойствам
     const safeOfferId = offer?._id || "";
-    const safeOfferType = offer?.type || "offer";
     const safeOfferTitle = offer?.title || "";
     const safeOfferDescription = offer?.description || "";
     const safeOfferPrice = offer?.price || 0;
+    const safeOfferPriceFrom = offer?.priceFrom || null;
+    const safeOfferPriceTo = offer?.priceTo || null;
+    const safeOfferIsPriceRange = offer?.isPriceRange || false;
     const safeOfferImage = offer?.image || "";
     const safeOfferLocation = offer?.location || "";
     const safeOfferCreatedAt = offer?.createdAt || "";
@@ -321,11 +323,18 @@ const OfferCard = memo(
               title={safeOfferTitle}
               description={safeOfferDescription}
               price={safeOfferPrice}
+              priceFrom={safeOfferPriceFrom}
+              priceTo={safeOfferPriceTo}
+              isPriceRange={safeOfferIsPriceRange}
               location={safeOfferLocation}
               createdAt={safeOfferCreatedAt}
             />
 
-            <ProviderInfo provider={safeProvider} />
+            <ProviderInfo
+              provider={safeProvider}
+              rating={Number(offer.rating) || 0}
+              reviewCount={Number(offer.reviewCount) || 0}
+            />
 
             <Box
               sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}

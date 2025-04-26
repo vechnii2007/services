@@ -64,128 +64,147 @@ const RatingWrapper = styled(Box)(({ theme }) => ({
   },
 }));
 
-const ProviderInfo = memo(({ provider, variant = "full" }) => {
-  if (!provider) return null;
+const ProviderInfo = memo(
+  ({ provider, rating, reviewCount, variant = "full" }) => {
+    if (!provider) return null;
 
-  const {
-    name,
-    avatar,
-    rating = 0,
-    reviewCount = 0,
-    isOnline,
-    badges = [],
-    isVerified,
-  } = provider;
+    const {
+      name,
+      avatar,
+      isOnline,
+      badges = [],
+      isVerified,
+      providerInfo = {},
+    } = provider;
 
-  const ratingColor =
-    rating >= 4.5
-      ? "success.main"
-      : rating >= 3.5
-      ? "warning.main"
-      : "error.main";
+    const displayRating =
+      typeof rating === "number"
+        ? rating
+        : providerInfo?.rating !== undefined
+        ? providerInfo.rating
+        : provider.rating !== undefined
+        ? provider.rating
+        : 0;
 
-  return (
-    <Box
-      component={motion.div}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-      }}
-    >
-      <OnlineBadge
-        overlap="circular"
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        variant="dot"
-        invisible={!isOnline}
+    const displayReviewCount =
+      typeof reviewCount === "number"
+        ? reviewCount
+        : providerInfo?.reviewCount !== undefined
+        ? providerInfo.reviewCount
+        : provider.reviewCount !== undefined
+        ? provider.reviewCount
+        : 0;
+
+    const ratingColor =
+      displayRating >= 4.5
+        ? "success.main"
+        : displayRating >= 3.5
+        ? "warning.main"
+        : "error.main";
+
+    return (
+      <Box
+        component={motion.div}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+        }}
       >
-        <StyledAvatar
-          src={avatar}
-          alt={name}
-          component={motion.div}
-          whileHover={{ scale: 1.1 }}
-        />
-      </OnlineBadge>
+        <OnlineBadge
+          overlap="circular"
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          variant="dot"
+          invisible={!isOnline}
+        >
+          <StyledAvatar
+            src={avatar}
+            alt={name}
+            component={motion.div}
+            whileHover={{ scale: 1.1 }}
+          />
+        </OnlineBadge>
 
-      <Stack spacing={0.5}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography
-            variant={variant === "full" ? "subtitle1" : "subtitle2"}
-            component="span"
-            sx={{
-              fontWeight: "medium",
-              color: "text.primary",
-            }}
-          >
-            {name}
-          </Typography>
-          {isVerified && (
-            <Tooltip title="Проверенный поставщик">
-              <VerifiedIcon color="primary" fontSize="small" />
-            </Tooltip>
-          )}
-        </Box>
-
-        {variant === "full" ? (
-          <>
-            <RatingWrapper>
-              <Tooltip title={`Рейтинг: ${rating} из 5`}>
-                <Rating
-                  value={rating}
-                  readOnly
-                  size="small"
-                  precision={0.5}
-                  sx={{ mr: 1 }}
-                />
+        <Stack spacing={0.5}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography
+              variant={variant === "full" ? "subtitle1" : "subtitle2"}
+              component="span"
+              sx={{
+                fontWeight: "medium",
+                color: "text.primary",
+              }}
+            >
+              {name}
+            </Typography>
+            {isVerified && (
+              <Tooltip title="Проверенный поставщик">
+                <VerifiedIcon color="primary" fontSize="small" />
               </Tooltip>
-              <Typography
-                variant="caption"
-                sx={{ color: ratingColor }}
-                component={motion.span}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                {rating !== undefined && rating !== null
-                  ? rating.toFixed(1)
-                  : "0.0"}{" "}
-                ({reviewCount} отзывов)
-              </Typography>
-            </RatingWrapper>
-            <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
-              {badges.map((badge, index) => (
-                <Chip
-                  key={index}
-                  label={badge}
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 20 }}
-                />
-              ))}
-            </Stack>
-          </>
-        ) : (
-          <Typography
-            variant="caption"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              color: ratingColor,
-            }}
-          >
-            <StarIcon fontSize="inherit" />
-            {rating !== undefined && rating !== null
-              ? rating.toFixed(1)
-              : "0.0"}
-          </Typography>
-        )}
-      </Stack>
-    </Box>
-  );
-});
+            )}
+          </Box>
+
+          {variant === "full" ? (
+            <>
+              <RatingWrapper>
+                <Tooltip title={`Рейтинг: ${displayRating} из 5`}>
+                  <Rating
+                    value={displayRating}
+                    readOnly
+                    size="small"
+                    precision={0.5}
+                    sx={{ mr: 1 }}
+                  />
+                </Tooltip>
+                <Typography
+                  variant="caption"
+                  sx={{ color: ratingColor }}
+                  component={motion.span}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {displayRating !== undefined && displayRating !== null
+                    ? displayRating.toFixed(1)
+                    : "0.0"}{" "}
+                  ({displayReviewCount} отзывов)
+                </Typography>
+              </RatingWrapper>
+              <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
+                {badges.map((badge, index) => (
+                  <Chip
+                    key={index}
+                    label={badge}
+                    size="small"
+                    variant="outlined"
+                    sx={{ height: 20 }}
+                  />
+                ))}
+              </Stack>
+            </>
+          ) : (
+            <Typography
+              variant="caption"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                color: ratingColor,
+              }}
+            >
+              <StarIcon fontSize="inherit" />
+              {displayRating !== undefined && displayRating !== null
+                ? displayRating.toFixed(1)
+                : "0.0"}
+            </Typography>
+          )}
+        </Stack>
+      </Box>
+    );
+  }
+);
 
 ProviderInfo.propTypes = {
   provider: PropTypes.shape({

@@ -12,13 +12,17 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    message: {
+      type: String,
+      required: true,
+    },
     requestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ServiceRequest",
     },
-    message: {
-      type: String,
-      required: true,
+    offerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Offer",
     },
     read: {
       type: Boolean,
@@ -50,7 +54,8 @@ messageSchema.virtual("text").get(function () {
 
 // Индексы для оптимизации запросов
 messageSchema.index({ senderId: 1, recipientId: 1 });
+messageSchema.index({ requestId: 1 });
+messageSchema.index({ offerId: 1 });
 messageSchema.index({ timestamp: -1 });
-messageSchema.index({ requestId: 1 }); // Индекс для поиска по запросу
 
 module.exports = mongoose.model("Message", messageSchema);

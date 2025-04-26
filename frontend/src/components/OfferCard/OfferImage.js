@@ -66,13 +66,18 @@ const LoadingPlaceholder = styled(Box)(({ theme }) => ({
  * @param {string} props.title - Заголовок предложения
  */
 const OfferImage = ({ image, images, title }) => {
-  // Получаем первое изображение из массива или используем устаревшее поле image
-  const imageToShow =
-    Array.isArray(images) && images.length > 0 ? images[0] : image;
+  // Получаем первое изображение из массива (строк или объектов) или используем устаревшее поле image
+  let imageToShow = image;
+  if (Array.isArray(images) && images.length > 0) {
+    if (typeof images[0] === "string") {
+      imageToShow = images[0];
+    } else if (typeof images[0] === "object" && images[0] !== null) {
+      imageToShow = images[0].url || images[0].path || images[0].image || image;
+    }
+  }
 
   // Форматируем путь к изображению
   const formattedImagePath = formatImagePath(imageToShow);
-
   return (
     <ImageWrapper
       component={motion.div}

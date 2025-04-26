@@ -5,7 +5,7 @@ export const searchService = {
   // Получить популярные поисковые запросы
   async getPopularSearches(limit = 5, timeframe = "7d") {
     try {
-      const response = await api.get("/api/search/popular", {
+      const response = await api.get("/search/popular", {
         params: { limit, timeframe },
       });
       return response.data;
@@ -18,7 +18,7 @@ export const searchService = {
   // Сохранить поисковый запрос
   async saveSearchQuery(query, category = null) {
     try {
-      const response = await api.post("/api/search", { query, category });
+      const response = await api.post("/search", { query, category });
       return response.data;
     } catch (error) {
       console.error("Error saving search query:", error);
@@ -37,7 +37,7 @@ export const searchService = {
       );
 
       // Используем новый API эндпоинт для поиска
-      const response = await api.get("/api/search/offers", {
+      const response = await api.get("/search/offers", {
         params: {
           query,
           ...filters,
@@ -57,7 +57,7 @@ export const searchService = {
   // Получить все локации
   async getLocations() {
     try {
-      const response = await api.get("/api/services/locations");
+      const response = await api.get("/services/locations");
       return response.data;
     } catch (error) {
       console.error("Error fetching locations:", error);

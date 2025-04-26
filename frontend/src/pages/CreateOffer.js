@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../utils/axiosConfig";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ import {
   Divider,
   Alert,
   Stack,
+  InputAdornment,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -29,6 +30,7 @@ import CategoryIcon from "@mui/icons-material/Category";
 import DescriptionIcon from "@mui/icons-material/Description";
 import EuroIcon from "@mui/icons-material/Euro";
 import { useDropzone } from "react-dropzone";
+import OfferService from "../services/OfferService";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -90,7 +92,6 @@ const DropzoneArea = styled(Box)(({ theme, isDragActive }) => ({
   cursor: "pointer",
   transition: "all 0.2s ease-in-out",
   minHeight: 300,
-  width: "100%",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -105,18 +106,24 @@ const CreateOffer = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    title: "",
     serviceType: "",
     location: "",
     description: "",
     price: "",
+    priceFrom: "",
+    priceTo: "",
     images: [],
-    providerId: "", // Добавляем поле для выбора провайдера
+    providerId: "",
   });
   const [imagePreviews, setImagePreviews] = useState([]);
   const [message, setMessage] = useState("");
   const [autocomplete, setAutocomplete] = useState(null);
   const [providers, setProviders] = useState([]);
   const [userRole, setUserRole] = useState("");
+  const [errors, setErrors] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserRoleAndProviders = async () => {
@@ -149,6 +156,29 @@ const CreateOffer = () => {
     };
     fetchUserRoleAndProviders();
   }, [navigate, t]);
+
+  // Загрузка категорий с сервера
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const categoriesData = await OfferService.fetchCategories();
+        if (Array.isArray(categoriesData)) {
+          setCategories(categoriesData);
+        } else {
+          console.error("Unexpected categories data format:", categoriesData);
+          setCategories([]);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setCategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -249,11 +279,22 @@ const CreateOffer = () => {
       }
 
       const data = new FormData();
-      data.append("title", t(formData.serviceType) || formData.serviceType);
+      data.append("title", formData.title);
       data.append("category", formData.serviceType);
       data.append("location", formData.location);
       data.append("description", formData.description);
-      data.append("price", formData.price);
+
+      // Проверяем тип цены (диапазон или фиксированная)
+      if (formData.priceFrom && formData.priceTo) {
+        // Отправляем диапазон цен
+        data.append("priceFrom", formData.priceFrom);
+        data.append("priceTo", formData.priceTo);
+        data.append("isPriceRange", "true");
+      } else {
+        // Отправляем фиксированную цену
+        data.append("price", formData.price);
+        data.append("isPriceRange", "false");
+      }
 
       // Если админ указал providerId, используем его
       if (userRole === "admin" && formData.providerId) {
@@ -267,11 +308,11 @@ const CreateOffer = () => {
       });
 
       console.log("Sending offer data:", {
-        title: t(formData.serviceType) || formData.serviceType,
+        title: formData.title,
         category: formData.serviceType,
         location: formData.location,
         description: formData.description.substring(0, 30) + "...",
-        price: formData.price,
+        price: formData.price || `${formData.priceFrom} - ${formData.priceTo}`,
         providerId:
           userRole === "admin" ? formData.providerId : "using current user",
         imagesCount: formData.images.length,
@@ -286,10 +327,13 @@ const CreateOffer = () => {
       console.log("Offer created successfully:", res.data);
       setMessage(t("offer_created"));
       setFormData({
+        title: "",
         serviceType: "",
         location: "",
         description: "",
         price: "",
+        priceFrom: "",
+        priceTo: "",
         images: [],
         providerId: "",
       });
@@ -316,6 +360,373 @@ const CreateOffer = () => {
     }
   };
 
+  const renderForm = () => (
+    <form onSubmit={handleSubmit}>
+      <TextField
+        label={t("offer_title")}
+        value={formData.title}
+        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+        fullWidth
+        required
+        margin="normal"
+        error={!!errors.title}
+        helperText={errors.title}
+      />
+
+      <FormControl
+        fullWidth
+        margin="normal"
+        required
+        error={!!errors.serviceType}
+      >
+        <InputLabel>{t("service_type")}</InputLabel>
+        <Select
+          name="serviceType"
+          value={formData.serviceType}
+          onChange={handleChange}
+          label={t("service_type")}
+          required
+          disabled={loading}
+        >
+          {loading ? (
+            <MenuItem disabled>{t("loading")}</MenuItem>
+          ) : categories.length > 0 ? (
+            categories.map((category) => (
+              <MenuItem
+                key={category._id || category.name}
+                value={category.name}
+              >
+                {category.label || t(category.name)}
+              </MenuItem>
+            ))
+          ) : (
+            <>
+              <MenuItem value="translation">{t("translation")}</MenuItem>
+              <MenuItem value="legal">{t("legal")}</MenuItem>
+              <MenuItem value="real_estate">{t("real_estate")}</MenuItem>
+              <MenuItem value="healthcare">{t("healthcare")}</MenuItem>
+              <MenuItem value="education">{t("education")}</MenuItem>
+              <MenuItem value="cultural_events">
+                {t("cultural_events")}
+              </MenuItem>
+              <MenuItem value="finance">{t("finance")}</MenuItem>
+              <MenuItem value="transport">{t("transport")}</MenuItem>
+              <MenuItem value="household">{t("household")}</MenuItem>
+              <MenuItem value="shopping">{t("shopping")}</MenuItem>
+              <MenuItem value="travel">{t("travel")}</MenuItem>
+            </>
+          )}
+        </Select>
+      </FormControl>
+
+      <StyledPaper elevation={0}>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+        >
+          <LocationOnIcon color="primary" />
+          {t("location")}
+        </Typography>
+
+        <LoadScript
+          googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
+          libraries={["places"]}
+        >
+          <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+            <TextField
+              label={t("location")}
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              fullWidth
+              required
+            />
+          </Autocomplete>
+        </LoadScript>
+      </StyledPaper>
+
+      <StyledPaper elevation={0}>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+        >
+          <DescriptionIcon color="primary" />
+          {t("details")}
+        </Typography>
+
+        <TextField
+          label={t("description")}
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          fullWidth
+          multiline
+          rows={4}
+          required
+          sx={{ mb: 3 }}
+        />
+
+        <Typography variant="subtitle1" gutterBottom>
+          {t("price_options")}
+        </Typography>
+
+        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+          <TextField
+            label={t("fixed_price")}
+            type="number"
+            value={formData.price}
+            onChange={(e) => {
+              setFormData({
+                ...formData,
+                price: e.target.value,
+                priceFrom: "",
+                priceTo: "",
+              });
+            }}
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">€</InputAdornment>
+              ),
+            }}
+            error={!!errors.price}
+            helperText={errors.price}
+            placeholder={t("enter_fixed_price")}
+          />
+        </Box>
+
+        <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+          {t("or_price_range")}
+        </Typography>
+
+        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+          <TextField
+            label={t("price_from")}
+            type="number"
+            value={formData.priceFrom}
+            onChange={(e) => {
+              setFormData({
+                ...formData,
+                priceFrom: e.target.value,
+                price: "",
+              });
+            }}
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">€</InputAdornment>
+              ),
+            }}
+            error={!!errors.priceFrom}
+            helperText={errors.priceFrom}
+            placeholder={t("min_price")}
+          />
+          <TextField
+            label={t("price_to")}
+            type="number"
+            value={formData.priceTo}
+            onChange={(e) => {
+              setFormData({
+                ...formData,
+                priceTo: e.target.value,
+                price: "",
+              });
+            }}
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">€</InputAdornment>
+              ),
+            }}
+            error={!!errors.priceTo}
+            helperText={errors.priceTo}
+            placeholder={t("max_price")}
+          />
+        </Box>
+      </StyledPaper>
+
+      <StyledPaper elevation={0}>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+        >
+          <CloudUploadIcon color="primary" />
+          {t("images")}
+        </Typography>
+
+        {imagePreviews.length === 0 ? (
+          <DropzoneArea
+            {...getRootProps()}
+            isDragActive={isDragActive}
+            sx={{ minHeight: 150 }}
+          >
+            <input {...getInputProps()} />
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1,
+                width: "100%",
+                textAlign: "center",
+                py: 2,
+              }}
+            >
+              <CloudUploadIcon sx={{ fontSize: 24, color: "primary.main" }} />
+              {isDragActive ? (
+                <Typography variant="body1" color="primary.main">
+                  {t("drop_files_here")}
+                </Typography>
+              ) : (
+                <>
+                  <Typography variant="body1" color="text.primary">
+                    {t("drag_drop_images")}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    sx={{
+                      borderStyle: "dashed",
+                      px: 2,
+                      mt: 1,
+                      "&:hover": {
+                        borderStyle: "dashed",
+                        backgroundColor: "primary.light",
+                        borderColor: "primary.main",
+                      },
+                    }}
+                  >
+                    {t("browse_files")}
+                  </Button>
+                </>
+              )}
+            </Box>
+          </DropzoneArea>
+        ) : (
+          <Box sx={{ width: "100%" }}>
+            <Box {...getRootProps()} sx={{ mb: 2 }}>
+              <Button
+                variant="outlined"
+                color="primary"
+                fullWidth
+                startIcon={<CloudUploadIcon />}
+                size="small"
+                sx={{
+                  py: 1,
+                  borderStyle: "dashed",
+                  "&:hover": {
+                    borderStyle: "dashed",
+                    backgroundColor: "primary.light",
+                    borderColor: "primary.main",
+                  },
+                }}
+              >
+                {t("add_more_images")}
+              </Button>
+              <input {...getInputProps()} />
+            </Box>
+
+            <Grid container spacing={1}>
+              {imagePreviews.map((preview, index) => (
+                <Grid item xs={6} sm={4} md={3} key={index}>
+                  <ImagePreviewCard>
+                    <ImageContainer sx={{ height: 120 }}>
+                      <StyledImage
+                        src={preview.preview}
+                        alt={`Preview ${index + 1}`}
+                      />
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          p: 0.5,
+                          background:
+                            "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)",
+                          zIndex: 1,
+                        }}
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleImageDelete(index);
+                          }}
+                          sx={{
+                            color: "white",
+                            backgroundColor: "rgba(0,0,0,0.2)",
+                            backdropFilter: "blur(4px)",
+                            mr: 0.5,
+                            "&:hover": {
+                              backgroundColor: "rgba(255,255,255,0.2)",
+                            },
+                            padding: 0.5,
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          component="label"
+                          size="small"
+                          onClick={(e) => e.stopPropagation()}
+                          sx={{
+                            color: "white",
+                            backgroundColor: "rgba(0,0,0,0.2)",
+                            backdropFilter: "blur(4px)",
+                            "&:hover": {
+                              backgroundColor: "rgba(255,255,255,0.2)",
+                            },
+                            padding: 0.5,
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                          <VisuallyHiddenInput
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageEdit(index)}
+                          />
+                        </IconButton>
+                      </Box>
+                    </ImageContainer>
+                  </ImagePreviewCard>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+      </StyledPaper>
+
+      <Button
+        type="submit"
+        variant="contained"
+        color="primary"
+        size="large"
+        fullWidth
+        disabled={
+          (!formData.price && (!formData.priceFrom || !formData.priceTo)) ||
+          !formData.serviceType ||
+          !formData.location ||
+          !formData.title
+        }
+        sx={{
+          py: 1.5,
+          borderRadius: 2,
+          fontSize: "1.1rem",
+          textTransform: "none",
+        }}
+      >
+        {t("create_offer_button")}
+      </Button>
+    </form>
+  );
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 900, mx: "auto" }}>
       <Typography
@@ -340,323 +751,7 @@ const CreateOffer = () => {
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <Stack spacing={3}>
-          {/* Основная информация */}
-          <StyledPaper elevation={0}>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
-            >
-              <CategoryIcon color="primary" />
-              {t("basic_information")}
-            </Typography>
-
-            {userRole === "admin" && (
-              <StyledFormControl fullWidth>
-                <InputLabel>{t("provider")}</InputLabel>
-                <Select
-                  name="providerId"
-                  value={formData.providerId}
-                  onChange={handleChange}
-                  label={t("provider")}
-                  required
-                >
-                  {providers.map((provider) => (
-                    <MenuItem key={provider._id} value={provider._id}>
-                      {provider.name} ({provider.email})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </StyledFormControl>
-            )}
-
-            <StyledFormControl fullWidth>
-              <InputLabel>{t("service_type")}</InputLabel>
-              <Select
-                name="serviceType"
-                value={formData.serviceType}
-                onChange={handleChange}
-                label={t("service_type")}
-                required
-              >
-                <MenuItem value="translation">{t("translation")}</MenuItem>
-                <MenuItem value="legal">{t("legal")}</MenuItem>
-                <MenuItem value="real_estate">{t("real_estate")}</MenuItem>
-                <MenuItem value="healthcare">{t("healthcare")}</MenuItem>
-                <MenuItem value="education">{t("education")}</MenuItem>
-                <MenuItem value="cultural_events">
-                  {t("cultural_events")}
-                </MenuItem>
-                <MenuItem value="finance">{t("finance")}</MenuItem>
-                <MenuItem value="transport">{t("transport")}</MenuItem>
-                <MenuItem value="household">{t("household")}</MenuItem>
-                <MenuItem value="shopping">{t("shopping")}</MenuItem>
-                <MenuItem value="travel">{t("travel")}</MenuItem>
-              </Select>
-            </StyledFormControl>
-          </StyledPaper>
-
-          {/* Местоположение */}
-          <StyledPaper elevation={0}>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
-            >
-              <LocationOnIcon color="primary" />
-              {t("location")}
-            </Typography>
-
-            <LoadScript
-              googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-              libraries={["places"]}
-            >
-              <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-                <TextField
-                  label={t("location")}
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                />
-              </Autocomplete>
-            </LoadScript>
-          </StyledPaper>
-
-          {/* Описание и цена */}
-          <StyledPaper elevation={0}>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
-            >
-              <DescriptionIcon color="primary" />
-              {t("details")}
-            </Typography>
-
-            <TextField
-              label={t("description")}
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              fullWidth
-              multiline
-              rows={4}
-              required
-              sx={{ mb: 3 }}
-            />
-
-            <TextField
-              label={t("price")}
-              name="price"
-              type="number"
-              value={formData.price}
-              onChange={handleChange}
-              fullWidth
-              required
-              InputProps={{
-                startAdornment: <EuroIcon color="action" sx={{ mr: 1 }} />,
-              }}
-            />
-          </StyledPaper>
-
-          {/* Изображения */}
-          <StyledPaper elevation={0}>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
-            >
-              <CloudUploadIcon color="primary" />
-              {t("images")}
-            </Typography>
-
-            {imagePreviews.length === 0 ? (
-              <DropzoneArea {...getRootProps()} isDragActive={isDragActive}>
-                <input {...getInputProps()} />
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 2,
-                    width: "100%",
-                    textAlign: "center",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: "50%",
-                      backgroundColor: "primary.light",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      mb: 2,
-                    }}
-                  >
-                    <CloudUploadIcon
-                      sx={{ fontSize: 30, color: "primary.main" }}
-                    />
-                  </Box>
-                  {isDragActive ? (
-                    <Typography variant="h6" color="primary.main">
-                      {t("drop_files_here")}
-                    </Typography>
-                  ) : (
-                    <>
-                      <Typography
-                        variant="h6"
-                        color="text.primary"
-                        sx={{ fontWeight: 500 }}
-                      >
-                        {t("drag_drop_images")}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 1 }}
-                      >
-                        {t("or")}
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        size="large"
-                        sx={{
-                          borderStyle: "dashed",
-                          px: 4,
-                          "&:hover": {
-                            borderStyle: "dashed",
-                            backgroundColor: "primary.light",
-                            borderColor: "primary.main",
-                          },
-                        }}
-                      >
-                        {t("browse_files")}
-                      </Button>
-                    </>
-                  )}
-                </Box>
-              </DropzoneArea>
-            ) : (
-              <Box sx={{ width: "100%" }}>
-                <Box {...getRootProps()} sx={{ mb: 3 }}>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    fullWidth
-                    startIcon={<CloudUploadIcon />}
-                    sx={{
-                      py: 2,
-                      borderStyle: "dashed",
-                      "&:hover": {
-                        borderStyle: "dashed",
-                        backgroundColor: "primary.light",
-                        borderColor: "primary.main",
-                      },
-                    }}
-                  >
-                    {t("add_more_images")}
-                  </Button>
-                  <input {...getInputProps()} />
-                </Box>
-
-                <Grid container spacing={2}>
-                  {imagePreviews.map((preview, index) => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-                      <ImagePreviewCard>
-                        <ImageContainer>
-                          <StyledImage
-                            src={preview.preview}
-                            alt={`Preview ${index + 1}`}
-                          />
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              display: "flex",
-                              justifyContent: "flex-end",
-                              p: 1,
-                              background:
-                                "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)",
-                              zIndex: 1,
-                            }}
-                          >
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleImageDelete(index);
-                              }}
-                              sx={{
-                                color: "white",
-                                backgroundColor: "rgba(0,0,0,0.2)",
-                                backdropFilter: "blur(4px)",
-                                mr: 1,
-                                "&:hover": {
-                                  backgroundColor: "rgba(255,255,255,0.2)",
-                                },
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              component="label"
-                              size="small"
-                              onClick={(e) => e.stopPropagation()}
-                              sx={{
-                                color: "white",
-                                backgroundColor: "rgba(0,0,0,0.2)",
-                                backdropFilter: "blur(4px)",
-                                "&:hover": {
-                                  backgroundColor: "rgba(255,255,255,0.2)",
-                                },
-                              }}
-                            >
-                              <EditIcon fontSize="small" />
-                              <VisuallyHiddenInput
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageEdit(index)}
-                              />
-                            </IconButton>
-                          </Box>
-                        </ImageContainer>
-                      </ImagePreviewCard>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            )}
-          </StyledPaper>
-
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            size="large"
-            fullWidth
-            disabled={
-              !formData.serviceType || !formData.location || !formData.price
-            }
-            sx={{
-              py: 1.5,
-              borderRadius: 2,
-              fontSize: "1.1rem",
-              textTransform: "none",
-            }}
-          >
-            {t("create_offer_button")}
-          </Button>
-        </Stack>
-      </form>
+      {renderForm()}
     </Box>
   );
 };

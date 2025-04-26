@@ -18,6 +18,7 @@ const promotionService = require("../services/promotionService");
 const categoryController = require("../controllers/categoryController");
 const fs = require("fs");
 const NotificationService = require("../services/NotificationService");
+const Review = require("../models/Review");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -131,28 +132,30 @@ router.get("/offers", async (req, res) => {
       );
     });
 
-    // Форматируем предложения для ответа клиенту
-    const formattedOffers = offers.map((offer) => {
-      // Создаем базовый объект предложения
-      const formattedOffer = {
-        ...offer._doc,
-        provider: offer.providerId || null,
-      };
-
-      // Убедимся, что provider и providerId правильно установлены
-      if (offer.providerId) {
-        if (typeof offer.providerId === "object" && offer.providerId._id) {
-          formattedOffer.providerId = offer.providerId._id;
+    // Для каждого предложения получаем рейтинг и количество отзывов по предложению
+    const formattedOffers = await Promise.all(
+      offers.map(async (offer) => {
+        let provider = offer.providerId || null;
+        // Получаем рейтинг и отзывы по предложению
+        const offerRatingInfo = await Review.getAverageRatingByOffer(offer._id);
+        // Создаем базовый объект предложения
+        const formattedOffer = {
+          ...offer._doc,
+          rating: offerRatingInfo.rating,
+          reviewCount: offerRatingInfo.count,
+          provider: provider ? { ...provider._doc } : null,
+        };
+        // Убедимся, что providerId правильно установлен
+        if (provider && provider._id) {
+          formattedOffer.providerId = provider._id;
         }
-      }
-
-      // Преобразуем URL изображений
-      if (offer.image) {
-        formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
-      }
-
-      return formattedOffer;
-    });
+        // Преобразуем URL изображений
+        if (offer.image) {
+          formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+        }
+        return formattedOffer;
+      })
+    );
 
     res.json({
       offers: formattedOffers,
@@ -244,10 +247,14 @@ router.get("/offers/:id", async (req, res) => {
     });
 
     if (offer) {
+      // Получаем рейтинг и отзывы по предложению
+      const offerRatingInfo = await Review.getAverageRatingByOffer(offer._id);
       // Форматируем ответ
       const formattedOffer = {
         ...offer._doc,
         type: "Offer",
+        rating: offerRatingInfo.rating,
+        reviewCount: offerRatingInfo.count,
         provider: {
           _id: offer.providerId._id,
           name: offer.providerId.name,
@@ -408,12 +415,36 @@ router.post(
     try {
       console.log("Creating new offer:", req.body);
 
-      const { title, category, location, description, price, providerId } =
-        req.body;
+      const {
+        title,
+        category,
+        location,
+        description,
+        price,
+        priceFrom,
+        priceTo,
+        isPriceRange,
+        providerId,
+      } = req.body;
 
       // Проверяем, что все необходимые поля присутствуют
-      if (!title || !category || !location || !description || !price) {
+      if (!title || !category || !location || !description) {
         return res.status(400).json({ error: "All fields are required" });
+      }
+
+      // Проверяем наличие ценовой информации
+      if (isPriceRange === "true") {
+        // Проверка диапазона цен
+        if (!priceFrom || !priceTo) {
+          return res.status(400).json({
+            error: "Price range requires both minimum and maximum values",
+          });
+        }
+      } else {
+        // Проверка фиксированной цены
+        if (!price) {
+          return res.status(400).json({ error: "Price is required" });
+        }
       }
 
       // Если указан providerId (для админов), используем его, иначе используем ID текущего пользователя
@@ -433,17 +464,29 @@ router.post(
       const mainImage = images.length > 0 ? images[0] : null;
 
       // Создаем новое предложение
-      const offer = new Offer({
+      const offerData = {
         title,
         serviceType: category,
         location,
         description,
-        price: Number(price),
         providerId: actualProviderId,
         images,
         image: mainImage,
         status: "active",
-      });
+      };
+
+      // Добавляем ценовую информацию в зависимости от типа цены
+      if (isPriceRange === "true") {
+        offerData.priceFrom = Number(priceFrom);
+        offerData.priceTo = Number(priceTo);
+        offerData.isPriceRange = true;
+        offerData.price = Number(priceFrom); // Для обратной совместимости используем минимальную цену
+      } else {
+        offerData.price = Number(price);
+        offerData.isPriceRange = false;
+      }
+
+      const offer = new Offer(offerData);
 
       await offer.save();
 
@@ -452,30 +495,8 @@ router.post(
 
       // Обновляем статистику провайдера
       await provider.incrementTotalRequests();
-      await provider.incrementTotalResponses();
 
-      console.log("Offer created successfully:", offer._id);
-
-      // Форматируем ответ
-      const formattedOffer = {
-        ...offer._doc,
-        provider: {
-          _id: provider._id,
-          name: provider.name,
-          email: provider.email,
-        },
-      };
-
-      if (mainImage) {
-        formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${mainImage}`;
-      }
-      if (images.length > 0) {
-        formattedOffer.images = images.map(
-          (img) => `${BASE_URL}${UPLOADS_PATH}/${img}`
-        );
-      }
-
-      res.status(201).json(formattedOffer);
+      res.status(201).json(offer);
     } catch (error) {
       console.error("Error creating offer:", error);
       res.status(500).json({ error: "Server error" });

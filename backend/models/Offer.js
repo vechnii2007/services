@@ -45,6 +45,19 @@ const offerSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    // Добавляем поля для диапазона цен
+    isPriceRange: {
+      type: Boolean,
+      default: false,
+    },
+    priceFrom: {
+      type: Number,
+      default: null,
+    },
+    priceTo: {
+      type: Number,
+      default: null,
+    },
     image: {
       type: String,
       // Устаревшее поле, используйте images вместо него

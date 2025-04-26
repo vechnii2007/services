@@ -9,7 +9,6 @@ import {
   Select,
   MenuItem,
   CircularProgress,
-  Pagination,
   Box,
 } from "@mui/material";
 import GenericTable from "./GenericTable";
@@ -228,15 +227,20 @@ const UsersTab = () => {
         </Box>
       ) : (
         <>
-          <GenericTable headers={headers} rows={users} renderRow={renderRow} />
-          <Box sx={{ display: "flex", justifyContent: "center", marginTop: 2 }}>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={(e, value) => setPage(value)}
-              color="primary"
-            />
-          </Box>
+          <GenericTable
+            headers={headers}
+            rows={users}
+            renderRow={renderRow}
+            isPaginationEnabled={true}
+            page={page - 1}
+            rowsPerPage={limit}
+            count={totalPages * limit}
+            onPageChange={(e, newPage) => setPage(newPage + 1)}
+            onRowsPerPageChange={(e) => {
+              // If rowsPerPage functionality needed, implement here
+              // This would require API endpoint supporting variable limit
+            }}
+          />
         </>
       )}
       <CreateUserDialog

@@ -13,6 +13,7 @@ const serviceRoutes = require("./routes/serviceRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const searchRoutes = require("./routes/search");
+const reviewRoutes = require("./routes/reviewRoutes");
 const { UPLOADS_DIR, UPLOADS_PATH } = require("./config/uploadConfig");
 require("dotenv").config();
 
@@ -50,6 +51,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Настройка статических путей с использованием абсолютного пути
 app.use(
@@ -81,6 +83,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // Добавляем обратную совместимость для старых маршрутов
 app.use("/services", serviceRoutes);
@@ -102,7 +105,7 @@ categoryStatsService.initCronJob();
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong!" });
+  res.status(500).json({ error: "Something broke!" });
 });
 
 // Проверка подключения к MongoDB
@@ -120,9 +123,9 @@ mongoose
     categoryStatsService.fullSync();
 
     // Start server
-    const PORT = process.env.PORT || 5001;
+    const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`Server is running on port ${PORT}`);
     });
   })
   .catch((err) => {

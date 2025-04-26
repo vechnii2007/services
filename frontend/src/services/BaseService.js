@@ -1,6 +1,6 @@
 import api from "./api";
 
-export class BaseService {
+class BaseService {
   constructor(basePath) {
     this.basePath = basePath;
   }
@@ -34,3 +34,5 @@ export class BaseService {
     return response.data;
   }
 }
+
+export default BaseService;

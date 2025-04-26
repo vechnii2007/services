@@ -7,11 +7,21 @@ export const formatDate = (date) => {
   });
 };
 
+/**
+ * Форматирует цену, добавляя символ евро и разделители тысяч
+ * @param {number} price - Цена для форматирования
+ * @returns {string} Отформатированная цена
+ */
 export const formatPrice = (price) => {
-  if (!price) return "0 €";
-  return new Intl.NumberFormat("ru-RU", {
+  // Проверяем валидность цены
+  if (price === null || price === undefined || isNaN(price)) {
+    return "€0";
+  }
+
+  return new Intl.NumberFormat("de-DE", {
     style: "currency",
     currency: "EUR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(price);
 };
@@ -37,7 +47,7 @@ export const formatImagePath = (imagePath) => {
   if (!imagePath) return null;
 
   // Базовый URL бэкенда
-  const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001";
+  const API_BASE = "http://localhost:5001";
 
   // Если путь уже содержит полный URL, возвращаем его
   if (imagePath.startsWith("http")) {

@@ -309,13 +309,24 @@ router.post(
   upload.array("images", 5),
   async (req, res) => {
     try {
-      const { providerId, serviceType, location, description, price } =
+      const { title, providerId, serviceType, location, description, price } =
         req.body;
-      if (!providerId || !serviceType || !location || !description || !price) {
+
+      // Проверяем наличие обязательных полей, включая title
+      if (
+        !title ||
+        !providerId ||
+        !serviceType ||
+        !location ||
+        !description ||
+        !price
+      ) {
         return res.status(400).json({ error: "All fields are required" });
       }
+
       const images = req.files.map((file) => `/images/${file.filename}`);
       const offer = new Offer({
+        title,
         providerId,
         serviceType,
         location,
@@ -339,7 +350,7 @@ router.patch(
   upload.array("images", 5),
   async (req, res) => {
     try {
-      const { providerId, serviceType, location, description, price } =
+      const { title, providerId, serviceType, location, description, price } =
         req.body;
       const existingImages = req.body.existingImages || []; // Существующие изображения (пути)
 
@@ -354,6 +365,7 @@ router.patch(
       }
 
       // Обновляем поля
+      if (title) offer.title = title;
       if (providerId) offer.providerId = providerId;
       if (serviceType) offer.serviceType = serviceType;
       if (location) offer.location = location;

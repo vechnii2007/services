@@ -17,7 +17,7 @@ import {
   Divider,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import Chat from "../components/Chat";
+import Chat from "./Chat";
 import { useAuth } from "../hooks/useAuth";
 import { useSocket } from "../hooks/useSocket";
 import ChatService from "../services/ChatService";

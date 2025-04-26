@@ -5,15 +5,23 @@ const { getIO } = require("../socket");
 
 class NotificationService {
   static async setup() {
-    const vapidKeys = webpush.generateVAPIDKeys();
+    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+      const vapidKeys = webpush.generateVAPIDKeys();
+      console.log("Generated VAPID keys:", {
+        publicKey: vapidKeys.publicKey,
+        privateKey: vapidKeys.privateKey,
+      });
+      process.env.VAPID_PUBLIC_KEY = vapidKeys.publicKey;
+      process.env.VAPID_PRIVATE_KEY = vapidKeys.privateKey;
+    }
 
     webpush.setVapidDetails(
       process.env.WEB_PUSH_CONTACT || "mailto:your-email@example.com",
-      vapidKeys.publicKey,
-      vapidKeys.privateKey
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
     );
 
-    return vapidKeys.publicKey;
+    return process.env.VAPID_PUBLIC_KEY;
   }
 
   static async sendNotification(userId, notification) {
@@ -24,47 +32,86 @@ class NotificationService {
         message: notification.message,
         type: notification.type,
         relatedId: notification.relatedId,
+        refModel: this._getRefModel(notification.type, notification.relatedId),
       });
 
       // Отправляем через WebSocket
       try {
         const io = getIO();
         if (io) {
-          io.to(userId).emit("notification", {
-            ...newNotification.toObject(),
-            createdAt: new Date(),
-          });
+          io.to(userId).emit("notification", newNotification.toObject());
         }
       } catch (socketError) {
         console.error("Error sending socket notification:", socketError);
-        // Продолжаем выполнение, не прерывая процесс
       }
 
       // Если есть push-подписка, отправляем push-уведомление
       try {
         const user = await User.findById(userId).select("pushSubscription");
-        if (user && user.pushSubscription) {
+        if (user?.pushSubscription) {
           await webpush.sendNotification(
             user.pushSubscription,
             JSON.stringify({
-              title: "New Notification",
+              title: this._getNotificationTitle(notification.type),
               body: notification.message,
-              icon: "/path/to/icon.png",
+              icon: "/path/to/icon.png", // TODO: Добавить иконку
               data: {
-                url: `/notifications/${newNotification._id}`,
+                url: this._getNotificationUrl(notification),
               },
             })
           );
         }
       } catch (pushError) {
         console.error("Error sending push notification:", pushError);
-        // Продолжаем выполнение, не прерывая процесс
       }
 
       return newNotification;
     } catch (error) {
       console.error("Error sending notification:", error);
       throw error;
+    }
+  }
+
+  static _getRefModel(type, relatedId) {
+    if (!relatedId) return null;
+
+    switch (type) {
+      case "message":
+        return "Message";
+      case "request":
+        return "ServiceRequest";
+      case "offer":
+        return "Offer";
+      default:
+        return null;
+    }
+  }
+
+  static _getNotificationTitle(type) {
+    switch (type) {
+      case "message":
+        return "Новое сообщение";
+      case "request":
+        return "Новый запрос";
+      case "offer":
+        return "Новое предложение";
+      case "system":
+        return "Системное уведомление";
+      default:
+        return "Уведомление";
+    }
+  }
+
+  static _getNotificationUrl(notification) {
+    switch (notification.type) {
+      case "message":
+        return `/chat/${notification.relatedId}`;
+      case "request":
+        return `/requests/${notification.relatedId}`;
+      case "offer":
+        return `/offers/${notification.relatedId}`;
+      default:
+        return "/notifications";
     }
   }
 

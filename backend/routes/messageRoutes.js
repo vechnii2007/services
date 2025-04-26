@@ -18,11 +18,48 @@ router.get("/:userId", auth, async (req, res) => {
       ],
     })
       .sort({ timestamp: -1 })
-      .limit(50);
+      .limit(50)
+      .populate("senderId", "name avatar")
+      .populate("recipientId", "name avatar");
 
     res.json(messages.reverse());
   } catch (error) {
     console.error("Error fetching messages:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Получение истории сообщений по запросу/предложению
+router.get("/request/:requestId", auth, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(requestId)) {
+      return res.status(400).json({ error: "Invalid request ID" });
+    }
+
+    // Находим запрос/предложение для проверки прав доступа
+    const request = await ServiceRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    // Проверяем права доступа
+    if (
+      request.userId.toString() !== req.user.id &&
+      request.providerId.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const messages = await Message.find({ requestId })
+      .sort({ timestamp: 1 })
+      .populate("senderId", "name avatar")
+      .populate("recipientId", "name avatar");
+
+    res.json(messages);
+  } catch (error) {
+    console.error("Error fetching request messages:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -51,139 +88,71 @@ router.put("/:userId/read", auth, async (req, res) => {
   }
 });
 
-// Получение количества непрочитанных сообщений
-router.get("/unread/count", auth, async (req, res) => {
-  try {
-    const count = await Message.countDocuments({
-      recipientId: req.user.id,
-      read: false,
-    });
-
-    res.json({ count });
-  } catch (error) {
-    console.error("Error counting unread messages:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Сохранение сообщения
+// Отправка сообщения
 router.post("/", auth, async (req, res) => {
-  const startTime = Date.now();
-  console.log("=== POST DIRECT MESSAGE REQUEST ===");
-  console.log(`Time: ${new Date().toISOString()}`);
-  console.log(`User: ${req.user.id} (${req.user.name}, ${req.user.role})`);
-  console.log(`Request Body:`, {
-    messageLength: req.body.message ? req.body.message.length : 0,
-    messageSample: req.body.message
-      ? req.body.message.substring(0, 30) +
-        (req.body.message.length > 30 ? "..." : "")
-      : null,
-    recipientId: req.body.recipientId,
-    requestId: req.body.requestId,
-    offerId: req.body.offerId,
-  });
-
   try {
-    // Валидируем данные
-    const { message, recipientId, requestId, offerId } = req.body;
+    const { recipientId, message, requestId } = req.body;
 
-    if (!message || !recipientId) {
-      console.error("Missing required fields:", {
-        message: !!message,
-        recipientId: !!recipientId,
-      });
+    if (!recipientId || !message) {
       return res
         .status(400)
-        .json({ error: "Message and recipient are required" });
+        .json({ error: "Recipient and message are required" });
     }
 
-    // Нормализуем recipientId, если это необходимо
-    let normalizedRecipientId = recipientId;
-    if (typeof recipientId === "object") {
-      if (recipientId._id) {
-        normalizedRecipientId = recipientId._id.toString();
-      } else {
-        console.error("Invalid recipientId format:", recipientId);
-        return res.status(400).json({ error: "Invalid recipientId format" });
-      }
+    // Нормализуем ID получателя
+    const normalizedRecipientId =
+      typeof recipientId === "object"
+        ? recipientId._id?.toString()
+        : recipientId;
+
+    if (
+      !normalizedRecipientId ||
+      !mongoose.Types.ObjectId.isValid(normalizedRecipientId)
+    ) {
+      return res.status(400).json({ error: "Invalid recipient ID" });
     }
 
-    console.log("Normalized recipientId:", normalizedRecipientId);
+    // Проверяем существование получателя
+    const recipient = await User.findById(normalizedRecipientId);
+    if (!recipient) {
+      return res.status(404).json({ error: "Recipient not found" });
+    }
 
     // Создаем сообщение
     const messageData = {
       senderId: req.user.id,
       recipientId: normalizedRecipientId,
       message,
+      timestamp: new Date(),
     };
 
-    // Добавляем информацию о запросе или оффере, если они есть
+    // Если есть requestId, проверяем его и добавляем
     if (requestId) {
       if (!mongoose.Types.ObjectId.isValid(requestId)) {
-        console.error("Invalid requestId format:", requestId);
-        return res.status(400).json({ error: "Invalid requestId format" });
+        return res.status(400).json({ error: "Invalid request ID" });
       }
       messageData.requestId = requestId;
-      console.log("Added requestId to message:", requestId);
     }
-
-    if (offerId) {
-      if (!mongoose.Types.ObjectId.isValid(offerId)) {
-        console.error("Invalid offerId format:", offerId);
-        return res.status(400).json({ error: "Invalid offerId format" });
-      }
-      messageData.offerId = offerId;
-      console.log("Added offerId to message:", offerId);
-    }
-
-    console.log("Creating message with data:", {
-      ...messageData,
-      message:
-        messageData.message.substring(0, 30) +
-        (messageData.message.length > 30 ? "..." : ""),
-    });
 
     const newMessage = await Message.create(messageData);
+    await newMessage.populate("senderId", "name avatar");
+    await newMessage.populate("recipientId", "name avatar");
 
-    console.log("Created new message:", {
-      id: newMessage._id,
-      senderId: newMessage.senderId,
-      recipientId: newMessage.recipientId,
-      requestId: newMessage.requestId,
-      offerId: newMessage.offerId,
-      messageLength: newMessage.message.length,
-    });
-
-    // Отправляем через сокет
-    const io = require("../socket").getIO();
-    io.to(normalizedRecipientId).emit("private_message", {
-      ...newMessage.toObject(),
-      senderName: req.user.name,
-    });
-    console.log(
-      `WebSocket: Emitted 'private_message' to ${normalizedRecipientId}`
-    );
+    // Отправляем через WebSocket
+    const io = getIO();
+    io.to(normalizedRecipientId).emit("private_message", newMessage);
 
     // Отправляем уведомление
     await NotificationService.sendNotification(normalizedRecipientId, {
       type: "message",
       message: `Новое сообщение от ${req.user.name}`,
       relatedId: newMessage._id,
-      senderId: req.user.id,
-      requestId: newMessage.requestId || null,
-      offerId: newMessage.offerId || null,
     });
-    console.log(`Notification: Sent to ${normalizedRecipientId}`);
-
-    const endTime = Date.now();
-    console.log(`Request completed in ${endTime - startTime}ms`);
-    console.log("=== END POST DIRECT MESSAGE REQUEST ===");
 
     res.status(201).json(newMessage);
   } catch (error) {
-    console.error("Error saving message:", error);
-    console.error("Stack trace:", error.stack);
-    res.status(500).json({ error: "Server error", details: error.message });
+    console.error("Error sending message:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

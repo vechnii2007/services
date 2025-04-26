@@ -57,6 +57,7 @@ import { formatDate, formatPrice, formatImagePath } from "../utils/formatters";
 import api from "../middleware/api";
 import { useSocket } from "../hooks/useSocket";
 import ChatService from "../services/ChatService";
+import Reviews from "../components/Reviews";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -697,6 +698,14 @@ const OfferDetails = () => {
                   </Box>
                 </CardContent>
               </MotionCard>
+
+              {/* Добавляем блок с отзывами */}
+              <Divider sx={{ mb: 3 }} />
+              <Reviews
+                offerId={id}
+                offerType={offerType}
+                showAddButton={true}
+              />
 
               {/* Дополнительная информация */}
               <Paper

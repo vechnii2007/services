@@ -32,93 +32,120 @@ const MetaInfo = styled(Box)(({ theme }) => ({
   },
 }));
 
-const OfferInfo = memo(({ title, description, price, location, createdAt }) => (
-  <InfoContainer>
-    <Stack spacing={1}>
-      <Tooltip title={title} enterDelay={700}>
-        <Typography
-          variant="subtitle1"
-          sx={(theme) => ({
-            fontWeight: theme.typography.fontWeightBold,
-            color: theme.palette.text.primary,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            display: "-webkit-box",
-            WebkitLineClamp: 1,
-            WebkitBoxOrient: "vertical",
-            lineHeight: 1.2,
-            cursor: "default",
-          })}
-        >
-          {title}
-        </Typography>
-      </Tooltip>
+const OfferInfo = memo(
+  ({
+    title,
+    description,
+    price,
+    priceFrom,
+    priceTo,
+    isPriceRange,
+    location,
+    createdAt,
+  }) => {
+    // Формируем отображение цены в зависимости от типа (диапазон или фиксированная)
+    const priceDisplay =
+      isPriceRange && priceFrom && priceTo
+        ? `${formatPrice(priceFrom)} - ${formatPrice(priceTo)}`
+        : formatPrice(price);
 
-      <Tooltip title={description} enterDelay={700}>
-        <Typography
-          variant="body2"
-          sx={(theme) => ({
-            color: theme.palette.text.secondary,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            minHeight: "2.4em",
-            lineHeight: 1.2,
-            cursor: "default",
-          })}
-        >
-          {description}
-        </Typography>
-      </Tooltip>
-    </Stack>
-
-    <PriceTypography>{formatPrice(price)}</PriceTypography>
-
-    <Stack spacing={0.5} sx={{ mt: "auto" }}>
-      {location && (
-        <Tooltip title={location} enterDelay={700}>
-          <MetaInfo>
-            <LocationOnIcon />
+    return (
+      <InfoContainer>
+        <Stack spacing={1}>
+          <Tooltip title={title} enterDelay={700}>
             <Typography
-              variant="body2"
-              sx={{
+              variant="subtitle1"
+              sx={(theme) => ({
+                fontWeight: theme.typography.fontWeightBold,
+                color: theme.palette.text.primary,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                display: "-webkit-box",
+                WebkitLineClamp: 1,
+                WebkitBoxOrient: "vertical",
+                lineHeight: 1.2,
                 cursor: "default",
-              }}
+              })}
             >
-              {location}
+              {title}
+            </Typography>
+          </Tooltip>
+
+          <Tooltip title={description} enterDelay={700}>
+            <Typography
+              variant="body2"
+              sx={(theme) => ({
+                color: theme.palette.text.secondary,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                minHeight: "2.4em",
+                lineHeight: 1.2,
+                cursor: "default",
+              })}
+            >
+              {description}
+            </Typography>
+          </Tooltip>
+        </Stack>
+
+        <PriceTypography>{priceDisplay}</PriceTypography>
+
+        <Stack spacing={0.5} sx={{ mt: "auto" }}>
+          {location && (
+            <Tooltip title={location} enterDelay={700}>
+              <MetaInfo>
+                <LocationOnIcon />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    cursor: "default",
+                  }}
+                >
+                  {location}
+                </Typography>
+              </MetaInfo>
+            </Tooltip>
+          )}
+
+          <MetaInfo>
+            <AccessTimeIcon />
+            <Typography
+              variant="caption"
+              sx={(theme) => ({
+                color: theme.palette.text.secondary,
+              })}
+            >
+              {formatDate(createdAt)}
             </Typography>
           </MetaInfo>
-        </Tooltip>
-      )}
-
-      <MetaInfo>
-        <AccessTimeIcon />
-        <Typography
-          variant="caption"
-          sx={(theme) => ({
-            color: theme.palette.text.secondary,
-          })}
-        >
-          {formatDate(createdAt)}
-        </Typography>
-      </MetaInfo>
-    </Stack>
-  </InfoContainer>
-));
+        </Stack>
+      </InfoContainer>
+    );
+  }
+);
 
 OfferInfo.displayName = "OfferInfo";
 
 OfferInfo.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,
-  price: PropTypes.number.isRequired,
+  price: PropTypes.number,
+  priceFrom: PropTypes.number,
+  priceTo: PropTypes.number,
+  isPriceRange: PropTypes.bool,
   location: PropTypes.string,
   createdAt: PropTypes.string.isRequired,
+};
+
+OfferInfo.defaultProps = {
+  isPriceRange: false,
+  price: 0,
 };
 
 export default OfferInfo;

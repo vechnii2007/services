@@ -94,11 +94,8 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
     pushSubscription: {
-      endpoint: String,
-      keys: {
-        p256dh: String,
-        auth: String,
-      },
+      type: Object,
+      select: false,
     },
     notificationPreferences: {
       messages: {
