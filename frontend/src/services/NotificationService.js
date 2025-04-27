@@ -65,7 +65,6 @@ export const NotificationService = {
 
   requestNotificationPermission: async () => {
     if (!("Notification" in window)) {
-      console.warn("Notifications are not supported in this browser");
       return false;
     }
 
@@ -136,33 +135,18 @@ export const NotificationService = {
     // Проверка входящих параметров
     if (!socket) {
       console.error("[NotificationService] Socket is not available");
-      return () => {
-        console.log(
-          "[NotificationService] Empty cleanup called (socket was not available)"
-        );
-      };
+      return () => {};
     }
 
     if (typeof onNotification !== "function") {
       console.error(
         "[NotificationService] onNotification callback is not a function"
       );
-      return () => {
-        console.log(
-          "[NotificationService] Empty cleanup called (callback was invalid)"
-        );
-      };
+      return () => {};
     }
-
-    console.log("[NotificationService] Setting up WebSocket notifications");
 
     // Обработчик для получения уведомлений через веб-сокет
     const handleNotification = (notification) => {
-      console.log(
-        "[NotificationService] Received notification via WebSocket:",
-        notification
-      );
-
       // Если доступен браузерный API уведомлений и есть разрешение, показываем нативное уведомление
       if (
         "Notification" in window &&
@@ -217,19 +201,12 @@ export const NotificationService = {
         "[NotificationService] Error subscribing to socket event:",
         error
       );
-      return () => {
-        console.log(
-          "[NotificationService] Empty cleanup called (subscription failed)"
-        );
-      };
+      return () => {};
     }
 
     // Возвращаем функцию для отписки от событий
     return () => {
       try {
-        console.log(
-          "[NotificationService] Cleaning up socket notification listeners"
-        );
         socket.off("notification", handleNotification);
       } catch (error) {
         console.error("[NotificationService] Error during cleanup:", error);
@@ -240,18 +217,12 @@ export const NotificationService = {
   // Регистрация сервис-воркера для push-уведомлений
   registerServiceWorker: async () => {
     if (!("serviceWorker" in navigator)) {
-      console.warn("[NotificationService] Service workers are not supported");
       return null;
     }
 
     try {
-      console.log("[NotificationService] Registering service worker");
       const registration = await navigator.serviceWorker.register(
         "/service-worker.js"
-      );
-      console.log(
-        "[NotificationService] Service worker registered:",
-        registration
       );
       return registration;
     } catch (error) {
@@ -263,21 +234,35 @@ export const NotificationService = {
     }
   },
 
-  // Отправка тестового уведомления (для отладки)
-  sendTestNotification: async () => {
+  // Настройка push-уведомлений
+  setupPushNotifications: async () => {
     try {
-      const response = await api.post("/services/notifications/test");
-      console.log(
-        "[NotificationService] Test notification sent:",
-        response.data
-      );
-      return response.data;
+      // Проверяем поддержку уведомлений в браузере
+      if (!("Notification" in window)) {
+        return false;
+      }
+
+      // Запрашиваем разрешение на уведомления
+      const permission =
+        await NotificationService.requestNotificationPermission();
+      if (!permission) {
+        return false;
+      }
+
+      // Регистрируем сервис-воркер
+      const registration = await NotificationService.registerServiceWorker();
+      if (!registration) {
+        return false;
+      }
+
+      // Создаем подписку на push-уведомления
+      return await NotificationService.createPushSubscription(registration);
     } catch (error) {
       console.error(
-        "[NotificationService] Error sending test notification:",
+        "[NotificationService] Error setting up push notifications:",
         error
       );
-      throw error;
+      return false;
     }
   },
 };

@@ -815,8 +815,12 @@ router.get("/messages/:requestId", auth, async (req, res) => {
 
     // Проверяем существование запроса и права доступа
     const request = await ServiceRequest.findById(req.params.requestId)
-      .populate("userId", "name email")
-      .populate("providerId", "name email");
+      .populate("userId", "name email phone status")
+      .populate("providerId", "name email phone status")
+      .populate({
+        path: "offerId",
+        select: "title serviceType",
+      });
 
     if (!request) {
       console.log("Request not found, trying offer:", req.params.requestId);
@@ -1436,7 +1440,7 @@ router.get("/provider-chats", auth, async (req, res) => {
     const requests = await ServiceRequest.find({
       _id: { $in: requestIds },
       userId: { $ne: req.user.id }, // Исключаем собственные запросы пользователя
-    }).populate("userId", "name email phone address status");
+    }).populate("userId", "name email phone status");
     console.log("Final provider chats count:", requests.length);
 
     res.json(requests);
@@ -1694,8 +1698,8 @@ router.get("/requests/:id", auth, async (req, res) => {
 
     // Находим запрос
     const request = await ServiceRequest.findById(requestId)
-      .populate("userId", "name _id")
-      .populate("providerId", "name _id")
+      .populate("userId", "name _id email phone status")
+      .populate("providerId", "name _id email phone status")
       .populate({
         path: "offerId",
         select: "title serviceType",

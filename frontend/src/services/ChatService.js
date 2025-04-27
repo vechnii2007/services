@@ -18,18 +18,12 @@ class ChatServiceClass extends BaseService {
     }
 
     try {
-      console.log(`[ChatService] Requesting messages for request ${requestId}`);
-
       // Сначала пытаемся получить сообщения из кеша
       const cachedMessages = await CacheService.getCachedMessages(requestId);
-      console.log(
-        `[ChatService] Retrieved ${cachedMessages.length} cached messages for request ${requestId}`
-      );
 
       // API endpoint для сообщений - /api/messages/request/:requestId
       // Нужно использовать absolute path, так как здесь идет обращение к другому API
       const url = `/api/messages/request/${requestId}`;
-      console.log(`[ChatService] Making GET request to absolute URL: ${url}`);
 
       try {
         // Используем axios напрямую для абсолютного пути
@@ -46,28 +40,6 @@ class ChatServiceClass extends BaseService {
         }
 
         const messages = await response.json();
-        const endTime = Date.now();
-
-        console.log(
-          `[ChatService] Retrieved ${
-            messages.length
-          } messages for request ${requestId} in ${endTime - startTime}ms`
-        );
-
-        // Проверяем тип данных и структуру первого сообщения
-        if (messages.length > 0) {
-          const sampleMsg = messages[0];
-          console.log(`[ChatService] Sample message structure:`, {
-            id: sampleMsg._id,
-            hasText: !!sampleMsg.text,
-            hasMessage: !!sampleMsg.message,
-            hasSenderId: !!sampleMsg.senderId,
-            hasRecipientId: !!sampleMsg.recipientId,
-            fullObject: sampleMsg,
-          });
-        } else {
-          console.log(`[ChatService] No messages returned from API`);
-        }
 
         // Кешируем полученные сообщения
         await CacheService.cacheMessages(messages);
@@ -81,9 +53,6 @@ class ChatServiceClass extends BaseService {
 
         // Если API-запрос не удался, возвращаем кешированные данные
         if (cachedMessages.length > 0) {
-          console.log(
-            `[ChatService] Using ${cachedMessages.length} cached messages for request ${requestId}`
-          );
           return cachedMessages;
         }
 
@@ -119,9 +88,6 @@ class ChatServiceClass extends BaseService {
     try {
       // Используем метод из serviceRoutes, поскольку отдельного API для чатов не установлено
       const url = "/api/services/my-chats";
-      console.log(
-        `[ChatService] Making direct fetch request for my chats to: ${url}`
-      );
 
       const response = await fetch(url, {
         headers: {
@@ -135,9 +101,6 @@ class ChatServiceClass extends BaseService {
       }
 
       const chats = await response.json();
-      console.log(
-        `[ChatService] Retrieved ${chats.length} chats for current user`
-      );
 
       // Кешируем полученные чаты
       if (chats.length > 0) {
@@ -152,7 +115,6 @@ class ChatServiceClass extends BaseService {
       try {
         const cachedChats = await CacheService.getCachedChats();
         if (cachedChats.length > 0) {
-          console.log(`[ChatService] Using ${cachedChats.length} cached chats`);
           return cachedChats;
         }
       } catch (cacheError) {
@@ -173,7 +135,6 @@ class ChatServiceClass extends BaseService {
   async getProviderChats() {
     try {
       const chats = await this.get("/chat/provider-chats");
-      console.log(`Retrieved ${chats.length} chats for provider`);
 
       // Кешируем полученные чаты провайдера
       if (chats.length > 0) {
@@ -188,9 +149,6 @@ class ChatServiceClass extends BaseService {
       try {
         const cachedChats = await CacheService.getCachedChats();
         if (cachedChats.length > 0) {
-          console.log(
-            `[ChatService] Using ${cachedChats.length} cached provider chats`
-          );
           return cachedChats;
         }
       } catch (cacheError) {
@@ -212,7 +170,6 @@ class ChatServiceClass extends BaseService {
     try {
       // Использую сервис уведомлений, так как отдельного API для непрочитанных сообщений нет
       const url = "/api/notifications/unread/count";
-      console.log(`[ChatService] Making direct fetch request to: ${url}`);
 
       const response = await fetch(url, {
         headers: {
@@ -226,7 +183,6 @@ class ChatServiceClass extends BaseService {
       }
 
       const data = await response.json();
-      console.log(`[ChatService] Unread notifications count: ${data.count}`);
       return data.count || 0;
     } catch (error) {
       console.error(
@@ -248,10 +204,10 @@ class ChatServiceClass extends BaseService {
         }
 
         return count;
-      } catch (cacheError) {
+      } catch (countError) {
         console.error(
-          "[ChatService] Error counting from cached chats:",
-          cacheError
+          "[ChatService] Error counting cached unread messages:",
+          countError
         );
         return 0;
       }
@@ -259,114 +215,22 @@ class ChatServiceClass extends BaseService {
   }
 
   /**
-   * Отправка сообщения через REST API (не через сокеты)
-   * Используется как запасной вариант, если сокеты недоступны
+   * Отправка сообщения
    * @param {string} requestId - ID запроса
    * @param {string} message - Текст сообщения
-   * @param {string|object} recipientId - ID получателя
-   * @returns {Promise<Object>} - Результат отправки сообщения
+   * @param {string} recipientId - ID получателя
+   * @returns {Promise<object>} - Отправленное сообщение
    */
   async sendMessage(requestId, message, recipientId) {
-    if (!requestId || !message || !recipientId) {
-      console.error(
-        "[ChatService] Missing required parameters for sendMessage",
-        {
-          requestId,
-          message,
-          recipientId,
-        }
-      );
-      throw new Error("Missing required parameters for sendMessage");
-    }
-
-    // Нормализуем recipientId, чтобы гарантировать, что это строка
-    let normalizedRecipientId = recipientId;
-    if (typeof recipientId === "object") {
-      if (recipientId._id) {
-        normalizedRecipientId = recipientId._id.toString();
-      } else {
-        console.error("[ChatService] Invalid recipientId format:", recipientId);
-        throw new Error("Invalid recipientId format");
-      }
-    }
-
     try {
-      console.log(
-        `[ChatService] Sending message via API to recipient ${normalizedRecipientId} for request ${requestId}`
-      );
+      // Endpoint для отправки сообщений - /api/messages
+      const url = "/api/messages";
 
-      const result = await this.post(`/chat/messages/${requestId}`, {
-        message,
-        recipientId: normalizedRecipientId,
-      });
-
-      console.log(
-        `[ChatService] Message sent to ${normalizedRecipientId} for request ${requestId}`
-      );
-
-      // Кешируем отправленное сообщение
-      if (result && result._id) {
-        await CacheService.cacheMessages([result]);
-      }
-
-      return result;
-    } catch (error) {
-      console.error(
-        `[ChatService] Error sending message to ${normalizedRecipientId} for request ${requestId}:`,
-        error
-      );
-
-      // Сохраняем сообщение локально для последующей синхронизации
-      try {
-        const pendingMessage = {
-          _id: `pending-${Date.now()}`,
-          requestId,
-          message,
-          recipientId: normalizedRecipientId,
-          senderId: localStorage.getItem("userId"),
-          timestamp: new Date().toISOString(),
-          pending: true,
-        };
-
-        // Сохраняем во временное хранилище
-        await CacheService.cacheMessages([pendingMessage]);
-        console.log(`[ChatService] Message saved for offline sync`);
-      } catch (cacheError) {
-        console.error(
-          "[ChatService] Error saving pending message:",
-          cacheError
-        );
-      }
-
-      throw error;
-    }
-  }
-
-  /**
-   * Отметка сообщений как прочитанных
-   * @param {string} requestId - ID запроса
-   * @param {Array<string>} messageIds - Массив ID сообщений для отметки
-   * @returns {Promise<Object>} - Результат операции
-   */
-  async markMessagesAsRead(requestId, messageIds) {
-    if (!requestId || !messageIds || !messageIds.length) {
-      console.error(
-        "[ChatService] Missing required parameters for markMessagesAsRead",
-        {
-          requestId,
-          messageIds,
-        }
-      );
-      throw new Error("Missing required parameters for markMessagesAsRead");
-    }
-
-    try {
-      console.log(
-        `[ChatService] Marking ${messageIds.length} messages as read for request ${requestId}`
-      );
-
-      // Используем API endpoint для отметки сообщений как прочитанных
-      const url = `/api/messages/read`;
+      const messageData = {
+        requestId,
+        text: message,
+        recipientId,
+      };
 
       const response = await fetch(url, {
         method: "POST",
@@ -374,10 +238,71 @@ class ChatServiceClass extends BaseService {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: JSON.stringify(messageData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const sentMessage = await response.json();
+
+      // Кешируем отправленное сообщение
+      await CacheService.cacheMessages([sentMessage]);
+
+      return sentMessage;
+    } catch (error) {
+      console.error("[ChatService] Error sending message:", error);
+
+      // Если сообщение не удалось отправить, сохраняем для offline sync
+      try {
+        const offlineMessage = {
           requestId,
-          messageIds,
-        }),
+          text: message,
+          recipientId,
+          pending: true,
+          createdAt: new Date().toISOString(),
+          _id: `pending_${Date.now()}`, // Временный ID для отслеживания
+        };
+
+        // Сохраняем сообщение локально для синхронизации позже
+        await CacheService.savePendingMessage(offlineMessage);
+
+        return offlineMessage;
+      } catch (cacheError) {
+        console.error(
+          "[ChatService] Error caching offline message:",
+          cacheError
+        );
+        throw error; // Пробрасываем исходную ошибку
+      }
+    }
+  }
+
+  /**
+   * Отметить сообщения как прочитанные
+   * @param {string} requestId - ID запроса
+   * @param {Array<string>} messageIds - Массив ID сообщений
+   * @returns {Promise<boolean>} - Результат операции
+   */
+  async markMessagesAsRead(requestId, messageIds) {
+    if (!messageIds || !messageIds.length) {
+      console.error(
+        "[ChatService] No message IDs provided for markMessagesAsRead"
+      );
+      return false;
+    }
+
+    try {
+      const url = "/api/messages/mark-read";
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messageIds }),
       });
 
       if (!response.ok) {
@@ -385,79 +310,69 @@ class ChatServiceClass extends BaseService {
       }
 
       const result = await response.json();
-      console.log(
-        `[ChatService] Successfully marked messages as read:`,
-        result
-      );
 
-      // Обновляем статус в кеше
+      // Обновляем статус в кэше
       try {
-        const cachedMessages = await CacheService.getCachedMessages(requestId);
-        const updatedMessages = cachedMessages.map((msg) => {
-          if (messageIds.includes(msg._id)) {
-            return { ...msg, read: true };
-          }
-          return msg;
-        });
-
-        await CacheService.cacheMessages(updatedMessages);
+        await CacheService.updateMessagesReadStatus(messageIds);
       } catch (cacheError) {
         console.error(
-          "[ChatService] Error updating cache after mark as read:",
+          "[ChatService] Error updating cached messages read status:",
           cacheError
         );
       }
 
-      return result;
+      return result.success;
     } catch (error) {
       console.error(
-        `[ChatService] Error marking messages as read for request ${requestId}:`,
+        "[ChatService] Error marking messages as read:",
         error.response?.data || error.message || error
       );
-      throw error;
+      return false;
     }
   }
 
   /**
-   * Синхронизация локального кеша с сервером
-   * @returns {Promise<boolean>} - Результат операции
+   * Синхронизация оффлайн-сообщений с сервером
+   * @returns {Promise<number>} - Количество синхронизированных сообщений
    */
   async syncOfflineMessages() {
     try {
-      // Получаем все сообщения из кеша
-      const cachedMessages = await CacheService.getAllMessages();
+      const pendingMessages = await CacheService.getPendingMessages();
 
-      // Ищем сообщения со статусом pending
-      const pendingMessages = cachedMessages.filter((msg) => msg.pending);
-
-      if (pendingMessages.length === 0) {
-        console.log("[ChatService] No pending messages to sync");
-        return true;
+      if (!pendingMessages.length) {
+        return 0;
       }
 
-      console.log(
-        `[ChatService] Syncing ${pendingMessages.length} pending messages`
-      );
+      let syncedCount = 0;
 
-      // Отправляем каждое сообщение
-      for (const msg of pendingMessages) {
+      // Обрабатываем каждое сообщение отдельно
+      for (const message of pendingMessages) {
         try {
-          await this.sendMessage(msg.requestId, msg.message, msg.recipientId);
+          // Отправляем сообщение
+          const sentMessage = await this.sendMessage(
+            message.requestId,
+            message.text,
+            message.recipientId
+          );
 
-          // Удаляем сообщение из списка pending
-          await CacheService.removeMessage(msg._id);
+          if (sentMessage && !sentMessage.pending) {
+            // Удаляем pending-сообщение из кэша
+            await CacheService.removePendingMessage(message._id);
+            syncedCount++;
+          }
         } catch (error) {
           console.error(
-            `[ChatService] Error syncing pending message ${msg._id}:`,
+            `[ChatService] Error syncing offline message ${message._id}:`,
             error
           );
+          // Продолжаем с другими сообщениями
         }
       }
 
-      return true;
+      return syncedCount;
     } catch (error) {
       console.error("[ChatService] Error syncing offline messages:", error);
-      return false;
+      return 0;
     }
   }
 }

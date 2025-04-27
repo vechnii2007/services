@@ -205,4 +205,42 @@ router.get("/provider/:id/stats", async (req, res) => {
   }
 });
 
+// Получение информации о пользователе по ID (для публичного доступа)
+router.get("/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select(
+      "-password -email -phone -__v"
+    );
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Возвращаем только безопасную информацию о пользователе
+    const safeUserInfo = {
+      _id: user._id,
+      name: user.name,
+      role: user.role,
+      status: user.status === "active" ? "active" : "inactive", // Не раскрываем другие статусы
+      createdAt: user.createdAt,
+    };
+
+    // Если это провайдер, добавляем публичную информацию о провайдере
+    if (user.role === "provider" && user.providerInfo) {
+      safeUserInfo.providerInfo = {
+        specialization: user.providerInfo.specialization,
+        languages: user.providerInfo.languages,
+        description: user.providerInfo.description,
+        workingHours: user.providerInfo.workingHours,
+        completedOffers: user.providerInfo.completedOffers,
+        responseRate: user.providerInfo.responseRate,
+      };
+    }
+
+    res.json(safeUserInfo);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;

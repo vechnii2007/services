@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "../config/constants";
+
 export const formatDate = (date) => {
   if (!date) return "";
   return new Date(date).toLocaleDateString("ru-RU", {
@@ -46,8 +48,10 @@ export const truncateText = (text, maxLength = 100) => {
 export const formatImagePath = (imagePath) => {
   if (!imagePath) return null;
 
-  // Базовый URL бэкенда
-  const API_BASE = "http://localhost:5001";
+  // Используем константу из конфига и убедимся, что она не заканчивается слешем
+  const API_BASE = API_BASE_URL.endsWith("/")
+    ? API_BASE_URL.slice(0, -1)
+    : API_BASE_URL;
 
   // Если путь уже содержит полный URL, возвращаем его
   if (imagePath.startsWith("http")) {
@@ -59,12 +63,17 @@ export const formatImagePath = (imagePath) => {
     ? imagePath.substring(1)
     : imagePath;
 
+  // Проверяем, имеет ли путь формат "image-TIMESTAMP-NUMBER.jpg" или "images-TIMESTAMP-NUMBER.jpg"
+  if (/^(image|images)-\d+-\d+\.\w+$/.test(normalizedPath)) {
+    return `${API_BASE}/uploads/images/${normalizedPath}`;
+  }
+
   // Проверяем, содержит ли путь 'uploads/images'
   if (normalizedPath.includes("uploads/images/")) {
     return `${API_BASE}/${normalizedPath}`;
   }
 
-  // Если путь содержит только 'images'
+  // Если путь содержит только 'images/'
   if (normalizedPath.includes("images/")) {
     return `${API_BASE}/uploads/${normalizedPath}`;
   }

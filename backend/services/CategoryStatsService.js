@@ -15,9 +15,6 @@ class CategoryStatsService {
         },
         { upsert: true }
       );
-      console.log(
-        `[CategoryStatsService] Incremented count for category: ${category}`
-      );
     } catch (error) {
       console.error(
         "[CategoryStatsService] Error incrementing category count:",
@@ -36,9 +33,6 @@ class CategoryStatsService {
           $set: { last_incremental_update: new Date() },
         }
       );
-      console.log(
-        `[CategoryStatsService] Decremented count for category: ${category}`
-      );
     } catch (error) {
       console.error(
         "[CategoryStatsService] Error decrementing category count:",
@@ -50,9 +44,6 @@ class CategoryStatsService {
   // Полное обновление статистики
   async fullSync() {
     const startTime = Date.now();
-    console.log(
-      "[CategoryStatsService] Starting full sync of category statistics"
-    );
 
     try {
       const categories = await Category.find();
@@ -79,11 +70,6 @@ class CategoryStatsService {
       if (updates.length > 0) {
         await CategoryStats.bulkWrite(updates);
       }
-
-      const duration = Date.now() - startTime;
-      console.log(
-        `[CategoryStatsService] Full sync completed in ${duration}ms`
-      );
     } catch (error) {
       console.error("[CategoryStatsService] Error during full sync:", error);
     }
@@ -111,7 +97,6 @@ class CategoryStatsService {
   initCronJob() {
     // Запуск каждые 10 минут
     cron.schedule("*/10 * * * *", async () => {
-      console.log("[CategoryStatsService] Running scheduled full sync");
       await this.fullSync();
     });
   }

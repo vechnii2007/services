@@ -92,6 +92,14 @@ export const AdminService = {
     return response.data;
   },
 
+  updateCategory: async (categoryId, categoryData) => {
+    const response = await api.put(
+      `/admin/categories/${categoryId}`,
+      categoryData
+    );
+    return response.data;
+  },
+
   deleteCategory: async (categoryId) => {
     const response = await api.delete(`/admin/categories/${categoryId}`);
     return response.data;

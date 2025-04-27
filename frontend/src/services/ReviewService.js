@@ -2,7 +2,7 @@ import BaseService from "./BaseService";
 
 class ReviewService extends BaseService {
   constructor() {
-    super("api/reviews");
+    super("reviews");
   }
 
   /**

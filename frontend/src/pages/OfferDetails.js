@@ -696,6 +696,21 @@ const OfferDetails = () => {
                       </Tooltip>
                     )}
                   </Box>
+
+                  {/* Кнопка для просмотра всех предложений провайдера */}
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={() =>
+                        navigate(`/offers?providerId=${safeProvider._id}`)
+                      }
+                    >
+                      {t("view_all_provider_offers", {
+                        defaultValue: "Посмотреть все предложения провайдера",
+                      })}
+                    </Button>
+                  </Box>
                 </CardContent>
               </MotionCard>
 

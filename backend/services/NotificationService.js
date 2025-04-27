@@ -7,10 +7,10 @@ class NotificationService {
   static async setup() {
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
       const vapidKeys = webpush.generateVAPIDKeys();
-      console.log("Generated VAPID keys:", {
-        publicKey: vapidKeys.publicKey,
-        privateKey: vapidKeys.privateKey,
-      });
+      // console.log("Generated VAPID keys:", {
+      //   publicKey: vapidKeys.publicKey,
+      //   privateKey: vapidKeys.privateKey,
+      // });
       process.env.VAPID_PUBLIC_KEY = vapidKeys.publicKey;
       process.env.VAPID_PRIVATE_KEY = vapidKeys.privateKey;
     }

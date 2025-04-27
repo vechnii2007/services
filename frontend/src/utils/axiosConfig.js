@@ -31,18 +31,11 @@ instance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Добавляем /api к URL, если его нет
-    if (!config.url.startsWith("/api/")) {
+    // Добавляем /api к URL, если его нет и URL не начинается с /api
+    if (!config.url.startsWith("/api/") && !config.url.startsWith("/api")) {
       config.url = `/api${config.url}`;
     }
 
-    // Логируем запрос для отладки
-    console.log("Request:", {
-      url: config.url,
-      method: config.method,
-      baseURL: config.baseURL,
-      headers: config.headers,
-    });
     return config;
   },
   (error) => {
@@ -58,11 +51,6 @@ instance.interceptors.response.use(
     const requestKey = `${response.config.method}-${response.config.url}`;
     cancelTokens.delete(requestKey);
 
-    // Логируем успешный ответ
-    console.log("Response:", {
-      status: response.status,
-      data: response.data,
-    });
     return response;
   },
   (error) => {
@@ -73,7 +61,7 @@ instance.interceptors.response.use(
         cancelTokens.delete(requestKey);
       }
 
-      // Логируем ошибку ответа
+      // Логируем только критические ошибки
       console.error("Response error:", {
         status: error.response?.status,
         data: error.response?.data,

@@ -251,24 +251,42 @@ class OfferService extends BaseService {
           }
         );
 
-        // Если это последняя попытка или код ошибки не 500, прекращаем попытки
-        if (
-          attempt === retryAttempts ||
-          (error.response && error.response.status !== 500)
-        ) {
-          break;
+        if (attempt < retryAttempts) {
+          // Пауза перед повторной попыткой
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-
-        // Ждем перед следующей попыткой
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * (attempt + 1))
-        );
       }
     }
 
-    // Если все попытки неудачны, возвращаем пустой результат
-    console.warn("[OfferService] All attempts to get promoted offers failed");
-    return { offers: [], total: 0, hasMore: false };
+    console.error(
+      "[OfferService] All attempts to fetch promoted offers failed"
+    );
+    throw lastError;
+  }
+
+  /**
+   * Получает информацию о провайдере по ID
+   * @param {string} providerId - ID провайдера
+   * @returns {Promise<Object>} - Информация о провайдере
+   */
+  async getProviderInfo(providerId) {
+    if (!providerId) {
+      console.warn("[OfferService] getProviderInfo called without providerId");
+      return null;
+    }
+
+    try {
+      console.log(`[OfferService] Getting provider info for ID: ${providerId}`);
+      const response = await this.get(`/users/${providerId}`);
+      return response;
+    } catch (error) {
+      console.error("[OfferService] Error getting provider info:", {
+        providerId,
+        error: error.message,
+        status: error.response?.status,
+      });
+      return null;
+    }
   }
 
   // Получение списка категорий

@@ -48,13 +48,13 @@ const AdminPanel = () => {
     const fetchData = async () => {
       try {
         const usersData = await AdminService.getUsers();
-        setUsers(usersData);
+        setUsers(usersData.users || []);
         const requestsData = await AdminService.getRequests();
-        setRequests(requestsData);
+        setRequests(requestsData.requests || []);
         const offersData = await AdminService.getOffers();
-        setOffers(offersData);
+        setOffers(offersData.offers || []);
         const categoriesData = await AdminService.getCategories();
-        setCategories(categoriesData);
+        setCategories(categoriesData || []);
       } catch (error) {
         console.error("Error fetching data:", error);
       }

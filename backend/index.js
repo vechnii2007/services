@@ -55,7 +55,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Настройка статических путей с использованием абсолютного пути
 app.use(
-  "/uploads/images",
+  "/uploads/images/",
   (req, res, next) => {
     // Устанавливаем правильные CORS-заголовки
     res.set("Access-Control-Allow-Origin", "*");
@@ -67,7 +67,29 @@ app.use(
 
 // Также добавляем маршрут для совместимости со старыми путями
 app.use(
-  "/images",
+  "/images/",
+  (req, res, next) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Cache-Control", "no-store");
+    next();
+  },
+  express.static(path.join(__dirname, "uploads/images"))
+);
+
+// Маршрут для совместимости с форматом API URL
+app.use(
+  "/api/uploads/images/",
+  (req, res, next) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Cache-Control", "no-store");
+    next();
+  },
+  express.static(path.join(__dirname, "uploads/images"))
+);
+
+// Еще один маршрут для совместимости с форматом API URL без uploads
+app.use(
+  "/api/images/",
   (req, res, next) => {
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Cache-Control", "no-store");
@@ -123,7 +145,7 @@ mongoose
     categoryStatsService.fullSync();
 
     // Start server
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 5001;
     server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

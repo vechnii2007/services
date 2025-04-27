@@ -7,7 +7,8 @@ import React, {
   useMemo,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Typography, Box, Container } from "@mui/material";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Typography, Box, Container, Alert } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import OfferFilters from "../components/OfferFilters";
 import CategoryCard from "../components/CategoryCard";
@@ -80,6 +81,8 @@ const LoadingContainer = styled(Box)(({ theme }) => ({
 const Offers = () => {
   const { t } = useTranslation();
   const { isAuthenticated } = useContext(AuthContext);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [offers, setOffers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -89,12 +92,37 @@ const Offers = () => {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [providerId, setProviderId] = useState("");
+  const [providerName, setProviderName] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [totalResults, setTotalResults] = useState(0);
   const isFetchingRef = useRef(false);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const providerIdFromUrl = queryParams.get("providerId");
+
+    if (providerIdFromUrl) {
+      setProviderId(providerIdFromUrl);
+      const fetchProviderInfo = async () => {
+        try {
+          const response = await OfferService.getProviderInfo(
+            providerIdFromUrl
+          );
+          if (response && response.name) {
+            setProviderName(response.name);
+          }
+        } catch (error) {
+          console.error("Error fetching provider info:", error);
+        }
+      };
+
+      fetchProviderInfo();
+    }
+  }, [location.search]);
 
   const fetchData = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -109,6 +137,7 @@ const Offers = () => {
         maxPrice: maxPrice || undefined,
         location: locationFilter || undefined,
         category: selectedCategory || undefined,
+        providerId: providerId || undefined,
       };
 
       let response;
@@ -153,6 +182,7 @@ const Offers = () => {
     maxPrice,
     locationFilter,
     selectedCategory,
+    providerId,
     t,
   ]);
 
@@ -175,123 +205,6 @@ const Offers = () => {
     setPage(value);
   }, []);
 
-  // Эффект для начальной загрузки категорий
-  useEffect(() => {
-    // Функция-помощник для получения категорий
-    const getFetchCategories = async () => {
-      try {
-        if (typeof OfferService.fetchCategories === "function") {
-          return await OfferService.fetchCategories();
-        } else {
-          console.warn("[Offers] Using fallback for categories");
-          return [];
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching categories:", error);
-        return [];
-      }
-    };
-
-    // Функция-помощник для получения счетчиков категорий
-    const getFetchCategoryCounts = async () => {
-      try {
-        if (typeof OfferService.fetchCategoryCounts === "function") {
-          return await OfferService.fetchCategoryCounts();
-        } else {
-          console.warn("[Offers] Using fallback for category counts");
-          return {};
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching category counts:", error);
-        return {};
-      }
-    };
-
-    // Функция-помощник для получения избранных предложений
-    const getFavorites = async () => {
-      try {
-        if (!isAuthenticated) {
-          return {};
-        }
-
-        if (typeof OfferService.fetchFavorites === "function") {
-          const favoritesData = await OfferService.fetchFavorites();
-          return favoritesData || {};
-        } else {
-          console.warn("[Offers] fetchFavorites is not a function");
-          return {};
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching favorites:", error);
-        return {};
-      }
-    };
-
-    // Функция-помощник для получения промо-предложений
-    const getPromotedOffers = async () => {
-      try {
-        if (typeof OfferService.getPromotedOffers === "function") {
-          const response = await OfferService.getPromotedOffers();
-          return response;
-        } else {
-          console.warn("[Offers] getPromotedOffers is not a function");
-          return { offers: [], total: 0, hasMore: false };
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching promoted offers:", error);
-        return { offers: [], total: 0, hasMore: false };
-      }
-    };
-
-    const loadInitialData = async () => {
-      const loadStart = Date.now();
-
-      try {
-        const [categoriesResponse, countsResponse] = await Promise.all([
-          getFetchCategories(),
-          getFetchCategoryCounts(),
-        ]);
-
-        const transformedCounts = {};
-        categoriesResponse?.forEach((category) => {
-          transformedCounts[category.name] =
-            countsResponse?.[category.name] || 0;
-        });
-
-        setCategories(categoriesResponse || []);
-        setCounts(transformedCounts);
-
-        // Загружаем промо-оферы, если они не загружены ранее
-        if (!window.promotedOffersLoaded) {
-          try {
-            const promotedOffersResponse = await getPromotedOffers();
-            window.promotedOffersLoaded = true;
-            window.promotedOffersData = promotedOffersResponse.offers || [];
-          } catch (error) {
-            console.error("[Offers] Error loading promoted offers:", error);
-          }
-        } else {
-          console.log(
-            "[Offers] Skipping promoted offers load - already loaded"
-          );
-        }
-
-        // Загружаем избранные, если пользователь авторизован
-        const favoritesData = await getFavorites();
-        setFavorites(favoritesData);
-
-        const loadTime = Date.now() - loadStart;
-        console.log(`[Offers] Initial data load completed in ${loadTime}ms`);
-      } catch (error) {
-        console.error("[Offers] Error loading initial data:", error);
-        toast.error(t("errors.loadingFailed"));
-      }
-    };
-
-    loadInitialData();
-  }, [isAuthenticated, t]);
-
-  // Эффект для обновления данных при изменении фильтров
   useEffect(() => {
     const timeoutId = setTimeout(
       () => {
@@ -303,12 +216,9 @@ const Offers = () => {
     return () => clearTimeout(timeoutId);
   }, [fetchData, page, searchQuery, minPrice, maxPrice, locationFilter]);
 
-  // Мемоизируем фильтрованные оферы и сортируем их, чтобы промо оферы были вверху
   const filteredOffers = useMemo(() => {
-    // Сначала фильтруем по поисковому запросу
     const filtered = filterOffers(offers, { searchQuery });
 
-    // Затем сортируем, чтобы промо-оферы были первыми
     return [...filtered].sort((a, b) => {
       const aIsPromoted =
         a?.promoted?.isPromoted &&
@@ -317,13 +227,10 @@ const Offers = () => {
         b?.promoted?.isPromoted &&
         new Date(b.promoted.promotedUntil) > new Date();
 
-      // Если оба промо или оба не промо, сохраняем оригинальный порядок
       if (aIsPromoted === bIsPromoted) return 0;
 
-      // Если a - промо, но b - нет, то a должен быть первым
       if (aIsPromoted) return -1;
 
-      // Если b - промо, но a - нет, то b должен быть первым
       return 1;
     });
   }, [offers, searchQuery]);
@@ -348,7 +255,6 @@ const Offers = () => {
           offerType === "service_offer" ? "ServiceOffer" : "Offer";
         const wasInFavorites = Boolean(favorites[offerId]);
 
-        // Оптимистичное обновление
         setFavorites((prev) => {
           const newFavorites = {
             ...prev,
@@ -373,13 +279,11 @@ const Offers = () => {
           message: result.message,
         });
 
-        // Обновляем состояние в соответствии с ответом сервера
         setFavorites((prev) => ({
           ...prev,
           [offerId]: result.isFavorite,
         }));
 
-        // Показываем уведомление об успешном действии
         if (result.isFavorite) {
           toast.success(t("added_to_favorites"));
         } else {
@@ -387,7 +291,6 @@ const Offers = () => {
         }
 
         if (!result.success && result.error) {
-          // Откат при ошибке
           setFavorites((prev) => ({
             ...prev,
             [offerId]: wasInFavorites,
@@ -402,6 +305,14 @@ const Offers = () => {
     [isAuthenticated, favorites, t]
   );
 
+  const clearProviderFilter = () => {
+    setProviderId("");
+    setProviderName("");
+    const params = new URLSearchParams(location.search);
+    params.delete("providerId");
+    navigate({ search: params.toString() });
+  };
+
   if (loading && categories.length === 0) {
     return (
       <LoadingContainer>
@@ -415,6 +326,27 @@ const Offers = () => {
   return (
     <ContentContainer maxWidth="lg">
       <PageTitle variant="h1">{t("offers_and_services")}</PageTitle>
+
+      {providerId && providerName && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography
+                variant="button"
+                color="inherit"
+                sx={{ mr: 1, cursor: "pointer", textDecoration: "underline" }}
+                onClick={clearProviderFilter}
+              >
+                {t("clear_filter")}
+              </Typography>
+            </Box>
+          }
+        >
+          {t("showing_offers_from_provider", { providerName })}
+        </Alert>
+      )}
 
       <OfferFilters
         searchQuery={searchQuery}
@@ -452,7 +384,6 @@ const Offers = () => {
         />
       </CategoriesSection>
 
-      {/* Отображаем слайдер с промо-офферами */}
       <PromotedOffersSlider
         favorites={favorites}
         toggleFavorite={toggleFavorite}

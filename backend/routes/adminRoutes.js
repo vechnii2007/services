@@ -223,46 +223,121 @@ router.delete("/requests/:id", auth, isAdmin, async (req, res) => {
   }
 });
 
-// Получение списка предложений с фильтрацией и пагинацией
-router.get("/offers", auth, isAdmin, async (req, res) => {
+// Тестовый маршрут без авторизации (только для отладки)
+router.get("/test-offers", async (req, res) => {
   try {
+    console.log("Starting /admin/test-offers request processing");
+
     const { status, page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Построение запроса
     const query = {};
     if (status) query.status = status;
 
-    const [serviceRequests, serviceOffers, offers] = await Promise.all([
-      ServiceRequest.find(query)
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit)),
-      ServiceOffer.find(query)
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit)),
-      Offer.find(query)
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit)),
+    console.log(
+      "DEBUG: Filter query:",
+      JSON.stringify(query),
+      "Skip:",
+      skip,
+      "Limit:",
+      limitNumber
+    );
+
+    // Получаем данные только из коллекции Offer
+    console.log("Fetching data from Offer collection only");
+    const [offers, offersCount] = await Promise.all([
+      Offer.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNumber),
+      Offer.countDocuments(query),
     ]);
-    const totalRequests = await ServiceRequest.countDocuments(query);
-    const totalOffers = await Offer.countDocuments(query);
-    const totalServiceOffers = await ServiceOffer.countDocuments(query);
-    const total = totalRequests + totalOffers + totalServiceOffers;
+
+    console.log(`DEBUG: Offers count: ${offersCount}`);
+    console.log(`DEBUG: Number of offers returned: ${offers.length}`);
+
+    // Подготавливаем ответ
+    const total = offersCount;
+    const pages = Math.ceil(total / limitNumber);
+
+    console.log(
+      `Response prepared: total=${total}, pages=${pages}, page=${pageNumber}`
+    );
 
     res.json({
-      offers: [
-        ...serviceRequests.map((request) => ({
-          ...request._doc,
-          type: "ServiceRequest",
-        })),
-        ...serviceOffers.map((service) => ({
-          ...service._doc,
-          type: "ServiceOffer",
-        })),
-        ...offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
-      ],
+      offers: offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
       total,
-      page: parseInt(page),
-      pages: Math.ceil(total / limit),
+      page: pageNumber,
+      pages,
     });
   } catch (error) {
+    console.error("Error fetching offers:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Получение списка предложений с фильтрацией и пагинацией
+router.get("/offers", auth, isAdmin, async (req, res) => {
+  try {
+    console.log("Starting /admin/offers request processing");
+
+    // Добавляем заголовки для предотвращения кеширования
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
+
+    const { status, page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Построение запроса
+    const query = {};
+    if (status) query.status = status;
+
+    console.log(
+      "DEBUG: Filter query:",
+      JSON.stringify(query),
+      "Skip:",
+      skip,
+      "Limit:",
+      limitNumber
+    );
+
+    // Получаем данные только из коллекции Offer
+    console.log("Fetching data from Offer collection only");
+    const [offers, offersCount] = await Promise.all([
+      Offer.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber)
+        .populate("providerId", "name email"),
+      Offer.countDocuments(query),
+    ]);
+
+    console.log(`DEBUG: Offers count: ${offersCount}`);
+    console.log(`DEBUG: Number of offers returned: ${offers.length}`);
+
+    // Подготавливаем ответ
+    const total = offersCount;
+    const pages = Math.ceil(total / limitNumber);
+
+    console.log(
+      `Response prepared: total=${total}, pages=${pages}, page=${pageNumber}`
+    );
+
+    res.json({
+      offers: offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
+      total,
+      page: pageNumber,
+      pages,
+    });
+  } catch (error) {
+    console.error("Error fetching offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -278,18 +353,30 @@ router.get("/offers/:id", auth, isAdmin, async (req, res) => {
       "name email"
     );
     if (item) {
+      // Убедимся, что поле images существует
+      if (!item._doc.images) {
+        item._doc.images = [];
+      }
       return res.json({ ...item._doc, type: "ServiceRequest" });
     }
 
     // Проверяем, является ли ID услугой (ServiceOffer)
     item = await ServiceOffer.findById(id).populate("providerId", "name email");
     if (item) {
+      // Убедимся, что поле images существует
+      if (!item._doc.images) {
+        item._doc.images = [];
+      }
       return res.json({ ...item._doc, type: "ServiceOffer" });
     }
 
     // Проверяем, является ли ID предложением (Offer)
     item = await Offer.findById(id).populate("providerId", "name email");
     if (item) {
+      // Убедимся, что поле images существует
+      if (!item._doc.images) {
+        item._doc.images = [];
+      }
       return res.json({ ...item._doc, type: "Offer" });
     }
 

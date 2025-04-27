@@ -21,6 +21,7 @@ import {
   InputAdornment,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { formatImagePath } from "../../utils/formatters";
 
 const EditOfferDialog = ({ open, onClose, offerId, onOfferUpdated }) => {
   const { t } = useTranslation();
@@ -98,17 +99,19 @@ const EditOfferDialog = ({ open, onClose, offerId, onOfferUpdated }) => {
           }
 
           setLocation(offerData.location || "");
-          console.log(123123, offerData);
+
           // Проверяем наличие images или image и устанавливаем в состояние
-          if (offerData.images.length && Array.isArray(offerData.images)) {
+          if (
+            offerData.images &&
+            Array.isArray(offerData.images) &&
+            offerData.images.length > 0
+          ) {
             setImages(offerData.images);
           } else if (offerData.image) {
-            console.log(777);
             setImages([offerData.image]);
           } else {
             setImages([]);
           }
-          console.log("Images set:", offerData.images || offerData.image); // Отладка
         } catch (err) {
           if (err.response?.status === 404) {
             setError(t("offer_not_found"));
@@ -412,7 +415,7 @@ const EditOfferDialog = ({ open, onClose, offerId, onOfferUpdated }) => {
                 images.map((image, index) => (
                   <Box key={index} sx={{ position: "relative" }}>
                     <img
-                      src={`http://localhost:5001${image}`}
+                      src={formatImagePath(image)}
                       alt={`Offer ${index}`}
                       style={{ width: 100, height: 100, objectFit: "cover" }}
                       onError={() => handleImageError(index)}
