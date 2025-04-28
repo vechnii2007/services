@@ -6,7 +6,6 @@ import {
   Typography,
   Grid,
   Card,
-  CardContent,
   useTheme,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -70,7 +69,6 @@ const StepCard = styled(Card)(({ theme }) => ({
 
 const HowItWorksSection = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   // Вариации для анимации
   const containerVariants = {

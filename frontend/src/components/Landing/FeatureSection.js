@@ -20,7 +20,6 @@ import StarIcon from "@mui/icons-material/Star";
 
 // Анимированные компоненты
 const MotionBox = styled(motion.div)({});
-const MotionTypography = styled(motion.div)({});
 const MotionCard = styled(motion(Card))({});
 
 // Стили
@@ -59,7 +58,6 @@ const FeatureIcon = styled(Box)(({ theme, color = "primary.main" }) => ({
 
 const FeatureSection = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   // Вариации для анимации
   const containerVariants = {

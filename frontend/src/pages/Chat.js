@@ -6,7 +6,6 @@ import React, {
   useMemo,
 } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { useSocket } from "../hooks/useSocket";
 import ChatService from "../services/ChatService";
 import {
@@ -249,7 +248,6 @@ const Chat = () => {
   const theme = useTheme();
   const { requestId } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const { socket, isConnected } = useSocket();
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -259,13 +257,11 @@ const Chat = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
-  const [pageTitle, setPageTitle] = useState("");
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const chatInitializedRef = useRef(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const initializationRef = useRef(false);
-  const [isConnecting, setIsConnecting] = useState(false);
   const reconnectTimeoutRef = useRef(null);
   const lastMessageRef = useRef(new Set());
   const socketRef = useRef(null);

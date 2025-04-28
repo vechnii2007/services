@@ -35,11 +35,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
-import axios from "../../utils/axiosConfig";
-import logo from "../../assets/images/logo.svg";
 import NotificationService from "../../services/NotificationService";
 import ChatService from "../../services/ChatService";
 import { useSocket } from "../../hooks/useSocket";
+import Drawer from "@mui/material/Drawer";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import logo from "../../assets/images/logo.svg";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const getIcon = () => {
@@ -131,16 +132,15 @@ const Header = ({ onDrawerToggle }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { socket, isConnected } = useSocket();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [langAnchorEl, setLangAnchorEl] = useState(null);
   const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  const [serviceWorkerRegistration, setServiceWorkerRegistration] =
-    useState(null);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleLangMenu = (event) => setLangAnchorEl(event.currentTarget);
@@ -173,29 +173,6 @@ const Header = ({ onDrawerToggle }) => {
       fetchUnreadMessagesCount();
     }
   }, [user, fetchUnreadMessagesCount]);
-
-  // Регистрация сервис-воркера при монтировании компонента
-  useEffect(() => {
-    const registerSW = async () => {
-      try {
-        const registration = await NotificationService.registerServiceWorker();
-        setServiceWorkerRegistration(registration);
-
-        // Если сервис-воркер зарегистрирован, передаем ему токен для авторизации
-        if (registration && registration.active) {
-          const token = localStorage.getItem("token");
-          registration.active.postMessage({
-            type: "SET_TOKEN",
-            token,
-          });
-        }
-      } catch (error) {
-        console.error("[Header] Error registering service worker:", error);
-      }
-    };
-
-    registerSW();
-  }, []);
 
   // Настройка WebSocket для получения уведомлений в реальном времени
   useEffect(() => {
@@ -328,7 +305,6 @@ const Header = ({ onDrawerToggle }) => {
       setNotifications(response.notifications || []);
     } catch (err) {
       console.error("Error loading notifications:", err);
-      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -385,6 +361,98 @@ const Header = ({ onDrawerToggle }) => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // Drawer-меню для мобильных
+  const drawerContent = (
+    <Box
+      sx={{ width: 260, p: 2, pt: { xs: 7, sm: 8 } }}
+      role="presentation"
+      onClick={() => setDrawerOpen(false)}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <Avatar src={user?.avatar} alt={user?.name} sx={{ mr: 1 }} />
+        <Box>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {user ? user.name : t("guest")}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {user ? user.email : ""}
+          </Typography>
+        </Box>
+      </Box>
+      <Divider sx={{ mb: 1 }} />
+      <List>
+        <ListItem button onClick={() => navigate("/")}>
+          {" "}
+          <ListItemIcon>
+            <OfferIcon />
+          </ListItemIcon>{" "}
+          <ListItemText primary={t("offers")} />{" "}
+        </ListItem>
+        {user && (
+          <ListItem button onClick={() => navigate("/profile")}>
+            {" "}
+            <ListItemIcon>
+              <AccountCircle />
+            </ListItemIcon>{" "}
+            <ListItemText primary={t("profile")} />{" "}
+          </ListItem>
+        )}
+        {user && (
+          <ListItem button onClick={() => navigate("/chat-list")}>
+            {" "}
+            <ListItemIcon>
+              <MessageIcon />
+            </ListItemIcon>{" "}
+            <ListItemText primary={t("chat")} />{" "}
+          </ListItem>
+        )}
+        <ListItem button onClick={handleLangMenu}>
+          {" "}
+          <ListItemIcon>
+            <LanguageIcon />
+          </ListItemIcon>{" "}
+          <ListItemText primary={t("language")} />{" "}
+        </ListItem>
+        <Menu
+          anchorEl={langAnchorEl}
+          open={Boolean(langAnchorEl)}
+          onClose={handleLangClose}
+        >
+          <MenuItem onClick={() => handleLanguageChange("ru")}>
+            Русский
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageChange("en")}>
+            English
+          </MenuItem>
+        </Menu>
+        <ListItem button onClick={() => navigate("/notifications")}>
+          {" "}
+          <ListItemIcon>
+            <NotificationsIcon />
+          </ListItemIcon>{" "}
+          <ListItemText primary={t("notifications")} />{" "}
+        </ListItem>
+        {user ? (
+          <ListItem button onClick={handleLogout}>
+            {" "}
+            <ListItemIcon>
+              <AccountCircle />
+            </ListItemIcon>{" "}
+            <ListItemText primary={t("logout")} />{" "}
+          </ListItem>
+        ) : (
+          <ListItem button onClick={() => navigate("/login")}>
+            {" "}
+            <ListItemIcon>
+              <AccountCircle />
+            </ListItemIcon>{" "}
+            <ListItemText primary={t("login")} />{" "}
+          </ListItem>
+        )}
+      </List>
+    </Box>
+  );
+
   return (
     <AppBar
       position="fixed"
@@ -393,202 +461,234 @@ const Header = ({ onDrawerToggle }) => {
         backgroundColor: theme.palette.primary.main,
       }}
     >
-      <Toolbar>
-        <IconButton
-          edge="start"
-          color="inherit"
-          aria-label="menu"
-          sx={{ mr: 2 }}
-          onClick={onDrawerToggle}
-        >
-          <MenuIcon />
-        </IconButton>
-
-        <Box
-          component="img"
-          src={logo}
-          alt="UniServ Logo"
-          sx={{
-            height: 40,
-            mr: 1,
-            cursor: "pointer",
-            "&:hover": {
-              opacity: 0.9,
-            },
-          }}
-          onClick={() => navigate("/")}
-        />
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {/* Чаты */}
-          {user && (
+      <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
+        {isMobile ? (
+          <>
             <IconButton
+              edge="start"
               color="inherit"
-              onClick={() => {
-                console.log("[Header] Navigating to chat list");
-                navigate("/chat-list");
-              }}
-              aria-label={t("chat")}
+              aria-label="menu"
+              sx={{ mr: 1 }}
+              onClick={() => setDrawerOpen(true)}
             >
-              <Badge badgeContent={unreadMessagesCount} color="error">
-                <MessageIcon />
-              </Badge>
+              <MenuIcon />
             </IconButton>
-          )}
-
-          {/* Язык */}
-          <IconButton color="inherit" onClick={handleLangMenu}>
-            <LanguageIcon />
-          </IconButton>
-          <Menu
-            anchorEl={langAnchorEl}
-            open={Boolean(langAnchorEl)}
-            onClose={handleLangClose}
-          >
-            <MenuItem onClick={() => handleLanguageChange("ru")}>
-              Русский
-            </MenuItem>
-            <MenuItem onClick={() => handleLanguageChange("en")}>
-              English
-            </MenuItem>
-          </Menu>
-
-          {/* Уведомления */}
-          <IconButton
-            color="inherit"
-            onClick={handleNotificationsClick}
-            aria-label={t("notifications")}
-          >
-            <Badge badgeContent={unreadCount} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-          <Popover
-            open={Boolean(notificationsAnchor)}
-            anchorEl={notificationsAnchor}
-            onClose={handleNotificationsClose}
-            anchorOrigin={{
-              vertical: "bottom",
-              horizontal: "right",
-            }}
-            transformOrigin={{
-              vertical: "top",
-              horizontal: "right",
-            }}
-            PaperProps={{
-              sx: {
-                width: { xs: "100%", sm: 360 },
-                maxWidth: "100%",
-                maxHeight: { xs: "80vh", sm: "70vh" },
-                overflow: "auto",
-                mt: 1,
-                boxShadow: theme.shadows[8],
-              },
-            }}
-            sx={{
-              width: { xs: "100%", sm: "auto" },
-              "& .MuiPopover-paper": {
-                width: { xs: "100%", sm: 360 },
-                left: { xs: "0 !important", sm: "auto" },
-                right: { xs: "0 !important", sm: "auto" },
-              },
-            }}
-          >
             <Box
-              sx={{
-                p: 2,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+              sx={{ flexGrow: 1, display: "flex", justifyContent: "center" }}
             >
-              <Typography variant="h6">{t("notifications")}</Typography>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                {unreadCount > 0 && (
-                  <Button
-                    size="small"
-                    onClick={handleMarkAllAsRead}
-                    disabled={loading}
-                  >
-                    {t("mark_all_read")}
-                  </Button>
-                )}
-                <Button
-                  size="small"
-                  onClick={() => {
-                    navigate("/notifications");
-                    handleNotificationsClose();
+              <Box
+                component="img"
+                src={logo}
+                alt="UniServ Logo"
+                sx={{ height: 36, cursor: "pointer" }}
+                onClick={() => navigate("/")}
+              />
+            </Box>
+            <Drawer
+              anchor="left"
+              open={drawerOpen}
+              onClose={() => setDrawerOpen(false)}
+              ModalProps={{ keepMounted: true }}
+            >
+              {drawerContent}
+            </Drawer>
+            {/* Краткие иконки справа */}
+            <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
+              {user && (
+                <IconButton
+                  color="inherit"
+                  onClick={() => navigate("/chat-list")}
+                >
+                  {" "}
+                  <Badge badgeContent={unreadMessagesCount} color="error">
+                    <MessageIcon />
+                  </Badge>{" "}
+                </IconButton>
+              )}
+              <IconButton color="inherit" onClick={handleNotificationsClick}>
+                {" "}
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsIcon />
+                </Badge>{" "}
+              </IconButton>
+            </Box>
+          </>
+        ) : (
+          // Десктопная версия (оставляем как есть)
+          <>
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              sx={{ mr: 2 }}
+              onClick={onDrawerToggle}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Box
+              component="img"
+              src={logo}
+              alt="UniServ Logo"
+              sx={{
+                height: 40,
+                mr: 1,
+                cursor: "pointer",
+                "&:hover": { opacity: 0.9 },
+              }}
+              onClick={() => navigate("/")}
+            />
+            <Box sx={{ flexGrow: 1 }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {user && (
+                <IconButton
+                  color="inherit"
+                  onClick={() => navigate("/chat-list")}
+                >
+                  {" "}
+                  <Badge badgeContent={unreadMessagesCount} color="error">
+                    <MessageIcon />
+                  </Badge>{" "}
+                </IconButton>
+              )}
+              <IconButton color="inherit" onClick={handleLangMenu}>
+                <LanguageIcon />
+              </IconButton>
+              <Menu
+                anchorEl={langAnchorEl}
+                open={Boolean(langAnchorEl)}
+                onClose={handleLangClose}
+              >
+                <MenuItem onClick={() => handleLanguageChange("ru")}>
+                  Русский
+                </MenuItem>
+                <MenuItem onClick={() => handleLanguageChange("en")}>
+                  English
+                </MenuItem>
+              </Menu>
+              <IconButton color="inherit" onClick={handleNotificationsClick}>
+                {" "}
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsIcon />
+                </Badge>{" "}
+              </IconButton>
+              <Popover
+                open={Boolean(notificationsAnchor)}
+                anchorEl={notificationsAnchor}
+                onClose={handleNotificationsClose}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+                PaperProps={{
+                  sx: {
+                    width: { xs: "100%", sm: 360 },
+                    maxWidth: "100%",
+                    maxHeight: { xs: "80vh", sm: "70vh" },
+                    overflow: "auto",
+                    mt: 1,
+                    boxShadow: theme.shadows[8],
+                  },
+                }}
+                sx={{
+                  width: { xs: "100%", sm: "auto" },
+                  "& .MuiPopover-paper": {
+                    width: { xs: "100%", sm: 360 },
+                    left: { xs: "0 !important", sm: "auto" },
+                    right: { xs: "0 !important", sm: "auto" },
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    p: 2,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  {t("view_all")}
-                </Button>
+                  <Typography variant="h6">{t("notifications")}</Typography>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    {unreadCount > 0 && (
+                      <Button
+                        size="small"
+                        onClick={handleMarkAllAsRead}
+                        disabled={loading}
+                      >
+                        {t("mark_all_read")}
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        navigate("/notifications");
+                        handleNotificationsClose();
+                      }}
+                    >
+                      {t("view_all")}
+                    </Button>
+                  </Box>
+                </Box>
+                <Divider />
+                {loading ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : notifications.length > 0 ? (
+                  <List sx={{ p: 0 }}>
+                    {notifications.map((notification) => (
+                      <NotificationItem
+                        key={notification._id}
+                        notification={notification}
+                        onMarkAsRead={handleMarkAsRead}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </List>
+                ) : (
+                  <Box sx={{ p: 3, textAlign: "center" }}>
+                    <Typography color="text.secondary">
+                      {t("no_notifications")}
+                    </Typography>
+                  </Box>
+                )}
+              </Popover>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                {user ? (
+                  <>
+                    <IconButton
+                      onClick={handleMenu}
+                      color="inherit"
+                      sx={{ padding: 0.5 }}
+                    >
+                      {user.avatar ? (
+                        <Avatar src={user.avatar} alt={user.name} />
+                      ) : (
+                        <AccountCircle />
+                      )}
+                    </IconButton>
+                    <Menu
+                      anchorEl={anchorEl}
+                      open={Boolean(anchorEl)}
+                      onClose={handleClose}
+                    >
+                      <MenuItem
+                        onClick={() => {
+                          navigate("/profile");
+                          handleClose();
+                        }}
+                      >
+                        {t("profile")}
+                      </MenuItem>
+                      <MenuItem onClick={handleLogout}>{t("logout")}</MenuItem>
+                    </Menu>
+                  </>
+                ) : (
+                  <Button color="inherit" onClick={() => navigate("/login")}>
+                    {t("login")}
+                  </Button>
+                )}
               </Box>
             </Box>
-            <Divider />
-            {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : notifications.length > 0 ? (
-              <List sx={{ p: 0 }}>
-                {notifications.map((notification) => (
-                  <NotificationItem
-                    key={notification._id}
-                    notification={notification}
-                    onMarkAsRead={handleMarkAsRead}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </List>
-            ) : (
-              <Box sx={{ p: 3, textAlign: "center" }}>
-                <Typography color="text.secondary">
-                  {t("no_notifications")}
-                </Typography>
-              </Box>
-            )}
-          </Popover>
-
-          {/* Профиль */}
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            {user ? (
-              <>
-                <IconButton
-                  onClick={handleMenu}
-                  color="inherit"
-                  sx={{ padding: 0.5 }}
-                >
-                  {user.avatar ? (
-                    <Avatar src={user.avatar} alt={user.name} />
-                  ) : (
-                    <AccountCircle />
-                  )}
-                </IconButton>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleClose}
-                >
-                  <MenuItem
-                    onClick={() => {
-                      navigate("/profile");
-                      handleClose();
-                    }}
-                  >
-                    {t("profile")}
-                  </MenuItem>
-                  <MenuItem onClick={handleLogout}>{t("logout")}</MenuItem>
-                </Menu>
-              </>
-            ) : (
-              <Button color="inherit" onClick={() => navigate("/login")}>
-                {t("login")}
-              </Button>
-            )}
-          </Box>
-        </Box>
+          </>
+        )}
       </Toolbar>
     </AppBar>
   );

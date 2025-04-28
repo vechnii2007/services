@@ -171,7 +171,6 @@ const ServiceChip = styled(Chip)(({ theme }) => ({
 const CategorySection = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const theme = useTheme();
 
   // Вариации для анимации
   const containerVariants = {

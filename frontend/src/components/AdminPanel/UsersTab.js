@@ -57,7 +57,7 @@ const UsersTab = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [userFilter, userRoleFilter, page]);
+  }, [userFilter, userRoleFilter, page, fetchUsers]);
 
   const handleBlockUser = async (userId) => {
     try {

@@ -1,7 +1,6 @@
 import React from "react";
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useTranslation } from "react-i18next";
 import CategoryCard from "./CategoryCard";
 import PropTypes from "prop-types";
 // Import Swiper React components
@@ -64,8 +63,6 @@ const CategorySlider = ({
   onCategorySelect,
   counts = {},
 }) => {
-  const { t } = useTranslation();
-
   if (!categories?.length) return null;
 
   return (

@@ -56,7 +56,7 @@ const RequestsTab = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, [requestStatusFilter, page]);
+  }, [requestStatusFilter, page, fetchRequests]);
 
   const handleChangeRequestStatus = async (requestId, newStatus) => {
     try {

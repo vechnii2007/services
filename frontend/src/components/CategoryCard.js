@@ -1,13 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Card,
-  CardMedia,
-  CardContent,
-  Typography,
-  Box,
-  Tooltip,
-} from "@mui/material";
+import { Card, Typography, Box, Tooltip } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";

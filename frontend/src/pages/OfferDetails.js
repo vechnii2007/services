@@ -435,24 +435,36 @@ const OfferDetails = () => {
           )}
         </AnimatePresence>
 
-        <Box sx={{ display: "flex", gap: 3, position: "relative" }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            gap: { xs: 2, md: 3 },
+            position: "relative",
+          }}
+        >
           {/* Левая колонка с изображением */}
-          <Box sx={{ flex: "0 0 50%", maxWidth: "50%" }}>
+          <Box
+            sx={{
+              flex: { xs: "unset", md: "0 0 50%" },
+              maxWidth: { xs: "100%", md: "50%" },
+              mb: { xs: 2, md: 0 },
+            }}
+          >
             <MotionCard
               sx={{
                 borderRadius: 2,
                 overflow: "hidden",
-                position: "sticky",
-                top: 24,
+                position: { xs: "static", md: "sticky" },
+                top: { md: 24 },
+                width: "100%",
               }}
               elevation={1}
               whileHover={{ boxShadow: "0 8px 20px rgba(0,0,0,0.15)" }}
             >
               <Swiper
                 modules={[Navigation, Pagination, Zoom]}
-                pagination={{
-                  type: "fraction",
-                }}
+                pagination={{ type: "fraction" }}
                 navigation
                 zoom
                 spaceBetween={0}
@@ -466,7 +478,8 @@ const OfferDetails = () => {
                         image={image}
                         alt={`${safeTitle} - изображение ${index + 1}`}
                         sx={{
-                          height: 600,
+                          width: "100%",
+                          height: { xs: 220, sm: 260, md: 600 },
                           objectFit: "cover",
                           backgroundColor: "grey.100",
                           cursor: "zoom-in",
@@ -495,17 +508,25 @@ const OfferDetails = () => {
           </Box>
 
           {/* Правая колонка с информацией */}
-          <Box sx={{ flex: "0 0 50%", maxWidth: "50%" }}>
+          <Box
+            sx={{
+              flex: { xs: "unset", md: "0 0 50%" },
+              maxWidth: { xs: "100%", md: "50%" },
+              width: "100%",
+            }}
+          >
             <MotionBox
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
+              sx={{ width: "100%" }}
             >
               <Typography
                 variant="h4"
                 component="h1"
                 gutterBottom
                 fontWeight="bold"
+                sx={{ fontSize: { xs: 22, sm: 26, md: 32 } }}
               >
                 {safeTitle}
               </Typography>
@@ -514,7 +535,7 @@ const OfferDetails = () => {
                 variant="h5"
                 color="primary"
                 fontWeight="bold"
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, fontSize: { xs: 20, sm: 24, md: 28 } }}
               >
                 {formatPrice(safePrice)}
               </Typography>
@@ -545,6 +566,7 @@ const OfferDetails = () => {
                   mb: 3,
                   backgroundColor: "background.default",
                   borderRadius: 2,
+                  width: "100%",
                 }}
                 whileHover={{ backgroundColor: "#f7f9fc" }}
               >
@@ -560,159 +582,231 @@ const OfferDetails = () => {
                 {t("provider")}
               </Typography>
 
-              <MotionCard
-                elevation={1}
-                sx={{ mb: 3, borderRadius: 2 }}
-                whileHover={{ boxShadow: "0 8px 15px rgba(0,0,0,0.1)" }}
+              <Box
+                sx={{
+                  width: "100%",
+                  maxWidth: 400,
+                  mx: "auto",
+                  px: { xs: 1.5, sm: 0 },
+                }}
               >
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "flex-start" }}>
-                    <Avatar
-                      src={safeProvider.avatar}
-                      alt={safeProvider.name}
+                <MotionCard
+                  elevation={0}
+                  sx={{
+                    mb: 2,
+                    borderRadius: { xs: 1, sm: 2 },
+                    p: { xs: 1, sm: 2 },
+                    boxShadow: { xs: "none", sm: 1 },
+                  }}
+                  whileHover={{ boxShadow: "0 4px 10px rgba(0,0,0,0.06)" }}
+                >
+                  <CardContent
+                    sx={{
+                      p: { xs: 0.5, sm: 2 },
+                      "&:last-child": { pb: { xs: 0.5, sm: 2 } },
+                    }}
+                  >
+                    <Box
                       sx={{
-                        width: 64,
-                        height: 64,
-                        mr: 2,
-                        border: 2,
-                        borderColor: "primary.main",
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        alignItems: { xs: "center", sm: "flex-start" },
+                        gap: { xs: 1, sm: 2 },
                       }}
                     >
-                      {safeProvider.name
-                        ? safeProvider.name[0].toUpperCase()
-                        : "P"}
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="h6">{safeProvider.name}</Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
+                      <Avatar
+                        src={safeProvider.avatar}
+                        alt={safeProvider.name}
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.5,
-                          mb: 0.5,
+                          width: { xs: 40, sm: 64 },
+                          height: { xs: 40, sm: 64 },
+                          mr: { xs: 0, sm: 2 },
+                          mb: { xs: 0.5, sm: 0 },
+                          border: 1,
+                          borderColor: "primary.main",
+                          fontSize: { xs: 20, sm: 32 },
                         }}
                       >
-                        <EmailIcon fontSize="small" />
-                        {safeProvider.email}
-                      </Typography>
-                      {safeProvider.phone && (
+                        {safeProvider.name
+                          ? safeProvider.name[0].toUpperCase()
+                          : "P"}
+                      </Avatar>
+                      <Box sx={{ flex: 1, width: "100%" }}>
                         <Typography
-                          variant="body2"
+                          variant="subtitle1"
+                          sx={{
+                            textAlign: { xs: "center", sm: "left" },
+                            fontSize: { xs: 15, sm: 18 },
+                            fontWeight: 500,
+                          }}
+                        >
+                          {safeProvider.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
                           color="text.secondary"
                           sx={{
                             display: "flex",
                             alignItems: "center",
                             gap: 0.5,
                             mb: 0.5,
+                            justifyContent: { xs: "center", sm: "flex-start" },
+                            fontSize: { xs: 12, sm: 14 },
                           }}
                         >
-                          <CallIcon fontSize="small" />
-                          {safeProvider.phone}
+                          <EmailIcon fontSize="inherit" />
+                          {safeProvider.email}
                         </Typography>
-                      )}
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mt: 0.5 }}
-                      >
-                        {t("member_since", {
-                          date: formatDate(safeProvider.createdAt),
-                        })}
-                      </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            mt: 0.5,
+                            fontSize: { xs: 12, sm: 14 },
+                            textAlign: { xs: "center", sm: "left" },
+                          }}
+                        >
+                          {t("member_since", {
+                            date: formatDate(safeProvider.createdAt),
+                          })}
+                        </Typography>
+                      </Box>
                     </Box>
-                  </Box>
 
-                  <Box sx={{ mt: 2 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <Paper
-                          elevation={0}
-                          variant="outlined"
-                          sx={{ p: 1.5, textAlign: "center" }}
-                        >
-                          <Typography variant="h6" color="primary">
-                            {safeProvider.providerInfo?.completedOffers || 0}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {t("completed_offers")}
-                          </Typography>
-                        </Paper>
+                    <Box sx={{ mt: 1 }}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={6}>
+                          <Paper
+                            elevation={0}
+                            variant="outlined"
+                            sx={{
+                              p: { xs: 0.5, sm: 1.5 },
+                              textAlign: "center",
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Typography
+                              variant="subtitle2"
+                              color="primary"
+                              sx={{ fontSize: { xs: 15, sm: 18 } }}
+                            >
+                              {safeProvider.providerInfo?.completedOffers || 0}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Заказы
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Paper
+                            elevation={0}
+                            variant="outlined"
+                            sx={{
+                              p: { xs: 0.5, sm: 1.5 },
+                              textAlign: "center",
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Typography
+                              variant="subtitle2"
+                              color="primary"
+                              sx={{ fontSize: { xs: 15, sm: 18 } }}
+                            >
+                              {safeProvider.providerInfo?.responseRate || 0}%
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Ответы
+                            </Typography>
+                          </Paper>
+                        </Grid>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <Paper
-                          elevation={0}
-                          variant="outlined"
-                          sx={{ p: 1.5, textAlign: "center" }}
+                    </Box>
+
+                    <Box
+                      sx={{
+                        mt: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Badge badgeContent={unreadMessages} color="error">
+                        <Button
+                          variant="contained"
+                          startIcon={<ChatIcon />}
+                          onClick={handleContactProvider}
+                          sx={{
+                            width: "100%",
+                            minHeight: 32,
+                            fontSize: 14,
+                            py: 0.5,
+                          }}
                         >
-                          <Typography variant="h6" color="primary">
-                            {safeProvider.providerInfo?.responseRate || 0}%
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {t("response_rate")}
-                          </Typography>
-                        </Paper>
-                      </Grid>
-                    </Grid>
-                  </Box>
+                          {t("chat")}
+                        </Button>
+                      </Badge>
 
-                  <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-                    <Badge badgeContent={unreadMessages} color="error">
-                      <Button
-                        variant="contained"
-                        startIcon={<ChatIcon />}
-                        onClick={handleContactProvider}
-                        sx={{ flex: 1 }}
-                      >
-                        {t("chat")}
-                      </Button>
-                    </Badge>
+                      {safeProvider.email && (
+                        <Button
+                          variant="outlined"
+                          startIcon={<EmailIcon />}
+                          onClick={() =>
+                            (window.location.href = `mailto:${safeProvider.email}`)
+                          }
+                          sx={{
+                            width: "100%",
+                            minHeight: 32,
+                            fontSize: 14,
+                            py: 0.5,
+                          }}
+                        >
+                          {t("send_email")}
+                        </Button>
+                      )}
 
-                    {safeProvider.email && (
+                      {safeProvider.phone && (
+                        <Tooltip title={t("call_provider")}>
+                          <IconButton
+                            color="primary"
+                            sx={{
+                              bgcolor: "primary.light",
+                              color: "white",
+                              width: 36,
+                              height: 36,
+                            }}
+                            onClick={() =>
+                              (window.location.href = `tel:${safeProvider.phone}`)
+                            }
+                          >
+                            <CallIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
+
+                    <Box sx={{ mt: 1 }}>
                       <Button
                         variant="outlined"
-                        startIcon={<EmailIcon />}
+                        fullWidth
+                        sx={{ minHeight: 32, fontSize: 14, py: 0.5 }}
                         onClick={() =>
-                          (window.location.href = `mailto:${safeProvider.email}`)
+                          navigate(`/offers?providerId=${safeProvider._id}`)
                         }
-                        sx={{ flex: 1 }}
                       >
-                        {t("send_email")}
+                        {t("view_all_provider_offers", {
+                          defaultValue: "Посмотреть все предложения провайдера",
+                        })}
                       </Button>
-                    )}
-
-                    {safeProvider.phone && (
-                      <Tooltip title={t("call_provider")}>
-                        <IconButton
-                          color="primary"
-                          sx={{ bgcolor: "primary.light", color: "white" }}
-                          onClick={() =>
-                            (window.location.href = `tel:${safeProvider.phone}`)
-                          }
-                        >
-                          <CallIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
-
-                  {/* Кнопка для просмотра всех предложений провайдера */}
-                  <Box sx={{ mt: 2 }}>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      onClick={() =>
-                        navigate(`/offers?providerId=${safeProvider._id}`)
-                      }
-                    >
-                      {t("view_all_provider_offers", {
-                        defaultValue: "Посмотреть все предложения провайдера",
-                      })}
-                    </Button>
-                  </Box>
-                </CardContent>
-              </MotionCard>
+                    </Box>
+                  </CardContent>
+                </MotionCard>
+              </Box>
 
               {/* Добавляем блок с отзывами */}
               <Divider sx={{ mb: 3 }} />

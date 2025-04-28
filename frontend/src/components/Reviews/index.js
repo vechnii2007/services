@@ -4,7 +4,6 @@ import {
   Box,
   Typography,
   Rating,
-  Divider,
   Button,
   Card,
   CardContent,
@@ -113,15 +112,14 @@ function Reviews({
   const loadReviews = async () => {
     try {
       setLoading(true);
-      let response;
 
       if (offerId) {
         try {
           console.log(`[Reviews] Loading reviews for offer: ${offerId}`);
-          response = await ReviewService.getReviewsByOffer(offerId);
+          await ReviewService.getReviewsByOffer(offerId);
           console.log(
             `[Reviews] Retrieved reviews for offer ${offerId}:`,
-            response
+            reviews
           );
         } catch (error) {
           console.error(
@@ -133,10 +131,10 @@ function Reviews({
       } else if (providerId) {
         try {
           console.log(`[Reviews] Loading reviews for provider: ${providerId}`);
-          response = await ReviewService.getReviewsByProvider(providerId);
+          await ReviewService.getReviewsByProvider(providerId);
           console.log(
             `[Reviews] Retrieved reviews for provider ${providerId}:`,
-            response
+            reviews
           );
         } catch (error) {
           console.error(
@@ -149,9 +147,8 @@ function Reviews({
         throw new Error("Необходимо указать offerId или providerId");
       }
 
-      if (response) {
-        setReviews(response.reviews || []);
-        setStats(response.stats || { rating: 0, count: 0 });
+      if (reviews) {
+        setStats(reviews.stats || { rating: 0, count: 0 });
       }
     } catch (error) {
       console.error("Error loading reviews:", error);
@@ -211,18 +208,14 @@ function Reviews({
   const handleSaveReview = async () => {
     try {
       setLoading(true);
-      let response;
 
       if (editingReview) {
         // Обновление существующего отзыва
-        response = await ReviewService.updateReview(
-          editingReview._id,
-          reviewFormData
-        );
+        await ReviewService.updateReview(editingReview._id, reviewFormData);
         setSuccess(t("review_updated"));
       } else {
         // Создание нового отзыва
-        response = await ReviewService.createReview({
+        await ReviewService.createReview({
           offerId,
           offerType,
           ...reviewFormData,

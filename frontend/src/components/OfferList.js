@@ -1,32 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Grid, Box, Pagination, Typography, Paper } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Grid, Box, Pagination, Typography } from "@mui/material";
 import PropTypes from "prop-types";
 import OfferCard from "./OfferCard/index";
-import OfferCardSkeleton from "./OfferCard/OfferCardSkeleton";
-import { motion, AnimatePresence } from "framer-motion";
-import OfferService from "../services/OfferService";
-import SearchIcon from "@mui/icons-material/Search";
 import styled from "@emotion/styled";
 import { useTranslation } from "react-i18next";
 import { CircularProgress } from "@mui/material";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
-
 const OfferListContainer = styled(Box)(({ theme }) => ({
-  width: "100%",
   padding: theme.spacing(2),
   marginTop: theme.spacing(2),
   backgroundColor: theme.palette.background.paper,

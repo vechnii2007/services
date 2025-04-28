@@ -5,25 +5,18 @@ import {
   Card,
   CardContent,
   CardMedia,
-  Button,
-  Grid,
-  Skeleton,
   Chip,
+  Skeleton,
 } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { styled } from "@mui/material/styles";
-import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import "swiper/css/pagination";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import CategoryIcon from "@mui/icons-material/Category";
-import StarIcon from "@mui/icons-material/Star";
-import OfferService from "../services/OfferService";
-import { formatPrice } from "../utils/formatters";
-import FavoriteButton from "./FavoriteButton";
 import OfferCard from "./OfferCard";
+import OfferService from "../services/OfferService";
 
 const StyledSwiper = styled(Swiper)(({ theme }) => ({
   width: "100%",
@@ -34,68 +27,6 @@ const StyledSwiper = styled(Swiper)(({ theme }) => ({
   "& .swiper-pagination-bullet-active": {
     backgroundColor: theme.palette.primary.main,
   },
-}));
-
-const PromotionCard = styled(Card)(({ theme }) => ({
-  width: "100%",
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-  overflow: "hidden",
-  position: "relative",
-  "&:hover": {
-    transform: "translateY(-4px)",
-    boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
-  },
-}));
-
-const PromotionImage = styled(CardMedia)(({ theme }) => ({
-  height: 180,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  position: "relative",
-  backgroundColor: theme.palette.grey[100],
-}));
-
-const CategorySection = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(2),
-  background: "linear-gradient(45deg, #F5F7FA 0%, #E4E8EB 100%)",
-  borderRadius: theme.shape.borderRadius,
-  marginBottom: theme.spacing(3),
-  boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-}));
-
-const CategoryChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  backgroundColor: "#FFFFFF",
-  border: `1px solid ${theme.palette.grey[300]}`,
-  "&:hover": {
-    backgroundColor: theme.palette.primary.light,
-    color: theme.palette.primary.contrastText,
-  },
-  "&.active": {
-    backgroundColor: theme.palette.primary.main,
-    color: theme.palette.primary.contrastText,
-  },
-}));
-
-const PromotionLabel = styled(Box)(({ theme }) => ({
-  position: "absolute",
-  top: 10,
-  right: 10,
-  background: "linear-gradient(45deg, #FF6B6B 0%, #FF8E53 100%)",
-  color: "#fff",
-  padding: theme.spacing(0.5, 1),
-  borderRadius: theme.shape.borderRadius,
-  fontSize: "0.75rem",
-  fontWeight: "bold",
-  zIndex: 10,
-  display: "flex",
-  alignItems: "center",
-  boxShadow: "0 2px 4px rgba(0,0,0,0.25)",
 }));
 
 const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
@@ -335,14 +266,6 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
     fetchPromotedOffers();
   }, []);
 
-  const handleClickOffer = (id) => {
-    navigate(`/offers/${id}`);
-  };
-
-  const handleCategoryClick = (category) => {
-    navigate(`/offers?category=${category.name}`);
-  };
-
   // Если нет промо-предложений, мы всё равно показываем секцию с топ-категориями
   const hasContent = promoted.length > 0 || topCategories.length > 0;
 
@@ -362,10 +285,9 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
           <StyledSwiper
             slidesPerView={1}
             spaceBetween={16}
-            navigation
             pagination={{ clickable: true }}
             autoplay={{ delay: 5000, disableOnInteraction: false }}
-            modules={[Navigation, Pagination, Autoplay]}
+            modules={[Pagination, Autoplay]}
             breakpoints={{
               600: {
                 slidesPerView: 2,

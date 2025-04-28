@@ -56,7 +56,7 @@ const OffersTab = () => {
 
   useEffect(() => {
     fetchOffers();
-  }, [offerStatusFilter, page]);
+  }, [offerStatusFilter, page, fetchOffers]);
 
   const handleChangeOfferStatus = async (offerId, newStatus, type) => {
     try {

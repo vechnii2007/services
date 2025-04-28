@@ -22,13 +22,10 @@ import { styled } from "@mui/material/styles";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import CategoryIcon from "@mui/icons-material/Category";
-import { formatPrice } from "../../utils/formatters";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import { useContext } from "react";
-import { AuthContext } from "../../context/AuthContext";
-import PromoteOfferModal from "../PromoteOfferModal";
 import { useTranslation } from "react-i18next";
 import OfferService from "../../services/OfferService";
+import PromoteOfferModal from "../PromoteOfferModal";
 
 // Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
@@ -85,8 +82,6 @@ const EmptyOfferCard = () => {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        width: "100%",
-        maxWidth: "275px",
         borderRadius: "12px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
         backgroundColor: "background.paper",
@@ -177,13 +172,6 @@ const OfferCard = memo(
       }
     }, [safeOfferId, shouldShowPromoteButton, canPromote, isOwner, userRole]);
 
-    const handleCardClick = (e) => {
-      if (!safeOfferId || e.target.closest("button")) {
-        return;
-      }
-      navigate(ROUTES.OFFER_DETAILS.replace(":id", safeOfferId));
-    };
-
     const handleViewClick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -256,8 +244,6 @@ const OfferCard = memo(
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            width: "100%",
-            maxWidth: "275px",
             borderRadius: "12px",
             boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
             backgroundColor: "background.paper",

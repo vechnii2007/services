@@ -13,7 +13,6 @@ const OfferCardSkeleton = () => (
       display: "flex",
       flexDirection: "column",
       width: "100%",
-      maxWidth: "275px",
       borderRadius: "12px",
       boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
       backgroundColor: "background.paper",

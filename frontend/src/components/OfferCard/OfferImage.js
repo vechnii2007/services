@@ -47,17 +47,6 @@ const Image = styled("img")(({ theme }) => ({
   }),
 }));
 
-const LoadingPlaceholder = styled(Box)(({ theme }) => ({
-  width: "100%",
-  height: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: theme.palette.grey[100],
-  color: theme.palette.text.secondary,
-  fontSize: theme.typography.body2.fontSize,
-}));
-
 /**
  * Компонент для отображения изображения предложения
  * @param {Object} props - Свойства компонента

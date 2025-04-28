@@ -11,7 +11,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Typography, Box, Container, Alert } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import OfferFilters from "../components/OfferFilters";
-import CategoryCard from "../components/CategoryCard";
 import CategorySlider from "../components/CategorySlider";
 import OfferList from "../components/OfferList";
 import PromotedOffersSlider from "../components/PromotedOffersSlider";
@@ -54,15 +53,14 @@ const CategoriesSection = styled(Box)(({ theme }) => ({
 }));
 
 const ContentContainer = styled(Box)(({ theme }) => ({
-  width: "100%",
   maxWidth: "100%",
-  paddingLeft: theme.spacing(2),
-  paddingRight: theme.spacing(2),
   paddingTop: theme.spacing(4),
   paddingBottom: theme.spacing(8),
   [theme.breakpoints.up("sm")]: {
     paddingTop: theme.spacing(5),
     paddingBottom: theme.spacing(10),
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
   },
   [theme.breakpoints.up("md")]: {
     paddingTop: theme.spacing(6),
@@ -348,21 +346,30 @@ const Offers = () => {
         </Alert>
       )}
 
-      <OfferFilters
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        minPrice={minPrice}
-        setMinPrice={setMinPrice}
-        maxPrice={maxPrice}
-        setMaxPrice={setMaxPrice}
-        locationFilter={locationFilter}
-        setLocationFilter={setLocationFilter}
-        categories={categories}
-        selectedCategories={selectedCategory ? [selectedCategory] : []}
-        onCategoryChange={handleCategoryClick}
-        onSearch={handleSearch}
-        isSearching={loading}
-      />
+      <Box sx={{ display: "flex", justifyContent: "center" }}>
+        <Box
+          sx={{
+            maxWidth: { xs: "calc(100vw - 32px)", sm: 500 },
+            mx: "auto",
+          }}
+        >
+          <OfferFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            minPrice={minPrice}
+            setMinPrice={setMinPrice}
+            maxPrice={maxPrice}
+            setMaxPrice={setMaxPrice}
+            locationFilter={locationFilter}
+            setLocationFilter={setLocationFilter}
+            categories={categories}
+            selectedCategories={selectedCategory ? [selectedCategory] : []}
+            onCategoryChange={handleCategoryClick}
+            onSearch={handleSearch}
+            isSearching={loading}
+          />
+        </Box>
+      </Box>
 
       <CategoriesSection>
         <Typography

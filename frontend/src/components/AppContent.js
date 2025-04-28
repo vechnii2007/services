@@ -1,5 +1,5 @@
-import React, { useEffect, useContext, useState } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import React, { useContext, useState } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { Box, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import Header from "./Header/index";
@@ -10,9 +10,8 @@ import { AuthContext } from "../context/AuthContext";
 
 const AppContent = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading, logout, isAuthenticated } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Определяем, находимся ли на лендинге
@@ -57,7 +56,7 @@ const AppContent = () => {
           sx={{
             flexGrow: 1,
             p: isLandingPage ? 0 : 3, // Убираем отступы для лендинга
-            mt: isLandingPage ? 0 : { xs: 7, sm: 8 }, // Убираем отступ от хедера для лендинга
+            mt: isLandingPage ? 0 : { xs: 8, sm: 9 }, // Увеличен отступ от хедера
             width: "100%",
             maxWidth: "100%",
             overflowX: "hidden",
