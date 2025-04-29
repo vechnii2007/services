@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
@@ -91,7 +91,7 @@ function Reviews({
 }) {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
-  const [reviews, setReviews] = useState([]);
+  const [reviews] = useState([]);
   const [stats, setStats] = useState({ rating: 0, count: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -103,13 +103,7 @@ function Reviews({
     comment: "",
   });
 
-  // Загрузка отзывов при монтировании компонента
-  useEffect(() => {
-    loadReviews();
-  }, [offerId, providerId]);
-
-  // Функция загрузки отзывов
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -156,7 +150,11 @@ function Reviews({
     } finally {
       setLoading(false);
     }
-  };
+  }, [offerId, providerId, reviews, t]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [offerId, providerId, loadReviews]);
 
   // Открытие диалога для создания/редактирования отзыва
   const handleOpenDialog = (review = null) => {

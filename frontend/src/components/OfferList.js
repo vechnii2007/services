@@ -97,7 +97,14 @@ const OfferList = ({
     <OfferListContainer>
       <Grid container spacing={3}>
         {safeOffers.map((offer) => (
-          <Grid item xs={12} sm={6} md={4} key={offer._id}>
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            key={offer._id}
+            sx={{ width: { xs: "100%", md: "auto" } }}
+          >
             <OfferCard
               offer={offer}
               isFavorite={favorites[offer._id]}

@@ -55,7 +55,6 @@ const Image = styled("img")(({ theme }) => ({
  * @param {string} props.title - Заголовок предложения
  */
 const OfferImage = ({ image, images, title }) => {
-  // Получаем первое изображение из массива (строк или объектов) или используем устаревшее поле image
   let imageToShow = image;
   if (Array.isArray(images) && images.length > 0) {
     if (typeof images[0] === "string") {
@@ -65,8 +64,17 @@ const OfferImage = ({ image, images, title }) => {
     }
   }
 
-  // Форматируем путь к изображению
-  const formattedImagePath = formatImagePath(imageToShow);
+  // Если путь абсолютный — используем как есть, если просто имя файла — добавляем /uploads/images/
+  let src = imageToShow;
+  if (
+    src &&
+    !src.startsWith("http://") &&
+    !src.startsWith("https://") &&
+    !src.startsWith("/uploads/")
+  ) {
+    src = `/uploads/images/${src}`;
+  }
+
   return (
     <ImageWrapper
       component={motion.div}
@@ -76,7 +84,7 @@ const OfferImage = ({ image, images, title }) => {
     >
       <Image
         src={
-          formattedImagePath ||
+          src ||
           `https://placehold.co/600x400?text=${encodeURIComponent(
             "Нет изображения"
           )}`

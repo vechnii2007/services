@@ -7,7 +7,6 @@ import {
   Typography,
   Card,
   CardContent,
-  useTheme,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";

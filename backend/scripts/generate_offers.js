@@ -1,7 +1,6 @@
 require("dotenv").config({ path: __dirname + "/../.env" });
 const mongoose = require("mongoose");
 const faker = require("faker");
-const path = require("path");
 
 const User = require("../models/User");
 const Offer = require("../models/Offer");
@@ -38,15 +37,9 @@ const LOCATIONS = [
   "Prague, Czech Republic",
   "Vienna, Austria",
 ];
-const PROMOTION_TYPES = [null, "day", "week"];
 
 function getRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function getRandomImage(category) {
-  // Просто для примера, можно заменить на реальные пути
-  return `image-${category}-${faker.datatype.number()}.jpg`;
 }
 
 async function main() {
@@ -64,11 +57,12 @@ async function main() {
   }
 
   const offers = [];
-  for (let i = 0; i < 50; i++) {
+  const totalOffers = 50;
+  const promotedCount = Math.floor(totalOffers * 0.2); // 20% топовых
+  for (let i = 0; i < totalOffers; i++) {
     const category = getRandom(CATEGORIES);
     const provider = getRandom(providers);
-    const promotedType = getRandom(PROMOTION_TYPES);
-    const isPromoted = !!promotedType;
+    const isPromoted = i < promotedCount;
     const now = new Date();
     let promoted = {
       isPromoted: false,
@@ -77,16 +71,19 @@ async function main() {
       promotionType: null,
     };
     if (isPromoted) {
-      let days = promotedType === "day" ? 1 : promotedType === "week" ? 7 : 30;
+      const days = faker.random.arrayElement([1, 7]);
       promoted = {
         isPromoted: true,
         promotedUntil: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
         lastPromotedAt: now,
-        promotionType: promotedType,
+        promotionType: days === 1 ? "day" : "week",
       };
     }
-    const images = [getRandomImage(category)];
-    if (Math.random() > 0.5) images.push(getRandomImage(category));
+    // Картинки через picsum.photos
+    const imageUrl = `https://picsum.photos/200/300?random=${i + 1}`;
+    const images = [imageUrl];
+    if (Math.random() > 0.5)
+      images.push(`https://picsum.photos/200/300?random=${i + 100}`);
     offers.push({
       title: faker.commerce.productName(),
       providerId: provider._id,
@@ -97,7 +94,7 @@ async function main() {
       isPriceRange: Math.random() > 0.7,
       priceFrom: null,
       priceTo: null,
-      image: `http://localhost:5001/uploads/images/${images[0]}`,
+      image: imageUrl,
       images,
       status: "active",
       favoritedBy: [],

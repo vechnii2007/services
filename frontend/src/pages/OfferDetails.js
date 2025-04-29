@@ -339,13 +339,16 @@ const OfferDetails = () => {
   const safeCreatedAt = offer.createdAt || "";
 
   // Получаем изображения
-  const safeImages =
-    offer.images && Array.isArray(offer.images) && offer.images.length > 0
-      ? offer.images.map(formatImagePath)
-      : [
-          formatImagePath(offer.image) ||
-            "https://placehold.co/600x400?text=Нет+изображения",
-        ];
+  const safeImages = Array.isArray(offer.images)
+    ? offer.images.filter(Boolean)
+    : [];
+
+  if (safeImages.length === 0 && offer.image) {
+    safeImages.push(offer.image);
+  }
+  if (safeImages.length === 0) {
+    safeImages.push("https://placehold.co/600x400?text=Нет+изображения");
+  }
 
   const safeProvider = offer.provider || {};
   // Определяем тип предложения, если есть поле type, используем его и приводим к правильному формату, иначе предполагаем ServiceOffer

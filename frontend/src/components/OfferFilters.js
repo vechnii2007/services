@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -58,27 +58,7 @@ const OfferFilters = ({
   const [locations, setLocations] = useState([]);
   const [isLoadingPopular, setIsLoadingPopular] = useState(false);
 
-  // Загружаем популярные поиски и локации при монтировании компонента
-  useEffect(() => {
-    loadPopularSearches();
-    loadLocations();
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Загрузка популярных поисков
-  const loadPopularSearches = async () => {
+  const loadPopularSearches = useCallback(async () => {
     try {
       setIsLoadingPopular(true);
       const searches = await searchService.getPopularSearches(5);
@@ -95,7 +75,25 @@ const OfferFilters = ({
     } finally {
       setIsLoadingPopular(false);
     }
-  };
+  }, [categories]);
+
+  useEffect(() => {
+    loadPopularSearches();
+    loadLocations();
+  }, [loadPopularSearches]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Загрузка локаций
   const loadLocations = async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "../../utils/axiosConfig";
 import {
@@ -35,7 +35,7 @@ const OffersTab = () => {
 
   const limit = 10;
 
-  const fetchOffers = async () => {
+  const fetchOffers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get("/admin/offers", {
@@ -52,7 +52,7 @@ const OffersTab = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [offerStatusFilter, page, limit]);
 
   useEffect(() => {
     fetchOffers();

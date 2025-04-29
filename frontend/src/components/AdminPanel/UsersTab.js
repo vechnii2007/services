@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "../../utils/axiosConfig";
 import {
@@ -36,7 +36,7 @@ const UsersTab = () => {
 
   const limit = 10;
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get("/admin/users", {
@@ -53,7 +53,7 @@ const UsersTab = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userFilter, userRoleFilter, page, limit]);
 
   useEffect(() => {
     fetchUsers();

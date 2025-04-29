@@ -151,7 +151,25 @@ router.get("/offers", async (req, res) => {
         }
         // Преобразуем URL изображений
         if (offer.image) {
-          formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+          if (
+            offer.image.startsWith("http://") ||
+            offer.image.startsWith("https://")
+          ) {
+            formattedOffer.image = offer.image;
+          } else {
+            formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+          }
+        }
+        if (offer.images && offer.images.length > 0) {
+          formattedOffer.images = offer.images.map((image) =>
+            image
+              ? image.startsWith("http://") || image.startsWith("https://")
+                ? image
+                : `${BASE_URL}${UPLOADS_PATH}/${image}`
+              : "https://via.placeholder.com/150?text=Offer"
+          );
+        } else {
+          formattedOffer.images = [];
         }
         return formattedOffer;
       })
@@ -269,12 +287,25 @@ router.get("/offers/:id", async (req, res) => {
 
       // Добавляем URL для изображений
       if (offer.image) {
-        formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+        if (
+          offer.image.startsWith("http://") ||
+          offer.image.startsWith("https://")
+        ) {
+          formattedOffer.image = offer.image;
+        } else {
+          formattedOffer.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+        }
       }
       if (offer.images && offer.images.length > 0) {
-        formattedOffer.images = offer.images.map(
-          (img) => `${BASE_URL}${UPLOADS_PATH}/${img}`
+        formattedOffer.images = offer.images.map((image) =>
+          image
+            ? image.startsWith("http://") || image.startsWith("https://")
+              ? image
+              : `${BASE_URL}${UPLOADS_PATH}/${image}`
+            : "https://via.placeholder.com/150?text=Offer"
         );
+      } else {
+        formattedOffer.images = [];
       }
 
       return res.json(formattedOffer);
@@ -380,12 +411,21 @@ router.get("/my-offers", auth, async (req, res) => {
 
       // Проверяем наличие изображений и форматируем их URL
       if (offer.image) {
-        offerData.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+        if (
+          offer.image.startsWith("http://") ||
+          offer.image.startsWith("https://")
+        ) {
+          offerData.image = offer.image;
+        } else {
+          offerData.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+        }
       }
       if (Array.isArray(offer.images)) {
         offerData.images = offer.images.map((image) =>
           image
-            ? `${BASE_URL}${UPLOADS_PATH}/${image}`
+            ? image.startsWith("http://") || image.startsWith("https://")
+              ? image
+              : `${BASE_URL}${UPLOADS_PATH}/${image}`
             : "https://via.placeholder.com/150?text=Offer"
         );
       } else {

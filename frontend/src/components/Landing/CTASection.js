@@ -1,15 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Grid,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material";
+import { Box, Container, Typography, Button, Grid } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -49,7 +41,6 @@ const CircleDecoration = styled(Box)(
 const CTASection = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const theme = useTheme();
 
   // Вариации для анимации
   const containerVariants = {

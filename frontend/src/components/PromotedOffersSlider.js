@@ -1,19 +1,10 @@
 import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  Chip,
-  Skeleton,
-} from "@mui/material";
+import { Box, Typography, Card, CardContent, Skeleton } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { styled } from "@mui/material/styles";
 import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import OfferCard from "./OfferCard";
 import OfferService from "../services/OfferService";
@@ -31,7 +22,6 @@ const StyledSwiper = styled(Swiper)(({ theme }) => ({
 
 const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [promoted, setPromoted] = useState([]);
   const [loading, setLoading] = useState(true);
   const [topCategories, setTopCategories] = useState([]);

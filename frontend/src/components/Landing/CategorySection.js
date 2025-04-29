@@ -10,7 +10,6 @@ import {
   CardContent,
   CardMedia,
   Button,
-  useTheme,
   LinearProgress,
   Chip,
   Tooltip,

@@ -1,13 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  Card,
-  useTheme,
-} from "@mui/material";
+import { Box, Container, Typography, Grid, Card } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import SearchIcon from "@mui/icons-material/Search";
