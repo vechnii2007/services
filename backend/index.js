@@ -45,7 +45,7 @@ const upload = multer({ storage });
 // Middleware
 app.use(
   cors({
-    origin: "*",
+    origin: ["https://services-lime-theta.vercel.app", "http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
