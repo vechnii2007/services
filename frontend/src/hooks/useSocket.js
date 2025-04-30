@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import io from "socket.io-client";
 import { useAuth } from "./useAuth";
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:5001";
+const SOCKET_URL =
+  process.env.REACT_APP_SOCKET_URL || "https://services-cnr9.onrender.com";
 const RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 1000;
 
