@@ -1,9 +1,10 @@
 import BaseService from "./BaseService";
 import CacheService from "./CacheService";
+import api from "./api";
 
 class ChatServiceClass extends BaseService {
   constructor() {
-    super("/services"); // Используем /services как базовый путь
+    super("/services"); // Используем /services как базовый путь для совместимости с BaseService
   }
 
   /**
@@ -21,25 +22,9 @@ class ChatServiceClass extends BaseService {
       // Сначала пытаемся получить сообщения из кеша
       const cachedMessages = await CacheService.getCachedMessages(requestId);
 
-      // API endpoint для сообщений - /api/messages/request/:requestId
-      // Нужно использовать absolute path, так как здесь идет обращение к другому API
-      const url = `/api/messages/request/${requestId}`;
-
       try {
-        // Используем axios напрямую для абсолютного пути
-        const startTime = Date.now();
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const messages = await response.json();
+        const response = await api.get(`/messages/request/${requestId}`);
+        const messages = response.data;
 
         // Кешируем полученные сообщения
         await CacheService.cacheMessages(messages);
@@ -86,21 +71,8 @@ class ChatServiceClass extends BaseService {
    */
   async getMyChats() {
     try {
-      // Используем метод из serviceRoutes, поскольку отдельного API для чатов не установлено
-      const url = "/api/services/my-chats";
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const chats = await response.json();
+      const response = await api.get("/services/my-chats");
+      const chats = response.data;
 
       // Кешируем полученные чаты
       if (chats.length > 0) {
@@ -134,7 +106,8 @@ class ChatServiceClass extends BaseService {
    */
   async getProviderChats() {
     try {
-      const chats = await this.get("/chat/provider-chats");
+      const response = await api.get("/services/provider-chats");
+      const chats = response.data;
 
       // Кешируем полученные чаты провайдера
       if (chats.length > 0) {
@@ -168,21 +141,8 @@ class ChatServiceClass extends BaseService {
    */
   async getUnreadMessagesCount() {
     try {
-      // Использую сервис уведомлений, так как отдельного API для непрочитанных сообщений нет
-      const url = "/api/notifications/unread/count";
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const response = await api.get("/notifications/unread/count");
+      const data = response.data;
       return data.count || 0;
     } catch (error) {
       console.error(
@@ -223,58 +183,35 @@ class ChatServiceClass extends BaseService {
    */
   async sendMessage(requestId, message, recipientId) {
     try {
-      // Endpoint для отправки сообщений - /api/messages
-      const url = "/api/messages";
-
       const messageData = {
         requestId,
-        text: message,
+        message,
         recipientId,
       };
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(messageData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const sentMessage = await response.json();
-
-      // Кешируем отправленное сообщение
+      const response = await api.post("/messages", messageData);
+      const sentMessage = response.data;
       await CacheService.cacheMessages([sentMessage]);
-
       return sentMessage;
     } catch (error) {
       console.error("[ChatService] Error sending message:", error);
-
       // Если сообщение не удалось отправить, сохраняем для offline sync
       try {
         const offlineMessage = {
           requestId,
-          text: message,
+          message,
           recipientId,
           pending: true,
           createdAt: new Date().toISOString(),
-          _id: `pending_${Date.now()}`, // Временный ID для отслеживания
+          _id: `pending_${Date.now()}`,
         };
-
-        // Сохраняем сообщение локально для синхронизации позже
         await CacheService.savePendingMessage(offlineMessage);
-
         return offlineMessage;
       } catch (cacheError) {
         console.error(
           "[ChatService] Error caching offline message:",
           cacheError
         );
-        throw error; // Пробрасываем исходную ошибку
+        throw error;
       }
     }
   }
@@ -292,26 +229,9 @@ class ChatServiceClass extends BaseService {
       );
       return false;
     }
-
     try {
-      const url = "/api/messages/mark-read";
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messageIds }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      // Обновляем статус в кэше
+      const response = await api.post("/messages/mark-read", { messageIds });
+      const result = response.data;
       try {
         await CacheService.updateMessagesReadStatus(messageIds);
       } catch (cacheError) {
@@ -320,7 +240,6 @@ class ChatServiceClass extends BaseService {
           cacheError
         );
       }
-
       return result.success;
     } catch (error) {
       console.error(
@@ -338,25 +257,18 @@ class ChatServiceClass extends BaseService {
   async syncOfflineMessages() {
     try {
       const pendingMessages = await CacheService.getPendingMessages();
-
       if (!pendingMessages.length) {
         return 0;
       }
-
       let syncedCount = 0;
-
-      // Обрабатываем каждое сообщение отдельно
       for (const message of pendingMessages) {
         try {
-          // Отправляем сообщение
           const sentMessage = await this.sendMessage(
             message.requestId,
-            message.text,
+            message.message,
             message.recipientId
           );
-
           if (sentMessage && !sentMessage.pending) {
-            // Удаляем pending-сообщение из кэша
             await CacheService.removePendingMessage(message._id);
             syncedCount++;
           }
@@ -365,10 +277,8 @@ class ChatServiceClass extends BaseService {
             `[ChatService] Error syncing offline message ${message._id}:`,
             error
           );
-          // Продолжаем с другими сообщениями
         }
       }
-
       return syncedCount;
     } catch (error) {
       console.error("[ChatService] Error syncing offline messages:", error);

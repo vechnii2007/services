@@ -1,5 +1,4 @@
 import api from "./api";
-import OfferService from "./OfferService";
 
 export const searchService = {
   // Получить популярные поисковые запросы
