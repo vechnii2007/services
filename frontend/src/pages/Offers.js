@@ -202,6 +202,121 @@ const Offers = () => {
   const handlePageChange = useCallback((event, value) => {
     setPage(value);
   }, []);
+  // Эффект для начальной загрузки категорий
+  useEffect(() => {
+    // Функция-помощник для получения категорий
+    const getFetchCategories = async () => {
+      try {
+        if (typeof OfferService.fetchCategories === "function") {
+          return await OfferService.fetchCategories();
+        } else {
+          console.warn("[Offers] Using fallback for categories");
+          return [];
+        }
+      } catch (error) {
+        console.error("[Offers] Error fetching categories:", error);
+        return [];
+      }
+    };
+
+    // Функция-помощник для получения счетчиков категорий
+    const getFetchCategoryCounts = async () => {
+      try {
+        if (typeof OfferService.fetchCategoryCounts === "function") {
+          return await OfferService.fetchCategoryCounts();
+        } else {
+          console.warn("[Offers] Using fallback for category counts");
+          return {};
+        }
+      } catch (error) {
+        console.error("[Offers] Error fetching category counts:", error);
+        return {};
+      }
+    };
+
+    // Функция-помощник для получения избранных предложений
+    const getFavorites = async () => {
+      try {
+        if (!isAuthenticated) {
+          return {};
+        }
+
+        if (typeof OfferService.fetchFavorites === "function") {
+          const favoritesData = await OfferService.fetchFavorites();
+          return favoritesData || {};
+        } else {
+          console.warn("[Offers] fetchFavorites is not a function");
+          return {};
+        }
+      } catch (error) {
+        console.error("[Offers] Error fetching favorites:", error);
+        return {};
+      }
+    };
+
+    // Функция-помощник для получения промо-предложений
+    const getPromotedOffers = async () => {
+      try {
+        if (typeof OfferService.getPromotedOffers === "function") {
+          const response = await OfferService.getPromotedOffers();
+          return response;
+        } else {
+          console.warn("[Offers] getPromotedOffers is not a function");
+          return { offers: [], total: 0, hasMore: false };
+        }
+      } catch (error) {
+        console.error("[Offers] Error fetching promoted offers:", error);
+        return { offers: [], total: 0, hasMore: false };
+      }
+    };
+
+    const loadInitialData = async () => {
+      const loadStart = Date.now();
+
+      try {
+        const [categoriesResponse, countsResponse] = await Promise.all([
+          getFetchCategories(),
+          getFetchCategoryCounts(),
+        ]);
+
+        const transformedCounts = {};
+        categoriesResponse?.forEach((category) => {
+          transformedCounts[category.name] =
+              countsResponse?.[category.name] || 0;
+        });
+
+        setCategories(categoriesResponse || []);
+        setCounts(transformedCounts);
+
+        // Загружаем промо-оферы, если они не загружены ранее
+        if (!window.promotedOffersLoaded) {
+          try {
+            const promotedOffersResponse = await getPromotedOffers();
+            window.promotedOffersLoaded = true;
+            window.promotedOffersData = promotedOffersResponse.offers || [];
+          } catch (error) {
+            console.error("[Offers] Error loading promoted offers:", error);
+          }
+        } else {
+          console.log(
+              "[Offers] Skipping promoted offers load - already loaded"
+          );
+        }
+
+        // Загружаем избранные, если пользователь авторизован
+        const favoritesData = await getFavorites();
+        setFavorites(favoritesData);
+
+        const loadTime = Date.now() - loadStart;
+        console.log(`[Offers] Initial data load completed in ${loadTime}ms`);
+      } catch (error) {
+        console.error("[Offers] Error loading initial data:", error);
+        toast.error(t("errors.loadingFailed"));
+      }
+    };
+
+    loadInitialData();
+  }, [isAuthenticated, t]);
 
   useEffect(() => {
     const timeoutId = setTimeout(
