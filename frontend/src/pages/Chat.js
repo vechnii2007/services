@@ -42,8 +42,6 @@ const HEADER_HEIGHT = 64; // px, если у вас другой — помен�
 const ChatLayout = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "row",
-  height: `calc(100vh - ${HEADER_HEIGHT}px)`,
-  marginTop: HEADER_HEIGHT,
   width: "100%",
   background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
   [theme.breakpoints.down("md")]: {
@@ -84,7 +82,6 @@ const InfoPanel = styled(Box)(({ theme }) => ({
 const ChatContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  height: "calc(100vh - 64px)",
   overflow: "hidden",
   background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
 }));
@@ -295,7 +292,7 @@ const Chat = () => {
 
   // Сбрасываем скролл при изменении количества сообщений
   useEffect(() => {
-    scrollToBottom();
+    // scrollToBottom();
   }, [messages.length, scrollToBottom]);
 
   // Обработчик нового сообщения

@@ -2,7 +2,7 @@ import BaseService from "./BaseService";
 
 class ReviewService extends BaseService {
   constructor() {
-    super("reviews");
+    super("/services/reviews");
   }
 
   /**
@@ -11,12 +11,10 @@ class ReviewService extends BaseService {
    */
   async getReviewsByOffer(offerId) {
     try {
-      console.log(
-        `[ReviewService] Getting reviews for offer: ${offerId}, path: ${this.basePath}/offer/${offerId}`
-      );
-      const result = await this.get(`/offer/${offerId}`);
-      console.log(`[ReviewService] Got reviews:`, result);
-      return result;
+      console.log(`[ReviewService] Getting reviews for offer: ${offerId}`);
+      const response = await this.get(`/offer/${offerId}`);
+      console.log(`[ReviewService] Got reviews:`, response);
+      return response;
     } catch (error) {
       console.error("[ReviewService] Error getting reviews by offer:", error);
       console.error(
@@ -34,7 +32,8 @@ class ReviewService extends BaseService {
    */
   async getReviewsByProvider(providerId) {
     try {
-      return await this.get(`/provider/${providerId}`);
+      const response = await this.get(`/provider/${providerId}`);
+      return response;
     } catch (error) {
       console.error(
         "[ReviewService] Error getting reviews by provider:",
@@ -54,7 +53,8 @@ class ReviewService extends BaseService {
    */
   async createReview(reviewData) {
     try {
-      return await this.post("/", reviewData);
+      const response = await this.post("/", reviewData);
+      return response;
     } catch (error) {
       console.error("[ReviewService] Error creating review:", error);
       throw error;
@@ -70,7 +70,8 @@ class ReviewService extends BaseService {
    */
   async updateReview(reviewId, reviewData) {
     try {
-      return await this.put(`/${reviewId}`, reviewData);
+      const response = await this.put(`/${reviewId}`, reviewData);
+      return response;
     } catch (error) {
       console.error("[ReviewService] Error updating review:", error);
       throw error;
@@ -83,7 +84,8 @@ class ReviewService extends BaseService {
    */
   async deleteReview(reviewId) {
     try {
-      return await this.delete(`/${reviewId}`);
+      const response = await this.delete(`/${reviewId}`);
+      return response;
     } catch (error) {
       console.error("[ReviewService] Error deleting review:", error);
       throw error;

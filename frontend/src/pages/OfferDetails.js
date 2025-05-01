@@ -25,7 +25,6 @@ import {
   Stack,
   Avatar,
   Paper,
-  Rating,
   Dialog,
   Menu,
   MenuItem,
@@ -45,7 +44,6 @@ import {
   Chat as ChatIcon,
   Call as CallIcon,
   ZoomIn as ZoomInIcon,
-  Star as StarIcon,
   Facebook as FacebookIcon,
   Twitter as TwitterIcon,
   LinkedIn as LinkedInIcon,
@@ -53,11 +51,11 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatDate, formatPrice, formatImagePath } from "../utils/formatters";
+import { formatDate, formatPrice } from "../utils/formatters";
 import api from "../middleware/api";
 import { useSocket } from "../hooks/useSocket";
-import ChatService from "../services/ChatService";
 import Reviews from "../components/Reviews";
+import { useChatModal } from "../context/ChatModalContext";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -78,6 +76,7 @@ const OfferDetails = () => {
   const [shareAnchorEl, setShareAnchorEl] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const { socket } = useSocket();
+  const { openChat } = useChatModal();
 
   useEffect(() => {
     let isMounted = true;
@@ -254,7 +253,7 @@ const OfferDetails = () => {
       }
 
       // Переходим в чат
-      navigate(`/chat/${requestId}`);
+      openChat(requestId);
 
       // Сбрасываем счетчик непрочитанных сообщений
       setUnreadMessages(0);

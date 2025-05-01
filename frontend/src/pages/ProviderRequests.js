@@ -15,6 +15,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
+import { useChatModal } from "../context/ChatModalContext";
 
 const ProviderRequests = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const ProviderRequests = () => {
     description: "",
   });
   const [loading, setLoading] = useState(true);
+  const { openChat } = useChatModal();
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -236,9 +238,8 @@ const ProviderRequests = () => {
                   <Button
                     variant="outlined"
                     color="primary"
-                    component={Link}
-                    to={`/chat/${request._id}`}
                     sx={{ marginTop: 2 }}
+                    onClick={() => openChat(request._id)}
                   >
                     {t("chat")}
                   </Button>

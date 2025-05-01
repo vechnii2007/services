@@ -10,6 +10,7 @@ import {
   Grid,
   Button,
 } from "@mui/material";
+import { useChatModal } from "../context/ChatModalContext";
 
 const MyRequests = () => {
   const navigate = useNavigate();
@@ -18,11 +19,11 @@ const MyRequests = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const isFetchingData = useRef(false); // Флаг для предотвращения дубликатов
+  const { openChat } = useChatModal();
 
   useEffect(() => {
     const fetchRequests = async () => {
       if (isFetchingData.current) {
-        console.log("Fetch requests already in progress, skipping...");
         return;
       }
 
@@ -34,16 +35,14 @@ const MyRequests = () => {
           navigate("/login");
           return;
         }
-        const res = await axios.get("/services/my-requests", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await axios.get("/services/my-requests");
         setRequests(res.data);
+        setError("");
       } catch (error) {
         setError(
-          "Error fetching requests: " +
-            (error.response?.data?.error || error.message)
+          t("error_fetching_requests") +
+            ": " +
+            (error.response?.data?.error || t("something_went_wrong"))
         );
         if (error.response?.status === 401) {
           localStorage.removeItem("token");
@@ -55,7 +54,7 @@ const MyRequests = () => {
       }
     };
     fetchRequests();
-  }, [navigate]); // Убрали t из зависимостей
+  }, [navigate, t]);
 
   if (loading) {
     return <Typography>{t("loading")}</Typography>;
@@ -96,9 +95,8 @@ const MyRequests = () => {
                   <Button
                     variant="outlined"
                     color="primary"
-                    component={Link}
-                    to={`/chat/${request._id}`}
                     sx={{ marginTop: 2 }}
+                    onClick={() => openChat(request._id)}
                   >
                     {t("chat")}
                   </Button>

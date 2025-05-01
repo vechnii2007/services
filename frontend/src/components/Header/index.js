@@ -41,6 +41,7 @@ import { useSocket } from "../../hooks/useSocket";
 import Drawer from "@mui/material/Drawer";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../assets/images/logo.svg";
+import { useChatModal } from "../../context/ChatModalContext";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const getIcon = () => {
@@ -134,6 +135,7 @@ const Header = ({ onDrawerToggle }) => {
   const { socket, isConnected } = useSocket();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { openChat } = useChatModal();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [langAnchorEl, setLangAnchorEl] = useState(null);
@@ -227,7 +229,7 @@ const Header = ({ onDrawerToggle }) => {
               console.log(
                 `[Header] Navigating to chat with requestId: ${messageData.requestId}`
               );
-              navigate(`/chat/${messageData.requestId}`);
+              openChat(messageData.requestId);
             } else {
               console.log(
                 `[Header] No requestId found in message, navigating to chat list`
@@ -281,7 +283,7 @@ const Header = ({ onDrawerToggle }) => {
         console.warn("[Header] Socket not available during cleanup");
       }
     };
-  }, [socket, isConnected, user, fetchUnreadMessagesCount, navigate]);
+  }, [socket, isConnected, user, fetchUnreadMessagesCount, navigate, openChat]);
 
   // Периодическое обновление счетчика непрочитанных сообщений
   useEffect(() => {

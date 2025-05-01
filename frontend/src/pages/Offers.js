@@ -282,7 +282,7 @@ const Offers = () => {
         const transformedCounts = {};
         categoriesResponse?.forEach((category) => {
           transformedCounts[category.name] =
-              countsResponse?.[category.name] || 0;
+            countsResponse?.[category.name] || 0;
         });
 
         setCategories(categoriesResponse || []);
@@ -299,7 +299,7 @@ const Offers = () => {
           }
         } else {
           console.log(
-              "[Offers] Skipping promoted offers load - already loaded"
+            "[Offers] Skipping promoted offers load - already loaded"
           );
         }
 

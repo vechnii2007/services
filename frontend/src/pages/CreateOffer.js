@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../utils/axiosConfig";
 import { useTranslation } from "react-i18next";
@@ -15,14 +15,13 @@ import {
   Grid,
   IconButton,
   Paper,
-  Divider,
   Alert,
   Stack,
   InputAdornment,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { Autocomplete, LoadScript } from "@react-google-maps/api";
+import { Autocomplete } from "@react-google-maps/api";
 import { styled } from "@mui/material/styles";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -429,21 +428,16 @@ const CreateOffer = () => {
           {t("location")}
         </Typography>
 
-        <LoadScript
-          googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-          libraries={["places"]}
-        >
-          <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-            <TextField
-              label={t("location")}
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              fullWidth
-              required
-            />
-          </Autocomplete>
-        </LoadScript>
+        <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+          <TextField
+            label={t("location")}
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+        </Autocomplete>
       </StyledPaper>
 
       <StyledPaper elevation={0}>

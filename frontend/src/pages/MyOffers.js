@@ -15,14 +15,6 @@ const MyOffers = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    console.log("User data changed:", {
-      id: user?._id,
-      role: user?.role,
-      isAuthenticated,
-    });
-  }, [user, isAuthenticated]);
-
   const fetchMyOffers = useCallback(async () => {
     if (!isAuthenticated || !user?._id) {
       console.log("Cannot fetch offers - not authenticated or no user ID", {
@@ -35,14 +27,6 @@ const MyOffers = () => {
     try {
       setLoading(true);
       const response = await OfferService.getMyOffers();
-      console.log("Fetched offers:", {
-        count: response.length,
-        offers: response.map((offer) => ({
-          id: offer._id,
-          providerId: offer.providerId,
-          title: offer.title,
-        })),
-      });
       setOffers(response);
       setMessage(t("offers_loaded"));
     } catch (error) {
@@ -60,12 +44,8 @@ const MyOffers = () => {
   }, [isAuthenticated, user?._id, navigate, t]);
 
   useEffect(() => {
-    console.log("Running fetchMyOffers effect with:", {
-      isAuthenticated,
-      userId: user?._id,
-    });
     fetchMyOffers();
-  }, [fetchMyOffers]);
+  }, [fetchMyOffers, isAuthenticated, user?._id]);
 
   const handleOfferUpdate = useCallback((updatedOffer) => {
     console.log("Updating offer:", {

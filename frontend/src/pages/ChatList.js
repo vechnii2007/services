@@ -7,31 +7,26 @@ import {
   Box,
   Card,
   CardContent,
-  Grid,
-  Button,
   Avatar,
-  Divider,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Badge,
   Tabs,
   Tab,
-  Paper,
   Chip,
   CircularProgress,
   useTheme,
   IconButton,
+  ListItemAvatar,
+  Paper,
+  Divider,
 } from "@mui/material";
 import {
-  ChatBubbleOutline as ChatIcon,
   Person as PersonIcon,
-  FiberManualRecord as UnreadIcon,
   ArrowForward as ArrowIcon,
+  Chat as ChatIcon,
 } from "@mui/icons-material";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import { useChatModal } from "../context/ChatModalContext";
 
 const ChatList = () => {
   const { t } = useTranslation();
@@ -43,6 +38,7 @@ const ChatList = () => {
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const { openChat } = useChatModal();
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -188,10 +184,9 @@ const ChatList = () => {
 
             <IconButton
               color="primary"
-              component={Link}
-              to={`/chat/${chat._id}`}
               size="small"
               sx={{ ml: 1 }}
+              onClick={() => openChat(chat._id)}
             >
               <ArrowIcon />
             </IconButton>

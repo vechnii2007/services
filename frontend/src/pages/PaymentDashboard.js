@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import api from "../middleware/api";
 import {
@@ -21,23 +21,28 @@ const PaymentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get("/users/payments");
       setPayments(res.data);
       setMessage(t("payments_loaded"));
+      setError("");
     } catch (error) {
       console.error("Error fetching payments:", error);
-      setError(error.message);
+      setError(
+        t("error_fetching_payments") +
+          ": " +
+          (error.response?.data?.error || t("something_went_wrong"))
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchPayments();
-  }, []);
+  }, [fetchPayments]);
 
   const handleDeposit = async () => {
     if (!amount || amount <= 0) {

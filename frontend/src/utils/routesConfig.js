@@ -70,11 +70,6 @@ export const routesConfig = [
     requiredRole: ["user", "provider"],
   },
   {
-    path: "/chat/:requestId",
-    element: <Chat />,
-    requiredRole: ["user", "provider"],
-  },
-  {
     path: "/chat-tester",
     element: <ChatTester />,
     requiredRole: ["user", "provider", "admin"],

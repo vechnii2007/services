@@ -66,17 +66,11 @@ class OfferService extends BaseService {
   }
 
   async fetchCategories() {
-    const response = await this.get("/categories");
-    return response;
+    return this.get("/categories");
   }
 
   async fetchCategoryCounts() {
-    try {
-      const response = await this.get("/categories/counts");
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    return this.get("/categories/counts");
   }
 
   async fetchFavorites() {
@@ -212,7 +206,6 @@ class OfferService extends BaseService {
         status: error.response?.status,
       });
 
-      // Возвращаем базовый объект, чтобы не ломать UI
       return {
         isPromoted: false,
         error: error.message,
@@ -252,7 +245,6 @@ class OfferService extends BaseService {
         );
 
         if (attempt < retryAttempts) {
-          // Пауза перед повторной попыткой
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
@@ -264,11 +256,6 @@ class OfferService extends BaseService {
     throw lastError;
   }
 
-  /**
-   * Получает информацию о провайдере по ID
-   * @param {string} providerId - ID провайдера
-   * @returns {Promise<Object>} - Информация о провайдере
-   */
   async getProviderInfo(providerId) {
     if (!providerId) {
       console.warn("[OfferService] getProviderInfo called without providerId");
@@ -286,98 +273,6 @@ class OfferService extends BaseService {
         status: error.response?.status,
       });
       return null;
-    }
-  }
-
-  // Получение списка категорий
-  static async fetchCategories() {
-    try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL || ""}/api/services/categories`
-      );
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("[OfferService] Error fetching categories:", error);
-      return [];
-    }
-  }
-
-  // Получение статистики категорий
-  static async getCategoryStats() {
-    try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL || ""}/api/services/categories/stats`
-      );
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("[OfferService] Error fetching category stats:", error);
-      return { stats: [] };
-    }
-  }
-
-  // Получение топ-категорий
-  static async getTopCategories(limit = 5) {
-    try {
-      console.log(`[OfferService] Fetching top ${limit} categories`);
-      const response = await fetch(
-        `${
-          process.env.REACT_APP_API_URL || ""
-        }/api/services/categories/top?limit=${limit}`
-      );
-      const data = await response.json();
-      console.log("[OfferService] Top categories response:", data);
-      return data;
-    } catch (error) {
-      console.error("[OfferService] Error fetching top categories:", error);
-      console.log("[OfferService] Returning mock data for top categories");
-      return {
-        categories: [
-          {
-            id: "1",
-            name: "healthcare",
-            label: "Медицина",
-            count: 12,
-            hasImage: true,
-            imageUrl: "/uploads/images/healthcare.jpg",
-          },
-          {
-            id: "2",
-            name: "household",
-            label: "Бытовые услуги",
-            count: 8,
-            hasImage: true,
-            imageUrl: "/uploads/images/household.jpg",
-          },
-          {
-            id: "3",
-            name: "finance",
-            label: "Финансы",
-            count: 6,
-            hasImage: true,
-            imageUrl: "/uploads/images/finance.jpg",
-          },
-          {
-            id: "4",
-            name: "education",
-            label: "Образование",
-            count: 5,
-            hasImage: true,
-            imageUrl: "/uploads/images/education.jpg",
-          },
-          {
-            id: "5",
-            name: "transport",
-            label: "Транспорт",
-            count: 3,
-            hasImage: true,
-            imageUrl: "/uploads/images/transport.jpg",
-          },
-        ],
-        totalCategories: 10,
-        timestamp: new Date().toISOString(),
-      };
     }
   }
 }

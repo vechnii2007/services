@@ -45,6 +45,7 @@ const OfferFilters = ({
 }) => {
   const { t } = useTranslation();
   const searchRef = useRef(null);
+  const filtersRef = useRef(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [popularSearches, setPopularSearches] = useState([]);
@@ -84,8 +85,14 @@ const OfferFilters = ({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Проверяем клик вне компонента поиска для закрытия подсказок
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSuggestions(false);
+      }
+
+      // Проверяем клик вне компонента фильтров для закрытия расширенных фильтров
+      if (filtersRef.current && !filtersRef.current.contains(event.target)) {
+        setShowAdvanced(false);
       }
     };
 
@@ -182,6 +189,7 @@ const OfferFilters = ({
         background: "linear-gradient(to right, #ffffff, #f8f9fa)",
         position: "relative",
       }}
+      ref={filtersRef}
     >
       <Box
         sx={{
@@ -192,55 +200,156 @@ const OfferFilters = ({
       >
         {/* Основной поиск */}
         <Box
+          ref={searchRef}
           sx={{
             display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            gap: { xs: 2, sm: 2 },
-            alignItems: { sm: "center" },
+            flexDirection: "column",
+            position: "relative",
           }}
         >
-          <TextField
-            fullWidth
-            size="large"
-            variant="outlined"
-            placeholder={t("search_placeholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setShowSuggestions(true)}
-            onKeyPress={handleKeyPress}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              gap: { xs: 2, sm: 2 },
+              alignItems: { sm: "center" },
             }}
-            sx={{ mb: { xs: 1, sm: 0 } }}
-          />
-          <Autocomplete
-            fullWidth
-            size="large"
-            options={locations}
-            getOptionLabel={(option) => option.label || ""}
-            value={locationFilter}
-            onChange={(_, newValue) => setLocationFilter(newValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="outlined"
-                placeholder={t("location_placeholder")}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LocationOnIcon />
-                    </InputAdornment>
-                  ),
+          >
+            <TextField
+              fullWidth
+              size="large"
+              variant="outlined"
+              placeholder={t("search_placeholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyPress={handleKeyPress}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: { xs: 1, sm: 0 } }}
+            />
+            <Autocomplete
+              fullWidth
+              size="large"
+              options={locations}
+              getOptionLabel={(option) => option.label || ""}
+              value={locationFilter}
+              onChange={(_, newValue) => setLocationFilter(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="outlined"
+                  placeholder={t("location_placeholder")}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LocationOnIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+              sx={{ mb: { xs: 1, sm: 0 } }}
+            />
+          </Box>
+
+          {/* Выпадающие подсказки */}
+          <AnimatePresence>
+            {showSuggestions && (
+              <MotionBox
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                sx={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  mt: 1,
+                  p: 2,
+                  bgcolor: "background.paper",
+                  borderRadius: 2,
+                  boxShadow: 3,
+                  zIndex: 1000,
                 }}
-              />
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    mb: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <TrendingUpIcon fontSize="small" color="primary" />
+                  {t("popular_searches")}
+                  {isLoadingPopular && <CircularProgress size={16} />}
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  {popularSearches.map((search) => (
+                    <Chip
+                      key={search.value}
+                      icon={<span>{search.icon}</span>}
+                      label={search.label}
+                      onClick={() => handlePopularSearchClick(search)}
+                      sx={{
+                        "&:hover": {
+                          bgcolor: "primary.light",
+                          color: "primary.contrastText",
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
+
+                {recentSearches.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 1 }} />
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        my: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <HistoryIcon fontSize="small" color="action" />
+                      {t("recent_searches")}
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      {recentSearches.map((search) => (
+                        <Chip
+                          key={search}
+                          label={search}
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleRecentSearchClick(search)}
+                          onDelete={() => {
+                            const newSearches = recentSearches.filter(
+                              (s) => s !== search
+                            );
+                            setRecentSearches(newSearches);
+                            localStorage.setItem(
+                              RECENT_SEARCHES_KEY,
+                              JSON.stringify(newSearches)
+                            );
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </>
+                )}
+              </MotionBox>
             )}
-            sx={{ mb: { xs: 1, sm: 0 } }}
-          />
+          </AnimatePresence>
         </Box>
         <Box
           sx={{
@@ -271,98 +380,6 @@ const OfferFilters = ({
             {t("search")}
           </Button>
         </Box>
-
-        {/* Выпадающие подсказки */}
-        <AnimatePresence>
-          {showSuggestions && (
-            <MotionBox
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              sx={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                mt: 1,
-                p: 2,
-                bgcolor: "background.paper",
-                borderRadius: 2,
-                boxShadow: 3,
-                zIndex: 1000,
-              }}
-            >
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  mb: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                }}
-              >
-                <TrendingUpIcon fontSize="small" color="primary" />
-                {t("popular_searches")}
-                {isLoadingPopular && <CircularProgress size={16} />}
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                {popularSearches.map((search) => (
-                  <Chip
-                    key={search.value}
-                    icon={<span>{search.icon}</span>}
-                    label={search.label}
-                    onClick={() => handlePopularSearchClick(search)}
-                    sx={{
-                      "&:hover": {
-                        bgcolor: "primary.light",
-                        color: "primary.contrastText",
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
-
-              {recentSearches.length > 0 && (
-                <>
-                  <Divider sx={{ my: 1 }} />
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      my: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                    }}
-                  >
-                    <HistoryIcon fontSize="small" color="action" />
-                    {t("recent_searches")}
-                  </Typography>
-                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    {recentSearches.map((search) => (
-                      <Chip
-                        key={search}
-                        label={search}
-                        variant="outlined"
-                        size="small"
-                        onClick={() => handleRecentSearchClick(search)}
-                        onDelete={() => {
-                          const newSearches = recentSearches.filter(
-                            (s) => s !== search
-                          );
-                          setRecentSearches(newSearches);
-                          localStorage.setItem(
-                            RECENT_SEARCHES_KEY,
-                            JSON.stringify(newSearches)
-                          );
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </>
-              )}
-            </MotionBox>
-          )}
-        </AnimatePresence>
 
         {/* Выбранные категории */}
         <AnimatePresence>
