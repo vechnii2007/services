@@ -82,6 +82,7 @@ const Offers = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [offers, setOffers] = useState([]);
+  const [offersCache, setOffersCache] = useState({});
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [counts, setCounts] = useState({});
@@ -100,6 +101,7 @@ const Offers = () => {
   const [message, setMessage] = useState("");
   const [totalResults, setTotalResults] = useState(0);
   const isFetchingRef = useRef(false);
+  const listRef = useRef();
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -147,6 +149,7 @@ const Offers = () => {
     setHasMore(true);
     setLoadingMore(false);
     setOffers([]);
+    setOffersCache({});
   }, [
     searchQuery,
     minPrice,
@@ -160,6 +163,17 @@ const Offers = () => {
   useEffect(() => {
     let cancelled = false;
     const fetchOffers = async () => {
+      if (offersCache[page]) {
+        setOffers((prev) => {
+          const newOffers =
+            page === 1 ? offersCache[page] : [...prev, ...offersCache[page]];
+          return newOffers;
+        });
+        setLoading(false);
+        setLoadingMore(false);
+        setHasMore(page < totalPages);
+        return;
+      }
       if (page === 1) setLoading(true);
       else setLoadingMore(true);
       try {
@@ -179,34 +193,19 @@ const Offers = () => {
           response = await OfferService.getAll(params);
         }
         if (!cancelled) {
-          console.log(
-            "[Offers] page:",
-            page,
-            "limit:",
-            params.limit,
-            "response.offers.length:",
-            response.offers?.length,
-            "total:",
-            response.total,
-            "pages:",
-            response.pages
-          );
+          setOffersCache((prevCache) => ({
+            ...prevCache,
+            [page]: response.offers || [],
+          }));
           setOffers((prev) => {
             const newOffers =
               page === 1
                 ? response.offers || []
                 : [...prev, ...(response.offers || [])];
-            console.log(
-              "[Offers] setOffers, new length:",
-              newOffers.length,
-              "prev.length:",
-              prev.length
-            );
             return newOffers;
           });
           setTotalPages(response.pages || 1);
           setHasMore(page < (response.pages || 1));
-          console.log("[Offers] hasMore:", page < (response.pages || 1));
         }
       } catch (error) {
         if (!cancelled) setHasMore(false);
@@ -267,19 +266,18 @@ const Offers = () => {
     const getFavorites = async () => {
       try {
         if (!isAuthenticated) {
-          return {};
+          setFavorites({});
+          return;
         }
-
         if (typeof OfferService.fetchFavorites === "function") {
           const favoritesData = await OfferService.fetchFavorites();
-          return favoritesData || {};
+          setFavorites(favoritesData || {});
         } else {
-          console.warn("[Offers] fetchFavorites is not a function");
-          return {};
+          setFavorites({});
         }
       } catch (error) {
+        setFavorites({});
         console.error("[Offers] Error fetching favorites:", error);
-        return {};
       }
     };
 
@@ -333,8 +331,7 @@ const Offers = () => {
         }
 
         // Загружаем избранные, если пользователь авторизован
-        const favoritesData = await getFavorites();
-        setFavorites(favoritesData);
+        await getFavorites();
 
         const loadTime = Date.now() - loadStart;
         console.log(`[Offers] Initial data load completed in ${loadTime}ms`);
@@ -451,6 +448,12 @@ const Offers = () => {
     }
   }, [hasMore, loadingMore]);
 
+  useEffect(() => {
+    if (page > 1 && listRef.current) {
+      listRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [offers, page]);
+
   if (loading && categories.length === 0) {
     return (
       <LoadingContainer>
@@ -537,6 +540,7 @@ const Offers = () => {
       />
 
       <OfferList
+        ref={listRef}
         offers={offers}
         favorites={favorites}
         loading={loading && offers.length === 0}
