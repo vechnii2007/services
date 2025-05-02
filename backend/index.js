@@ -47,7 +47,7 @@ const upload = multer({ storage });
 app.use(
   cors({
     origin: ["https://services-lime-theta.vercel.app", "http://localhost:3000"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );

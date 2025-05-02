@@ -7,7 +7,7 @@ const Offer = require("../models/Offer");
 const Category = require("../models/Category");
 const auth = require("../middleware/auth");
 const { isAdmin } = require("../middleware/authMiddleware");
-const { upload, UPLOADS_PATH } = require("../config/uploadConfig");
+const { upload } = require("../config/cloudinaryConfig");
 const path = require("path");
 const categoryController = require("../controllers/categoryController");
 
