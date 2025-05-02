@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -15,7 +17,6 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const searchRoutes = require("./routes/search");
 const reviewRoutes = require("./routes/reviewRoutes");
 const { UPLOADS_DIR, UPLOADS_PATH } = require("./config/uploadConfig");
-require("dotenv").config();
 
 // Логирование для проверки JWT_SECRET
 console.log("JWT_SECRET:", process.env.JWT_SECRET);
@@ -99,13 +100,15 @@ app.use(
 );
 
 // Routes
-app.use("/api/users", userRoutes);
-app.use("/api/services", serviceRoutes);
+console.log("Registering routes...");
 app.use("/api/admin", adminRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/offers", serviceRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/reviews", reviewRoutes);
+console.log("Routes registered successfully");
 
 // Добавляем обратную совместимость для старых маршрутов
 app.use("/services", serviceRoutes);

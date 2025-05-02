@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const { isProvider, isAdmin } = require("../middleware/authMiddleware");
-const { upload, UPLOADS_PATH } = require("../config/uploadConfig");
+const { upload } = require("../config/cloudinaryConfig");
 const ServiceRequest = require("../models/ServiceRequest");
 const ServiceOffer = require("../models/ServiceOffer");
 const Offer = require("../models/Offer");
@@ -467,31 +467,26 @@ router.post(
         providerId,
       } = req.body;
 
-      // Проверяем, что все необходимые поля присутствуют
       if (!title || !category || !location || !description) {
         return res.status(400).json({ error: "All fields are required" });
       }
 
       // Проверяем наличие ценовой информации
       if (isPriceRange === "true") {
-        // Проверка диапазона цен
         if (!priceFrom || !priceTo) {
           return res.status(400).json({
             error: "Price range requires both minimum and maximum values",
           });
         }
       } else {
-        // Проверка фиксированной цены
         if (!price) {
           return res.status(400).json({ error: "Price is required" });
         }
       }
 
-      // Если указан providerId (для админов), используем его, иначе используем ID текущего пользователя
       const actualProviderId = providerId || req.user.id;
-
-      // Проверяем существование провайдера
       const provider = await User.findById(actualProviderId);
+
       if (
         !provider ||
         (provider.role !== "provider" && provider.role !== "admin")
@@ -499,43 +494,25 @@ router.post(
         return res.status(400).json({ error: "Invalid provider" });
       }
 
-      // Обрабатываем загруженные изображения
-      const images = req.files ? req.files.map((file) => file.filename) : [];
-      const mainImage = images.length > 0 ? images[0] : null;
+      // Получаем URLs изображений из Cloudinary
+      const images = req.files ? req.files.map((file) => file.path) : [];
 
-      // Создаем новое предложение
-      const offerData = {
+      const offer = new Offer({
         title,
+        providerId: actualProviderId,
         serviceType: category,
+        category,
         location,
         description,
-        providerId: actualProviderId,
+        price: isPriceRange === "true" ? undefined : price,
+        priceFrom: isPriceRange === "true" ? priceFrom : undefined,
+        priceTo: isPriceRange === "true" ? priceTo : undefined,
+        isPriceRange: isPriceRange === "true",
         images,
-        image: mainImage,
-        status: "active",
-      };
-
-      // Добавляем ценовую информацию в зависимости от типа цены
-      if (isPriceRange === "true") {
-        offerData.priceFrom = Number(priceFrom);
-        offerData.priceTo = Number(priceTo);
-        offerData.isPriceRange = true;
-        offerData.price = Number(priceFrom); // Для обратной совместимости используем минимальную цену
-      } else {
-        offerData.price = Number(price);
-        offerData.isPriceRange = false;
-      }
-
-      const offer = new Offer(offerData);
+        image: images[0], // Для обратной совместимости
+      });
 
       await offer.save();
-
-      // Обновляем статистику категории
-      await categoryStatsService.incrementCategoryCount(category);
-
-      // Обновляем статистику провайдера
-      await provider.incrementTotalRequests();
-
       res.status(201).json(offer);
     } catch (error) {
       console.error("Error creating offer:", error);
@@ -562,7 +539,6 @@ router.put(
         return res.status(404).json({ message: "Предложение не найдено" });
       }
 
-      // Проверяем, принадлежит ли предложение текущему пользователю
       if (
         offer.providerId.toString() !== req.user.id &&
         req.user.role !== "admin"
@@ -572,18 +548,7 @@ router.put(
         });
       }
 
-      console.log("[serviceRoutes] Updating offer:", {
-        id: req.params.id,
-        providerId: offer.providerId,
-        currentUser: req.user.id,
-        title,
-        description,
-        price,
-        location,
-        category,
-      });
-
-      // Обновляем поля, если они присутствуют в запросе
+      // Обновляем поля
       if (title) offer.title = title;
       if (description) offer.description = description;
       if (price) offer.price = parseFloat(price);
@@ -596,29 +561,25 @@ router.put(
       // Обработка изображений
       let updatedImages = [];
 
-      // Добавляем существующие изображения, если они были переданы
+      // Добавляем существующие изображения
       if (existingImages) {
-        // Преобразуем в массив, если пришла строка
         const existingImagesArray = Array.isArray(existingImages)
           ? existingImages
           : [existingImages].filter(Boolean);
         updatedImages = [...existingImagesArray];
       }
 
-      // Добавляем новые загруженные изображения
+      // Добавляем новые изображения из Cloudinary
       if (req.files && req.files.length > 0) {
         console.log(
           "[serviceRoutes] Adding new images:",
-          req.files.map((f) => f.filename)
+          req.files.map((f) => f.path)
         );
-        const newImages = req.files.map((file) => file.filename);
+        const newImages = req.files.map((file) => file.path);
         updatedImages = [...updatedImages, ...newImages];
       }
 
-      // Обновляем массив изображений в предложении
       offer.images = updatedImages;
-
-      // Для обратной совместимости обновляем поле image
       if (updatedImages.length > 0) {
         offer.image = updatedImages[0];
       }
@@ -1806,6 +1767,44 @@ router.get("/requests/:id", auth, async (req, res) => {
   } catch (error) {
     console.error(`[GET /requests/${req.params.id}] Error:`, error);
     res.status(500).json({ error: "Server error", details: error.message });
+  }
+});
+
+// Тестовый маршрут для загрузки изображений
+router.post("/test-upload", upload.single("image"), (req, res) => {
+  try {
+    console.log("Received upload request");
+
+    if (!req.file) {
+      console.log("No file received");
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    console.log("File uploaded successfully:", {
+      path: req.file.path,
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      cloudinaryData: req.file.cloudinaryData,
+    });
+
+    res.json({
+      success: true,
+      file: {
+        path: req.file.path,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        cloudinaryData: req.file.cloudinaryData,
+      },
+    });
+  } catch (error) {
+    console.error("Error in test-upload route:", error);
+    res.status(500).json({
+      error: "Failed to upload file",
+      details: error.message,
+      stack: error.stack,
+    });
   }
 });
 

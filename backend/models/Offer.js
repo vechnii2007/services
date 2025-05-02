@@ -60,13 +60,14 @@ const offerSchema = new mongoose.Schema(
     },
     image: {
       type: String,
-      // Устаревшее поле, используйте images вместо него
-      deprecated: true,
+      default: null,
     },
-    images: {
-      type: [String],
-      default: [],
-    },
+    images: [
+      {
+        type: String,
+        default: [],
+      },
+    ],
     status: {
       type: String,
       enum: ["active", "inactive"],
@@ -113,7 +114,7 @@ offerSchema.pre("save", function (next) {
   }
 
   // Если есть поле image и оно не пустое, но нет images, добавляем image в images
-  if (this.image && !this.images.length) {
+  if (this.image && (!this.images || !this.images.length)) {
     this.images = [this.image];
   }
 

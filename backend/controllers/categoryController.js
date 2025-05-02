@@ -50,7 +50,7 @@ class CategoryController {
       const category = new Category({
         name,
         label,
-        image: `uploads/images/${req.file.filename}`,
+        image: req.file.path, // Cloudinary возвращает URL в path
       });
       await category.save();
       res.status(201).json(category);
@@ -72,7 +72,7 @@ class CategoryController {
       if (name) category.name = name;
       if (label) category.label = label;
       if (req.file) {
-        category.image = `uploads/images/${req.file.filename}`;
+        category.image = req.file.path; // Cloudinary возвращает URL в path
       }
 
       await category.save();
