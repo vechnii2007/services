@@ -19,6 +19,7 @@ const categoryController = require("../controllers/categoryController");
 const fs = require("fs");
 const NotificationService = require("../services/NotificationService");
 const Review = require("../models/Review");
+const { UPLOADS_PATH } = require("../config/uploadConfig");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -177,9 +178,9 @@ router.get("/offers", async (req, res) => {
 
     res.json({
       offers: formattedOffers,
-      totalPages,
-      currentPage: page,
-      totalOffers,
+      total: totalOffers,
+      pages: totalPages,
+      page: page,
     });
   } catch (error) {
     console.error("[serviceRoutes] Error fetching offers:", error);

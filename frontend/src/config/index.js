@@ -43,6 +43,7 @@ export const USER_ROLES = {
 export const PAGINATION = {
   DEFAULT_PAGE_SIZE: 10,
   DEFAULT_PAGE: 1,
+  OFFERS_PER_PAGE: 10,
 };
 
 // Image Heights

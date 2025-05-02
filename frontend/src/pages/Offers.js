@@ -94,7 +94,9 @@ const Offers = () => {
   const [providerName, setProviderName] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [message, setMessage] = useState("");
   const [totalResults, setTotalResults] = useState(0);
   const isFetchingRef = useRef(false);
@@ -122,68 +124,6 @@ const Offers = () => {
     }
   }, [location.search]);
 
-  const fetchData = useCallback(async () => {
-    if (isFetchingRef.current) return;
-    isFetchingRef.current = true;
-    setLoading(true);
-
-    try {
-      const params = {
-        page,
-        limit: PAGINATION.OFFERS_PER_PAGE,
-        minPrice: minPrice || undefined,
-        maxPrice: maxPrice || undefined,
-        location: locationFilter || undefined,
-        category: selectedCategory || undefined,
-        providerId: providerId || undefined,
-      };
-
-      let response;
-      if (searchQuery?.trim()) {
-        response = await searchService.searchOffers(searchQuery, params);
-      } else {
-        response = await OfferService.getAll(params);
-      }
-
-      setOffers(response.offers || []);
-      setTotalPages(response.pages || 1);
-      setTotalResults(response.total || 0);
-
-      if (
-        response.filteredTotal !== undefined &&
-        response.originalTotal !== undefined
-      ) {
-        const filteredCount = response.filteredTotal;
-        const totalCount = response.originalTotal;
-
-        if (filteredCount < totalCount) {
-          toast.success(
-            t("search.results_count", {
-              filtered: filteredCount,
-              total: totalCount,
-              query: searchQuery,
-            })
-          );
-        }
-      }
-    } catch (error) {
-      setMessage(error.response?.data?.error || "Error loading offers");
-      toast.error(t("errors.loading_failed"));
-    } finally {
-      setLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, [
-    page,
-    searchQuery,
-    minPrice,
-    maxPrice,
-    locationFilter,
-    selectedCategory,
-    providerId,
-    t,
-  ]);
-
   const handleCategoryClick = useCallback(
     (category) => {
       const newCategory =
@@ -196,12 +136,101 @@ const Offers = () => {
 
   const handleSearch = useCallback(() => {
     setPage(1);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handlePageChange = useCallback((event, value) => {
     setPage(value);
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+    setLoadingMore(false);
+    setOffers([]);
+  }, [
+    searchQuery,
+    minPrice,
+    maxPrice,
+    locationFilter,
+    selectedCategory,
+    providerId,
+  ]);
+
+  // Загрузка офферов по страницам
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOffers = async () => {
+      if (page === 1) setLoading(true);
+      else setLoadingMore(true);
+      try {
+        const params = {
+          page,
+          limit: PAGINATION.OFFERS_PER_PAGE,
+          minPrice: minPrice || undefined,
+          maxPrice: maxPrice || undefined,
+          location: locationFilter || undefined,
+          category: selectedCategory || undefined,
+          providerId: providerId || undefined,
+        };
+        let response;
+        if (searchQuery?.trim()) {
+          response = await searchService.searchOffers(searchQuery, params);
+        } else {
+          response = await OfferService.getAll(params);
+        }
+        if (!cancelled) {
+          console.log(
+            "[Offers] page:",
+            page,
+            "limit:",
+            params.limit,
+            "response.offers.length:",
+            response.offers?.length,
+            "total:",
+            response.total,
+            "pages:",
+            response.pages
+          );
+          setOffers((prev) => {
+            const newOffers =
+              page === 1
+                ? response.offers || []
+                : [...prev, ...(response.offers || [])];
+            console.log(
+              "[Offers] setOffers, new length:",
+              newOffers.length,
+              "prev.length:",
+              prev.length
+            );
+            return newOffers;
+          });
+          setTotalPages(response.pages || 1);
+          setHasMore(page < (response.pages || 1));
+          console.log("[Offers] hasMore:", page < (response.pages || 1));
+        }
+      } catch (error) {
+        if (!cancelled) setHasMore(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    };
+    fetchOffers();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    page,
+    searchQuery,
+    minPrice,
+    maxPrice,
+    locationFilter,
+    selectedCategory,
+    providerId,
+  ]);
+
   // Эффект для начальной загрузки категорий
   useEffect(() => {
     // Функция-помощник для получения категорий
@@ -318,17 +347,6 @@ const Offers = () => {
     loadInitialData();
   }, [isAuthenticated, t]);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(
-      () => {
-        fetchData();
-      },
-      page !== 1 ? 0 : 300
-    );
-
-    return () => clearTimeout(timeoutId);
-  }, [fetchData, page, searchQuery, minPrice, maxPrice, locationFilter]);
-
   const filteredOffers = useMemo(() => {
     const filtered = filterOffers(offers, { searchQuery });
 
@@ -426,6 +444,13 @@ const Offers = () => {
     navigate({ search: params.toString() });
   };
 
+  // Функция для кнопки "Загрузить ещё"
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !loadingMore) {
+      setPage((prev) => prev + 1);
+    }
+  }, [hasMore, loadingMore]);
+
   if (loading && categories.length === 0) {
     return (
       <LoadingContainer>
@@ -512,15 +537,14 @@ const Offers = () => {
       />
 
       <OfferList
-        offers={filteredOffers}
+        offers={offers}
         favorites={favorites}
-        setFavorites={setFavorites}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-        loading={loading}
+        loading={loading && offers.length === 0}
         toggleFavorite={toggleFavorite}
         searchQuery={searchQuery}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={handleLoadMore}
       />
     </ContentContainer>
   );
