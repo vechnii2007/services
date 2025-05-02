@@ -108,6 +108,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/services", serviceRoutes);
 console.log("Routes registered successfully");
 
 // Добавляем обратную совместимость для старых маршрутов
