@@ -8,7 +8,17 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Typography, Box, Container, Alert } from "@mui/material";
+import {
+  Typography,
+  Box,
+  Container,
+  Alert,
+  useTheme,
+  useMediaQuery,
+  IconButton,
+  Drawer,
+  Button,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
 import OfferFilters from "../components/OfferFilters";
 import CategorySlider from "../components/CategorySlider";
@@ -21,6 +31,7 @@ import { PAGINATION } from "../config";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
+import FilterListIcon from "@mui/icons-material/FilterList";
 
 const PageTitle = styled(Typography)(({ theme }) => ({
   fontSize: theme.typography.h1.fontSize,
@@ -103,6 +114,9 @@ const Offers = () => {
   const [totalResults, setTotalResults] = useState(0);
   const isFetchingRef = useRef(false);
   const listRef = useRef();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -533,7 +547,54 @@ const Offers = () => {
         </Alert>
       )}
 
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
+      {/* Фильтры и поиск */}
+      {isMobile ? (
+        <>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={() => setFiltersOpen(true)}
+            sx={{ mb: 2, width: "100%" }}
+          >
+            {t("filters")}
+          </Button>
+          <Drawer
+            anchor="top"
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            PaperProps={{ sx: { borderRadius: "0 0 16px 16px", top: "56px" } }}
+          >
+            <Box sx={{ p: 2 }}>
+              <OfferFilters
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                minPrice={minPrice}
+                setMinPrice={setMinPrice}
+                maxPrice={maxPrice}
+                setMaxPrice={setMaxPrice}
+                locationFilter={locationFilter}
+                setLocationFilter={setLocationFilter}
+                categories={categories}
+                selectedCategories={selectedCategory ? [selectedCategory] : []}
+                onCategoryChange={handleCategoryClick}
+                onSearch={() => {
+                  setFiltersOpen(false);
+                  handleSearch();
+                }}
+                isSearching={loading}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setFiltersOpen(false)}
+                sx={{ mt: 2, width: "100%" }}
+              >
+                {t("close")}
+              </Button>
+            </Box>
+          </Drawer>
+        </>
+      ) : (
         <Box
           sx={{
             maxWidth: { xs: "calc(100vw - 32px)", sm: 500 },
@@ -556,7 +617,7 @@ const Offers = () => {
             isSearching={loading}
           />
         </Box>
-      </Box>
+      )}
 
       <CategoriesSection>
         <Typography

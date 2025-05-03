@@ -7,8 +7,24 @@ import PropTypes from "prop-types";
 
 const CategoryCardWrapper = styled(Card)(({ theme }) => ({
   position: "relative",
-  width: 280,
-  height: 180,
+  width: 110,
+  height: 110,
+  [theme.breakpoints.up("sm")]: {
+    width: 140,
+    height: 120,
+  },
+  [theme.breakpoints.up("md")]: {
+    width: 180,
+    height: 140,
+  },
+  [theme.breakpoints.up("lg")]: {
+    width: 220,
+    height: 160,
+  },
+  [theme.breakpoints.up("xl")]: {
+    width: 280,
+    height: 180,
+  },
   borderRadius: theme.shape.borderRadius,
   overflow: "hidden",
   cursor: "pointer",
@@ -29,31 +45,59 @@ const CategoryContent = styled(Box)(({ theme }) => ({
   bottom: 0,
   left: 0,
   right: 0,
-  padding: theme.spacing(2),
-  background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 100%)",
+  padding: theme.spacing(1.5, 1),
+  background:
+    "linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.85) 100%)",
   color: theme.palette.common.white,
   display: "flex",
   flexDirection: "column",
+  alignItems: "flex-start",
   gap: theme.spacing(0.5),
 }));
 
-const CategoryTitle = styled(Typography)({
-  fontWeight: 600,
-  textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-});
-
-const CategoryCount = styled(Typography)(({ theme }) => ({
-  fontSize: "0.875rem",
-  opacity: 0.9,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
-  padding: theme.spacing(0.5, 1),
-  borderRadius: theme.shape.borderRadius,
-  display: "inline-block",
-  marginTop: theme.spacing(0.5),
+const CategoryCountBadge = styled(Box)(({ theme }) => ({
+  position: "absolute",
+  top: 8,
+  right: 8,
+  zIndex: 2,
+  background: theme.palette.primary.main,
+  color: theme.palette.common.white,
+  borderRadius: "50%",
+  minWidth: 28,
+  height: 28,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+  fontSize: 15,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
 }));
 
-const CounterMotion = styled(motion.div)({
-  display: "inline-block",
+const CategoryTitleBar = styled(Box)(({ theme }) => ({
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: "rgba(0,0,0,0.78)",
+  padding: theme.spacing(1, 1.5),
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderBottomLeftRadius: theme.shape.borderRadius,
+  borderBottomRightRadius: theme.shape.borderRadius,
+}));
+
+const CategoryTitle = styled(Typography)({
+  fontWeight: 700,
+  fontSize: 17,
+  color: "#fff",
+  textAlign: "center",
+  textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+  lineHeight: 1.1,
+  width: "100%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 });
 
 const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
@@ -84,18 +128,12 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
             e.target.src = getFallbackImageUrl(category.name);
           }}
         />
-        <CategoryContent>
-          <CategoryTitle variant="h6">{t(category.name)}</CategoryTitle>
-          <CounterMotion
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <CategoryCount>
-              {count} {t("offers")}
-            </CategoryCount>
-          </CounterMotion>
-        </CategoryContent>
+        <CategoryCountBadge>{count}</CategoryCountBadge>
+        <CategoryTitleBar>
+          <CategoryTitle variant="subtitle1">
+            {t(category.label || category.name)}
+          </CategoryTitle>
+        </CategoryTitleBar>
       </CategoryCardWrapper>
     </Tooltip>
   );

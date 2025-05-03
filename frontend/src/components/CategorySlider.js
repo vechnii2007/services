@@ -14,9 +14,12 @@ import { Navigation, Mousewheel, Keyboard } from "swiper/modules";
 
 const SliderContainer = styled(Box)(({ theme }) => ({
   position: "relative",
-  width: "100%",
+  width: "100vw",
+  left: "50%",
+  right: "50%",
+  marginLeft: "-50vw",
+  marginRight: "-50vw",
   boxSizing: "border-box",
-  padding: "0 40px",
   marginBottom: theme.spacing(4),
   "& .swiper": {
     width: "100%",
@@ -28,6 +31,25 @@ const SliderContainer = styled(Box)(({ theme }) => ({
     height: "auto",
     display: "flex",
     justifyContent: "center",
+  },
+  "&:before, &:after": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    width: 32,
+    height: "100%",
+    zIndex: 2,
+    pointerEvents: "none",
+  },
+  "&:before": {
+    left: 0,
+    background:
+      "linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0))",
+  },
+  "&:after": {
+    right: 0,
+    background:
+      "linear-gradient(to left, rgba(255,255,255,1), rgba(255,255,255,0))",
   },
   "& .swiper-button-next, & .swiper-button-prev": {
     color: theme.palette.primary.main,
@@ -69,8 +91,11 @@ const CategorySlider = ({
     <SliderContainer>
       <Swiper
         modules={[Navigation, Mousewheel, Keyboard]}
-        spaceBetween={16}
-        slidesPerView="auto"
+        breakpoints={{
+          0: { slidesPerView: 3.2, spaceBetween: 8 },
+          600: { slidesPerView: 4, spaceBetween: 12 },
+          900: { slidesPerView: "auto", spaceBetween: 16 },
+        }}
         navigation={true}
         mousewheel={false}
         keyboard={{
