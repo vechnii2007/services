@@ -20,6 +20,7 @@ import { filterOffers } from "../utils/filterOffers";
 import { PAGINATION } from "../config";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-hot-toast";
+import { v4 as uuidv4 } from "uuid";
 
 const PageTitle = styled(Typography)(({ theme }) => ({
   fontSize: theme.typography.h1.fontSize,
@@ -128,10 +129,17 @@ const Offers = () => {
 
   const handleCategoryClick = useCallback(
     (category) => {
+      console.log("[Offers] Клик по категории:", category);
+      console.log("[Offers] selectedCategory до:", selectedCategory);
       const newCategory =
         category.name === selectedCategory ? null : category.name;
       setSelectedCategory(newCategory);
       setPage(1);
+      setOffers([]);
+      setOffersCache({});
+      setTimeout(() => {
+        console.log("[Offers] selectedCategory после:", newCategory);
+      }, 0);
     },
     [selectedCategory]
   );
@@ -159,9 +167,11 @@ const Offers = () => {
     providerId,
   ]);
 
-  // Загрузка офферов по страницам
+  // Загрузка офферов по страницам с защитой от race condition
   useEffect(() => {
     let cancelled = false;
+    const requestId = uuidv4();
+    window.__lastOffersRequestId = requestId;
     const fetchOffers = async () => {
       if (offersCache[page]) {
         setOffers((prev) => {
@@ -186,11 +196,35 @@ const Offers = () => {
           category: selectedCategory || undefined,
           providerId: providerId || undefined,
         };
+        console.log(
+          "[Offers] Параметры запроса офферов:",
+          params,
+          "requestId:",
+          requestId
+        );
         let response;
         if (searchQuery?.trim()) {
           response = await searchService.searchOffers(searchQuery, params);
         } else {
           response = await OfferService.getAll(params);
+        }
+        if (window.__lastOffersRequestId !== requestId) {
+          console.log(
+            "[Offers] Пропущен устаревший ответ (requestId mismatch)"
+          );
+          return;
+        }
+        console.log(
+          "[Offers] Ответ сервера:",
+          response,
+          "requestId:",
+          requestId
+        );
+        if (response && response.offers) {
+          console.log(
+            "[Offers] Первые 3 предложения:",
+            response.offers.slice(0, 3)
+          );
         }
         if (!cancelled) {
           setOffersCache((prevCache) => ({
@@ -209,6 +243,7 @@ const Offers = () => {
         }
       } catch (error) {
         if (!cancelled) setHasMore(false);
+        console.error("[Offers] Ошибка при загрузке офферов:", error);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -453,6 +488,15 @@ const Offers = () => {
       listRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [offers, page]);
+
+  // useEffect для немедленного fetch при изменении selectedCategory
+  useEffect(() => {
+    if (selectedCategory !== null) {
+      setPage(1);
+      setOffers([]);
+      setOffersCache({});
+    }
+  }, [selectedCategory]);
 
   if (loading && categories.length === 0) {
     return (

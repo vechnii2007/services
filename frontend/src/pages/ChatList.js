@@ -27,6 +27,8 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useChatModal } from "../context/ChatModalContext";
+import { useAuth } from "../context/AuthContext";
+import ChatService from "../services/ChatService";
 
 const ChatList = () => {
   const { t } = useTranslation();
@@ -39,6 +41,8 @@ const ChatList = () => {
   const [tabValue, setTabValue] = useState(0);
   const [unreadCounts, setUnreadCounts] = useState({});
   const { openChat } = useChatModal();
+  const { user } = useAuth();
+  const [lastMessages, setLastMessages] = useState({});
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -59,10 +63,14 @@ const ChatList = () => {
         console.log("User requests:", userRes.data);
         setUserRequests(userRes.data);
 
-        // Получаем запросы, на которые пользователь (поставщик) отправил предложения
-        const providerRes = await axios.get(`/services/provider-chats`);
-        console.log("Provider requests:", providerRes.data);
-        setProviderRequests(providerRes.data);
+        let providerRes = { data: [] };
+        if (user && (user.role === "provider" || user.role === "admin")) {
+          providerRes = await axios.get(`/services/provider-chats`);
+          console.log("Provider requests:", providerRes.data);
+          setProviderRequests(providerRes.data);
+        } else {
+          setProviderRequests([]);
+        }
 
         // Получаем статистику непрочитанных сообщений
         // Имитация данных, в реальном приложении должен быть запрос к API
@@ -71,6 +79,21 @@ const ChatList = () => {
           unreadData[chat._id] = chat.unreadCount || 0;
         });
         setUnreadCounts(unreadData);
+
+        // После загрузки чатов — грузим последние сообщения для превью
+        const allChats = [...userRes.data, ...providerRes.data];
+        const lastMsgs = {};
+        await Promise.all(
+          allChats.map(async (chat) => {
+            const msgs = await ChatService.getMessages(
+              chat.requestId || chat._id
+            );
+            if (msgs && msgs.length > 0) {
+              lastMsgs[chat.requestId || chat._id] = msgs[msgs.length - 1];
+            }
+          })
+        );
+        setLastMessages(lastMsgs);
 
         setMessage(t("requests_loaded"));
       } catch (error) {
@@ -93,27 +116,64 @@ const ChatList = () => {
       }
     };
     fetchRequests();
-  }, [t, navigate]);
+  }, [t, navigate, user]);
 
-  const renderChatItem = (chat) => {
+  // Сортировка чатов по дате последнего сообщения (новые сверху)
+  const getSortedChats = (chats) => {
+    return [...chats].sort((a, b) => {
+      const lastA =
+        lastMessages[a.requestId || a._id]?.timestamp ||
+        a.lastActivity ||
+        a.updatedAt ||
+        a.createdAt;
+      const lastB =
+        lastMessages[b.requestId || b._id]?.timestamp ||
+        b.lastActivity ||
+        b.updatedAt ||
+        b.createdAt;
+      return new Date(lastB) - new Date(lastA);
+    });
+  };
+
+  const renderChatItem = (chat, isProviderTab = false) => {
     const unreadCount = unreadCounts[chat._id] || 0;
-    const lastActivity = chat.lastActivity || chat.updatedAt || chat.createdAt;
+    const lastMsg = lastMessages[chat.requestId || chat._id];
+    const lastActivity =
+      lastMsg?.timestamp ||
+      chat.lastActivity ||
+      chat.updatedAt ||
+      chat.createdAt;
     const timeAgo = lastActivity
       ? formatDistanceToNow(new Date(lastActivity), {
           addSuffix: true,
           locale: ru,
         })
       : "";
-
+    // Определяем собеседника и ссылку на профиль
+    let otherParty = null;
+    let profileLink = "#";
+    if (user?.role === "provider" || isProviderTab) {
+      otherParty = chat.user || chat.userId;
+      profileLink = `/profile/${otherParty?._id || otherParty}`;
+    } else {
+      otherParty = chat.provider || chat.providerId;
+      profileLink = `/profile/${otherParty?._id || otherParty}`;
+    }
     return (
       <Card
-        key={chat._id}
+        key={chat._id || `${chat.requestId}_${chat.providerId || chat.userId}`}
         sx={{
           mb: 2,
           transition: "all 0.2s ease",
+          borderLeft:
+            unreadCount > 0
+              ? `5px solid ${theme.palette.primary.main}`
+              : undefined,
+          boxShadow: unreadCount > 0 ? theme.shadows[4] : theme.shadows[1],
+          background: unreadCount > 0 ? theme.palette.action.hover : undefined,
           "&:hover": {
             transform: "translateY(-2px)",
-            boxShadow: theme.shadows[4],
+            boxShadow: theme.shadows[6],
           },
         }}
       >
@@ -126,27 +186,31 @@ const ChatList = () => {
             <Box display="flex" alignItems="center">
               <ListItemAvatar>
                 <Avatar
-                  alt={chat.otherPartyName || "User"}
-                  src={chat.otherPartyAvatar}
-                  sx={{
-                    bgcolor: !chat.otherPartyAvatar
-                      ? theme.palette.primary.main
-                      : undefined,
-                  }}
+                  alt={otherParty?.name || "User"}
+                  sx={{ bgcolor: theme.palette.primary.main }}
                 >
-                  {!chat.otherPartyAvatar && <PersonIcon />}
+                  {otherParty?.name ? (
+                    otherParty.name.charAt(0).toUpperCase()
+                  ) : (
+                    <PersonIcon />
+                  )}
                 </Avatar>
               </ListItemAvatar>
-
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Box display="flex" alignItems="center">
+                <Box display="flex" alignItems="center" gap={1}>
                   <Typography
                     variant="subtitle1"
                     noWrap
                     fontWeight={unreadCount > 0 ? "bold" : "normal"}
+                    component={Link}
+                    to={profileLink}
+                    sx={{ textDecoration: "none", color: "inherit" }}
                   >
-                    {chat.serviceType ? t(chat.serviceType) : t("chat")}
+                    {otherParty?.name || t("chat")}
                   </Typography>
+                  {unreadCount > 0 && (
+                    <Badge color="error" badgeContent={"NEW"} sx={{ ml: 1 }} />
+                  )}
                   {unreadCount > 0 && (
                     <Badge
                       color="primary"
@@ -155,7 +219,6 @@ const ChatList = () => {
                     />
                   )}
                 </Box>
-
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -166,14 +229,31 @@ const ChatList = () => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {chat.description || t("no_description")}
+                  {lastMsg?.message
+                    ? `${
+                        lastMsg.senderId?.name
+                          ? lastMsg.senderId.name + ": "
+                          : ""
+                      }${lastMsg.message}`
+                    : chat.description || t("no_description")}
                 </Typography>
-
-                <Box display="flex" alignItems="center" mt={0.5}>
+                <Box display="flex" alignItems="center" mt={0.5} gap={1}>
                   <Chip
-                    label={chat.location || t("no_location")}
+                    label={chat.serviceType || t("no_service_type")}
                     size="small"
-                    sx={{ mr: 1, maxWidth: 120, fontSize: "0.7rem" }}
+                    sx={{ maxWidth: 120, fontSize: "0.7rem" }}
+                  />
+                  <Chip
+                    label={chat.status || t("no_status")}
+                    size="small"
+                    color={
+                      chat.status === "pending"
+                        ? "warning"
+                        : chat.status === "active"
+                        ? "success"
+                        : "default"
+                    }
+                    sx={{ maxWidth: 120, fontSize: "0.7rem" }}
                   />
                   <Typography variant="caption" color="text.secondary">
                     {timeAgo}
@@ -181,12 +261,17 @@ const ChatList = () => {
                 </Box>
               </Box>
             </Box>
-
             <IconButton
               color="primary"
               size="small"
               sx={{ ml: 1 }}
-              onClick={() => openChat(chat._id)}
+              onClick={() => {
+                openChat({
+                  requestId: chat.requestId || chat._id,
+                  providerId: chat.providerId,
+                  userId: chat.userId,
+                });
+              }}
             >
               <ArrowIcon />
             </IconButton>
@@ -268,20 +353,22 @@ const ChatList = () => {
               </Badge>
             }
           />
-          <Tab
-            label={
-              <Badge
-                badgeContent={providerRequests.reduce(
-                  (count, chat) => count + (unreadCounts[chat._id] || 0),
-                  0
-                )}
-                color="error"
-                sx={{ "& .MuiBadge-badge": { right: -15 } }}
-              >
-                <Box>{t("available_requests")}</Box>
-              </Badge>
-            }
-          />
+          {user && (user.role === "provider" || user.role === "admin") && (
+            <Tab
+              label={
+                <Badge
+                  badgeContent={providerRequests.reduce(
+                    (count, chat) => count + (unreadCounts[chat._id] || 0),
+                    0
+                  )}
+                  color="error"
+                  sx={{ "& .MuiBadge-badge": { right: -15 } }}
+                >
+                  <Box>{t("available_requests")}</Box>
+                </Badge>
+              }
+            />
+          )}
         </Tabs>
 
         <Divider />
@@ -289,8 +376,10 @@ const ChatList = () => {
         <Box sx={{ p: 2 }}>
           {tabValue === 0 && (
             <>
-              {userRequests.length > 0 ? (
-                userRequests.map(renderChatItem)
+              {getSortedChats(userRequests).length > 0 ? (
+                getSortedChats(userRequests).map((chat) =>
+                  renderChatItem(chat, false)
+                )
               ) : (
                 <Box textAlign="center" py={4}>
                   <Typography variant="body1" color="text.secondary">
@@ -301,19 +390,23 @@ const ChatList = () => {
             </>
           )}
 
-          {tabValue === 1 && (
-            <>
-              {providerRequests.length > 0 ? (
-                providerRequests.map(renderChatItem)
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <Typography variant="body1" color="text.secondary">
-                    {t("no_requests")}
-                  </Typography>
-                </Box>
-              )}
-            </>
-          )}
+          {tabValue === 1 &&
+            user &&
+            (user.role === "provider" || user.role === "admin") && (
+              <>
+                {getSortedChats(providerRequests).length > 0 ? (
+                  getSortedChats(providerRequests).map((chat) =>
+                    renderChatItem(chat, true)
+                  )
+                ) : (
+                  <Box textAlign="center" py={4}>
+                    <Typography variant="body1" color="text.secondary">
+                      {t("no_requests")}
+                    </Typography>
+                  </Box>
+                )}
+              </>
+            )}
         </Box>
       </Paper>
     </Box>

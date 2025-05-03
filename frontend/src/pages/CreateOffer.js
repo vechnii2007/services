@@ -16,18 +16,15 @@ import {
   IconButton,
   Paper,
   Alert,
-  Stack,
   InputAdornment,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { Autocomplete } from "@react-google-maps/api";
+import { Autocomplete, LoadScript } from "@react-google-maps/api";
 import { styled } from "@mui/material/styles";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import CategoryIcon from "@mui/icons-material/Category";
 import DescriptionIcon from "@mui/icons-material/Description";
-import EuroIcon from "@mui/icons-material/Euro";
 import { useDropzone } from "react-dropzone";
 import OfferService from "../services/OfferService";
 
@@ -48,10 +45,6 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   borderRadius: theme.shape.borderRadius * 2,
   boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
-}));
-
-const StyledFormControl = styled(FormControl)(({ theme }) => ({
-  marginBottom: theme.spacing(3),
 }));
 
 const ImagePreviewCard = styled(Card)(({ theme }) => ({
@@ -118,9 +111,8 @@ const CreateOffer = () => {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [message, setMessage] = useState("");
   const [autocomplete, setAutocomplete] = useState(null);
-  const [providers, setProviders] = useState([]);
   const [userRole, setUserRole] = useState("");
-  const [errors, setErrors] = useState({});
+  const [errors] = useState({});
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -137,12 +129,6 @@ const CreateOffer = () => {
         // Получаем роль пользователя
         const userRes = await axios.get(`/users/me`);
         setUserRole(userRes.data.role);
-
-        // Если пользователь — администратор, загружаем список провайдеров
-        if (userRes.data.role === "admin") {
-          const providersRes = await axios.get(`/services/providers`);
-          setProviders(providersRes.data);
-        }
       } catch (error) {
         setMessage(
           "Error: " + (error.response?.data?.error || t("something_went_wrong"))
@@ -188,14 +174,17 @@ const CreateOffer = () => {
   };
 
   const onPlaceChanged = () => {
-    if (autocomplete !== null) {
+    if (autocomplete !== null && window.google) {
       const place = autocomplete.getPlace();
+      console.log(1123, place);
       if (place.geometry) {
         setFormData({
           ...formData,
           location: place.formatted_address,
         });
       }
+    } else {
+      console.error("Google Maps API не загружен (window.google отсутствует)");
     }
   };
 
@@ -427,17 +416,21 @@ const CreateOffer = () => {
           <LocationOnIcon color="primary" />
           {t("location")}
         </Typography>
-
-        <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-          <TextField
-            label={t("location")}
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            fullWidth
-            required
-          />
-        </Autocomplete>
+        <LoadScript
+          googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
+          libraries={["places"]}
+        >
+          <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+            <TextField
+              label={t("location")}
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              fullWidth
+              required
+            />
+          </Autocomplete>
+        </LoadScript>
       </StyledPaper>
 
       <StyledPaper elevation={0}>

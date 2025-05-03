@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../middleware/api";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,9 +15,10 @@ import {
   GoogleMap,
   LoadScript,
   Marker,
-  Autocomplete,
+  Autocomplete as GoogleMapsAutocomplete,
 } from "@react-google-maps/api";
 import { useNavigate } from "react-router-dom";
+import MuiAutocomplete from "@mui/material/Autocomplete";
 
 const containerStyle = {
   width: "100%",
@@ -43,6 +44,15 @@ const ServiceRequestForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [providers, setProviders] = useState([]);
+  const [providerId, setProviderId] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/services/providers")
+      .then((res) => setProviders(res.data))
+      .catch(() => setProviders([]));
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,7 +73,7 @@ const ServiceRequestForm = () => {
   };
 
   const onPlaceChanged = () => {
-    if (autocomplete !== null) {
+    if (autocomplete !== null && window.google) {
       const place = autocomplete.getPlace();
       if (place.geometry) {
         const lat = place.geometry.location.lat();
@@ -75,18 +85,25 @@ const ServiceRequestForm = () => {
         });
         setShowMap(true); // Показываем карту после выбора места
       }
+    } else {
+      console.error("Google Maps API не загружен (window.google отсутствует)");
     }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!formData.description) {
+      setError(t("description_required"));
+      return;
+    }
     setLoading(true);
     try {
-      await api.post("/services/request", {
+      await api.post("/services/requests", {
         serviceType: formData.serviceType,
         location: formData.location,
         coordinates: formData.coordinates,
         description: formData.description,
+        ...(providerId ? { providerId } : {}),
       });
       setMessage(t("request_created"));
       setFormData({
@@ -95,6 +112,7 @@ const ServiceRequestForm = () => {
         description: "",
         coordinates: { lat: center.lat, lng: center.lng },
       });
+      setProviderId("");
       setShowMap(false);
       navigate("/my-requests");
     } catch (error) {
@@ -167,7 +185,10 @@ const ServiceRequestForm = () => {
                 googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
                 libraries={["places"]} // Добавляем библиотеку places для автодополнения
               >
-                <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+                <GoogleMapsAutocomplete
+                  onLoad={onLoad}
+                  onPlaceChanged={onPlaceChanged}
+                >
                   <TextField
                     label={t("location")}
                     name="location"
@@ -176,7 +197,7 @@ const ServiceRequestForm = () => {
                     fullWidth
                     required
                   />
-                </Autocomplete>
+                </GoogleMapsAutocomplete>
 
                 <Button
                   variant="outlined"
@@ -198,15 +219,38 @@ const ServiceRequestForm = () => {
                 )}
               </LoadScript>
 
+              <MuiAutocomplete
+                options={providers}
+                getOptionLabel={(option) => option.name || ""}
+                value={providers.find((p) => p._id === providerId) || null}
+                onChange={(_, newValue) =>
+                  setProviderId(newValue ? newValue._id : "")
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={t("provider")}
+                    placeholder={t("any_provider")}
+                  />
+                )}
+                isOptionEqualToValue={(option, value) =>
+                  option._id === value._id
+                }
+              />
+
               <TextField
                 label={t("description")}
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                multiline
-                rows={4}
                 fullWidth
                 required
+                multiline
+                rows={3}
+                error={!formData.description}
+                helperText={
+                  !formData.description ? t("description_required") : ""
+                }
               />
               <Button
                 type="submit"

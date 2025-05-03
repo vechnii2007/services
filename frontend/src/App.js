@@ -7,9 +7,15 @@ import { ChatModalProvider, useChatModal } from "./context/ChatModalContext";
 import ChatModal from "./components/ChatModal/ChatModal";
 
 const ChatModalRoot = () => {
-  const { isOpen, requestId, closeChat } = useChatModal();
+  const { isOpen, requestId, userId, providerId, closeChat } = useChatModal();
   return (
-    <ChatModal open={isOpen} onClose={closeChat} requestId={requestId || ""} />
+    <ChatModal
+      open={isOpen}
+      onClose={closeChat}
+      requestId={requestId || ""}
+      userId={userId}
+      providerId={providerId}
+    />
   );
 };
 

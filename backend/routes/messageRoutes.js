@@ -44,12 +44,32 @@ router.get("/request/:requestId", auth, async (req, res) => {
       return res.status(404).json({ error: "Request not found" });
     }
 
-    // Проверяем права доступа
-    if (
-      request.userId.toString() !== req.user.id &&
-      request.providerId.toString() !== req.user.id
-    ) {
-      return res.status(403).json({ error: "Access denied" });
+    // --- PATCH: безопасная проверка providerId ---
+    const userIdStr = request.userId ? request.userId.toString() : null;
+    const providerIdStr = request.providerId
+      ? request.providerId.toString()
+      : null;
+    // --- PATCH: разрешаем доступ автору и любому провайдеру, если providerId отсутствует ---
+    if (!providerIdStr) {
+      // Общий запрос
+      const currentUser = await User.findById(req.user.id);
+      console.log(
+        "[GET /messages/request/:requestId] General request access check",
+        {
+          userIdStr,
+          currentUserId: req.user.id,
+          currentUserRole: currentUser?.role,
+        }
+      );
+      if (userIdStr !== req.user.id && currentUser?.role !== "provider") {
+        return res
+          .status(403)
+          .json({ error: "Access denied (general request)" });
+      }
+    } else {
+      if (userIdStr !== req.user.id && providerIdStr !== req.user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
 
     const messages = await Message.find({ requestId })
@@ -134,6 +154,14 @@ router.post("/", auth, async (req, res) => {
       messageData.requestId = requestId;
     }
 
+    // --- PATCH: логирование для диагностики уведомлений ---
+    console.log("[DIAG][messageRoutes] POST /messages:", {
+      recipientId: normalizedRecipientId,
+      senderId: req.user.id,
+      requestId,
+      message,
+    });
+
     const newMessage = await Message.create(messageData);
     await newMessage.populate("senderId", "name avatar");
     await newMessage.populate("recipientId", "name avatar");
@@ -143,11 +171,27 @@ router.post("/", auth, async (req, res) => {
     io.to(normalizedRecipientId).emit("private_message", newMessage);
 
     // Отправляем уведомление
-    await NotificationService.sendNotification(normalizedRecipientId, {
+    const notifPayload = {
       type: "message",
       message: `Новое сообщение от ${req.user.name}`,
       relatedId: newMessage._id,
-    });
+      senderId: req.user.id,
+      requestId: messageData.requestId || null,
+    };
+    console.log(
+      "[DIAG][messageRoutes] NotificationService.sendNotification call",
+      {
+        recipientId: normalizedRecipientId,
+        notifPayload,
+      }
+    );
+    await NotificationService.sendNotification(
+      normalizedRecipientId,
+      notifPayload
+    );
+    console.log(
+      `[DIAG][messageRoutes] NotificationService: sent to ${normalizedRecipientId}`
+    );
 
     res.status(201).json(newMessage);
   } catch (error) {

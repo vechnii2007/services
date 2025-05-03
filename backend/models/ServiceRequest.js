@@ -9,7 +9,6 @@ const serviceRequestSchema = new mongoose.Schema({
   providerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
   },
   offerId: {
     type: mongoose.Schema.Types.ObjectId,

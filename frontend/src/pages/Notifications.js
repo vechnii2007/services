@@ -10,31 +10,22 @@ import {
   ListItemIcon,
   IconButton,
   Badge,
-  Tabs,
-  Tab,
   CircularProgress,
-  Snackbar,
   Alert,
-  Paper,
-  Divider,
   Container,
-  ListItemSecondary,
   ListItemButton,
-  Button,
 } from "@mui/material";
 import {
   Notifications as NotificationsIcon,
   Message as MessageIcon,
   LocalOffer as OfferIcon,
   Update as UpdateIcon,
-  Check as CheckIcon,
   Delete as DeleteIcon,
-  ErrorOutline as ErrorIcon,
 } from "@mui/icons-material";
 import { useSocket } from "../hooks/useSocket";
-import { useAuth } from "../hooks/useAuth";
 import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const { t } = useTranslation();
@@ -124,11 +115,16 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentTab, setCurrentTab] = useState(0);
+  const [setCurrentTab] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const { socket } = useSocket();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadNotifications(1, true);
+    // eslint-disable-next-line
+  }, []);
 
   const loadNotifications = async (pageNum = 1, replace = true) => {
     try {
@@ -136,11 +132,19 @@ const Notifications = () => {
       const data = await NotificationService.getNotifications({
         page: pageNum,
         limit: 20,
-        unreadOnly: currentTab === 1,
       });
-
-      const { notifications: newNotifications, pages } = data;
-
+      console.log("API notifications response:", data);
+      let newNotifications, pages;
+      if (Array.isArray(data)) {
+        newNotifications = data;
+        pages = 1;
+      } else if (data.notifications) {
+        newNotifications = data.notifications;
+        pages = data.pages || 1;
+      } else {
+        newNotifications = [];
+        pages = 1;
+      }
       setNotifications((prev) =>
         replace
           ? newNotifications || []
@@ -158,33 +162,40 @@ const Notifications = () => {
 
   useEffect(() => {
     if (!socket) return;
-
     const handleNewNotification = (newNotification) => {
       setNotifications((prev) => [newNotification, ...(prev || [])]);
     };
-
     socket.on("notification", handleNewNotification);
-
     return () => {
       socket.off("notification", handleNewNotification);
     };
   }, [socket]);
 
-  useEffect(() => {
-    loadNotifications();
-  }, [currentTab]);
-
-  const handleMarkAsRead = async (notificationId) => {
+  const handleMarkAsReadAndNavigate = async (notification) => {
     try {
-      await NotificationService.markAsRead(notificationId);
-      setNotifications((prev) =>
-        (prev || []).map((notif) =>
-          notif._id === notificationId ? { ...notif, read: true } : notif
-        )
-      );
+      if (!notification.read) {
+        await NotificationService.markAsRead(notification._id);
+        setNotifications((prev) =>
+          (prev || []).map((notif) =>
+            notif._id === notification._id ? { ...notif, read: true } : notif
+          )
+        );
+      }
+      if (notification.type === "request") {
+        navigate(`/requests/${notification.relatedId}`, {
+          state: { fromNotification: true },
+        });
+      } else if (notification.type === "offer") {
+        navigate(`/offers/${notification.relatedId}`);
+      } else if (notification.type === "message") {
+        navigate(`/chat/${notification.relatedId}`);
+      }
     } catch (err) {
       setError(err.message);
-      console.error("Error marking notification as read:", err);
+      console.error("Error marking notification as read or navigating:", err);
+      alert(
+        "Не удалось открыть уведомление. Возможно, запрос был удалён или у вас нет доступа."
+      );
     }
   };
 
@@ -212,109 +223,65 @@ const Notifications = () => {
     : 0;
 
   return (
-    <Container maxWidth="md" sx={{ mt: 8, mb: 4 }}>
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-        <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 2 }}>
-          <NotificationsIcon color="primary" />
-          <Typography variant="h5" component="h1" color="text.primary">
-            {t("notifications")}
-          </Typography>
-        </Box>
-
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          indicatorColor="primary"
-          textColor="primary"
-          sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
-        >
-          <Tab
-            label={t("all_notifications")}
-            icon={<NotificationsIcon />}
-            iconPosition="start"
-          />
-          <Tab
-            label={t("unread")}
-            icon={
-              <Badge color="error" badgeContent={unreadCount}>
-                <NotificationsIcon />
-              </Badge>
-            }
-            iconPosition="start"
-          />
-        </Tabs>
-
-        {loading && (!notifications || notifications.length === 0) ? (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: 200,
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        ) : notifications && notifications.length > 0 ? (
-          <List sx={{ width: "100%" }}>
-            {notifications.map((notification) => (
-              <NotificationItem
-                key={notification._id}
-                notification={notification}
-                onMarkAsRead={handleMarkAsRead}
-                onDelete={handleDelete}
-              />
-            ))}
-            {hasMore && (
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  pt: 2,
-                  pb: 1,
-                }}
-              >
-                <Button
-                  startIcon={
-                    loading ? <CircularProgress size={20} /> : <UpdateIcon />
-                  }
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                  variant="outlined"
-                >
-                  {t("load_more")}
-                </Button>
-              </Box>
-            )}
-          </List>
-        ) : (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 2,
-              py: 8,
-            }}
-          >
-            <NotificationsIcon color="action" sx={{ fontSize: 48 }} />
-            <Typography color="text.secondary" align="center">
-              {t("no_notifications")}
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity="error" onClose={() => setError(null)}>
+    <Container maxWidth="md" sx={{ paddingY: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        {t("notifications")}
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-      </Snackbar>
+      )}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : notifications && notifications.length > 0 ? (
+        <List>
+          {notifications.map((notif) => (
+            <ListItem
+              key={notif._id || notif.id}
+              divider
+              button
+              onClick={() => handleMarkAsReadAndNavigate(notif)}
+              sx={{ cursor: "pointer" }}
+            >
+              <ListItemIcon>
+                {notif.type === "message" ? (
+                  <MessageIcon color="primary" />
+                ) : notif.type === "offer" ? (
+                  <OfferIcon color="secondary" />
+                ) : notif.type === "request" ? (
+                  <UpdateIcon color="info" />
+                ) : (
+                  <NotificationsIcon color="action" />
+                )}
+              </ListItemIcon>
+              <ListItemText
+                primary={notif.message || t("no_message")}
+                secondary={
+                  notif.createdAt
+                    ? formatDistance(new Date(notif.createdAt), new Date(), {
+                        addSuffix: true,
+                        locale: ru,
+                      })
+                    : null
+                }
+              />
+              {notif.read ? null : <Badge color="error" variant="dot" />}
+            </ListItem>
+          ))}
+        </List>
+      ) : (
+        <Typography
+          variant="body1"
+          align="center"
+          color="textSecondary"
+          sx={{ mt: 4 }}
+        >
+          {t("no_notifications")}
+        </Typography>
+      )}
     </Container>
   );
 };

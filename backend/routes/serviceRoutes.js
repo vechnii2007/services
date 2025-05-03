@@ -709,21 +709,105 @@ router.get("/provider-offers", auth, async (req, res) => {
   }
 });
 
-// Создание запроса
-router.post("/request", auth, async (req, res) => {
+// Создание запроса на услугу (доступно для авторизованных пользователей)
+router.post("/requests", auth, async (req, res) => {
   try {
-    const { serviceType, location, coordinates, description } = req.body;
-    const request = new ServiceRequest({
+    const io = require("../socket").getIO();
+    console.log("[POST /requests] Incoming body:", JSON.stringify(req.body));
+    const { providerId, offerId, serviceType, message } = req.body;
+
+    // Проверка обязательных полей
+    if (!serviceType) {
+      return res.status(400).json({ error: "Service type is required" });
+    }
+    if (!message) {
+      return res.status(400).json({ error: "Description is required" });
+    }
+
+    // Создание запроса
+    const newRequest = new ServiceRequest({
       userId: req.user.id,
+      providerId,
+      offerId, // Может быть undefined, если запрос не связан с конкретным предложением
       serviceType,
-      location,
-      coordinates,
-      description,
+      description: message || "",
+      status: "pending",
     });
-    await request.save();
-    res.status(201).json(request);
+
+    await newRequest.save();
+    console.log(
+      "[POST /requests] Saved ServiceRequest:",
+      newRequest.toObject()
+    );
+
+    // Получаем имя пользователя для уведомления
+    let userName = req.user.name;
+    if (!userName) {
+      const userFromDb = await User.findById(req.user.id).select("name");
+      userName = userFromDb ? userFromDb.name : "Пользователь";
+    }
+
+    // Отправляем уведомление провайдеру, если providerId указан
+    if (providerId) {
+      const notificationPayload = {
+        type: "request",
+        message: `Новый запрос от ${userName}`,
+        relatedId: newRequest._id,
+      };
+      console.log("[POST /requests] About to send notification:", {
+        providerId,
+        notificationPayload,
+      });
+      try {
+        const notificationResult = await NotificationService.sendNotification(
+          providerId,
+          notificationPayload
+        );
+        console.log(
+          "[POST /requests] NotificationService result:",
+          notificationResult
+        );
+      } catch (notifErr) {
+        console.error(
+          "[POST /requests] Error in NotificationService:",
+          notifErr
+        );
+      }
+    } else {
+      // Общий запрос — отправить всем провайдерам уведомление и событие по сокету
+      const providers = await User.find({ role: "provider" }, "_id");
+      for (const provider of providers) {
+        // Создаём уведомление в базе и отправляем по сокету
+        const notificationPayload = {
+          type: "request",
+          message: `Новый общий запрос от ${userName}`,
+          relatedId: newRequest._id,
+        };
+        try {
+          await NotificationService.sendNotification(
+            provider._id.toString(),
+            notificationPayload
+          );
+        } catch (notifErr) {
+          console.error(
+            `[POST /requests] Error sending notification to provider ${provider._id}:`,
+            notifErr
+          );
+        }
+      }
+    }
+
+    // Отправляем уведомление через сокет (старый вариант)
+    if (providerId) {
+      io.to(providerId).emit("new_request", {
+        requestId: newRequest._id,
+        message: `New service request from ${req.user.name || "Пользователь"}`,
+      });
+    }
+
+    res.status(201).json(newRequest);
   } catch (error) {
-    console.error("Error creating request:", error);
+    console.error("[POST /requests] Error creating service request:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -824,96 +908,43 @@ router.get("/messages/:requestId", auth, async (req, res) => {
         select: "title serviceType",
       });
 
-    if (!request) {
-      console.log("Request not found, trying offer:", req.params.requestId);
-      // Если запрос не найден, пробуем найти по offerId
-      const offer = await Offer.findById(req.params.requestId);
-      if (!offer) {
-        console.error("Neither request nor offer found:", req.params.requestId);
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      console.log("Found offer:", {
-        id: offer._id,
-        userId: offer.userId,
-        providerId: offer.providerId,
-      });
-
-      // Проверяем права доступа для оффера
-      const userIdStr = offer.userId.toString();
-      const providerIdStr = offer.providerId.toString();
-      const currentUserIdStr = req.user.id.toString();
-
-      if (
-        req.user.role === "user" &&
-        userIdStr !== currentUserIdStr &&
-        providerIdStr !== currentUserIdStr
-      ) {
-        console.warn("Access denied for user:", {
-          userId: currentUserIdStr,
-          requestUserId: userIdStr,
-          requestProviderId: providerIdStr,
-        });
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      if (
-        req.user.role === "provider" &&
-        providerIdStr !== currentUserIdStr &&
-        userIdStr !== currentUserIdStr
-      ) {
-        console.warn("Access denied for provider:", {
-          providerId: currentUserIdStr,
-          requestUserId: userIdStr,
-          requestProviderId: providerIdStr,
-        });
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      // Ищем все сообщения, связанные с этим offerId
+    console.log(
+      `[GET /requests/${req.params.requestId}] raw request:`,
+      request
+    );
+    if (request) {
       console.log(
-        `Searching for messages with offerId: ${req.params.requestId}`
+        `[GET /requests/${req.params.requestId}] userId:`,
+        request.userId
       );
-      const messages = await Message.find({
-        $or: [
-          { requestId: req.params.requestId },
-          { offerId: req.params.requestId },
-        ],
-      }).populate("senderId", "name status");
-
       console.log(
-        `Found ${messages.length} messages for offer. First few messages:`
+        `[GET /requests/${req.params.requestId}] providerId:`,
+        request.providerId
       );
-      messages.slice(0, 3).forEach((msg, i) => {
-        console.log(`Message ${i + 1}:`, {
-          id: msg._id,
-          senderId: msg.senderId,
-          recipientId: msg.recipientId,
-          message:
-            msg.message &&
-            msg.message.substring(0, 30) +
-              (msg.message.length > 30 ? "..." : ""),
-          timestamp: msg.timestamp,
-          requestId: msg.requestId,
-        });
-      });
-
-      const endTime = Date.now();
-      console.log(`Request completed in ${endTime - startTime}ms`);
-      console.log("=== END MESSAGES REQUEST ===");
-
-      return res.json(messages);
     }
 
-    console.log("Found request:", {
+    if (!request) {
+      console.log(`[GET /requests/${req.params.requestId}] Request not found`);
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    // Безопасно логируем найденный запрос
+    console.log(`[GET /requests/${req.params.requestId}] Found request:`, {
       id: request._id,
-      userId: request.userId?._id,
-      providerId: request.providerId?._id,
+      userId:
+        request.userId && request.userId._id
+          ? request.userId._id.toString()
+          : null,
+      providerId:
+        request.providerId && request.providerId._id
+          ? request.providerId._id.toString()
+          : null,
+      status: request.status,
     });
 
     // Проверяем наличие userId и providerId в запросе
-    if (!request.userId || !request.providerId) {
-      console.error("Request missing user or provider ID:", {
+    if (!request.userId) {
+      console.error("Request missing userId:", {
         requestId: request._id,
         hasUserId: !!request.userId,
         hasProviderId: !!request.providerId,
@@ -921,42 +952,39 @@ router.get("/messages/:requestId", auth, async (req, res) => {
       return res.status(400).json({ error: "Request data is incomplete" });
     }
 
-    // Проверяем права доступа
-    const userIdStr = request.userId._id.toString();
-    const providerIdStr = request.providerId._id.toString();
-    const currentUserIdStr = req.user.id.toString();
+    // Безопасно получаем userId и providerId
+    const userIdObj =
+      request.userId && request.userId._id
+        ? request.userId._id.toString()
+        : null;
+    const providerIdObj =
+      request.providerId && request.providerId._id
+        ? request.providerId._id.toString()
+        : null;
+    const userIdStr = req.user.id.toString();
 
-    console.log("Checking access rights:", {
-      currentUserId: currentUserIdStr,
-      requestUserId: userIdStr,
-      requestProviderId: providerIdStr,
-      userRole: req.user.role,
+    // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером, если он есть)
+    console.log("Checking access rights for request details (patched):", {
+      userIdStr,
+      userIdObj,
+      providerIdObj,
+      role: req.user.role,
     });
-
     if (
-      req.user.role === "user" &&
-      userIdStr !== currentUserIdStr &&
-      providerIdStr !== currentUserIdStr
+      userIdStr !== userIdObj &&
+      providerIdObj &&
+      userIdStr !== providerIdObj
     ) {
-      console.warn("Access denied for user:", {
-        userId: currentUserIdStr,
-        requestUserId: userIdStr,
-        requestProviderId: providerIdStr,
-      });
+      console.log(
+        `[GET /requests/${req.params.requestId}] Access denied for user: ${userIdStr}`
+      );
       return res.status(403).json({ error: "Access denied" });
     }
-
-    if (
-      req.user.role === "provider" &&
-      providerIdStr !== currentUserIdStr &&
-      userIdStr !== currentUserIdStr
-    ) {
-      console.warn("Access denied for provider:", {
-        providerId: currentUserIdStr,
-        requestUserId: userIdStr,
-        requestProviderId: providerIdStr,
-      });
-      return res.status(403).json({ error: "Access denied" });
+    if (req.user.role === "provider" && !providerIdObj) {
+      // Общий запрос — разрешаем доступ любому провайдеру
+      console.log(
+        `[GET /requests/${req.params.requestId}] Access granted for provider to general request: ${userIdStr}`
+      );
     }
 
     // Получаем сообщения
@@ -1102,16 +1130,16 @@ router.post("/messages/:requestId", auth, async (req, res) => {
 
     // Проверяем права доступа
     const userIdStr = requestOrOffer.userId.toString();
-    const providerIdStr = requestOrOffer.providerId.toString();
+    const providerIdStr = requestOrOffer.providerId
+      ? requestOrOffer.providerId.toString()
+      : null;
     const currentUserIdStr = req.user.id.toString();
-
-    console.log("Checking access rights:", {
+    console.log("Checking access rights (patched):", {
       userIdStr,
       providerIdStr,
       currentUserIdStr,
       userRole: req.user.role,
     });
-
     if (
       req.user.role === "user" &&
       userIdStr !== currentUserIdStr &&
@@ -1124,18 +1152,28 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       });
       return res.status(403).json({ error: "Access denied" });
     }
-
     if (
       req.user.role === "provider" &&
+      providerIdStr &&
       providerIdStr !== currentUserIdStr &&
       userIdStr !== currentUserIdStr
     ) {
-      console.warn("Access denied for provider:", {
+      console.warn("Access denied for provider (personal request):", {
         providerId: currentUserIdStr,
         entityUserId: userIdStr,
         entityProviderId: providerIdStr,
       });
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (req.user.role === "provider" && !providerIdStr) {
+      // Общий запрос — разрешаем доступ любому провайдеру
+      console.log(
+        "Access granted for provider to general request (send message):",
+        {
+          providerId: currentUserIdStr,
+          requestId: requestOrOffer._id,
+        }
+      );
     }
 
     // Создаем новое сообщение с полем requestId
@@ -1145,9 +1183,16 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       message,
     };
 
-    // Устанавливаем соответствующее поле в зависимости от типа сущности
+    // Логируем recipientId и userId автора запроса для диагностики
     if (entityType === "request") {
       messageData.requestId = req.params.requestId;
+      console.log("[DIAG] POST /messages/:requestId: entityType=request", {
+        recipientId: normalizedRecipientId,
+        requestUserId:
+          requestOrOffer.userId?.toString?.() || requestOrOffer.userId,
+        senderId: req.user.id,
+        requestId: req.params.requestId,
+      });
     } else {
       messageData.offerId = req.params.requestId;
     }
@@ -1182,16 +1227,23 @@ router.post("/messages/:requestId", auth, async (req, res) => {
     );
 
     // Отправляем уведомление о новом сообщении
-    await NotificationService.sendNotification(normalizedRecipientId, {
+    const notifPayload = {
       type: "message",
-      message: `Новое сообщение от ${req.user.name}`,
+      message: `Новое сообщение от ${req.user.name || "Пользователь"}`,
       relatedId: newMessage._id,
       senderId: req.user.id,
       requestId: messageData.requestId || null,
       offerId: messageData.offerId || null,
+    };
+    console.log("[DIAG] NotificationService.sendNotification call", {
+      recipientId: normalizedRecipientId,
+      notifPayload,
     });
-
-    console.log(`Notification: Sent to ${normalizedRecipientId}`);
+    await NotificationService.sendNotification(
+      normalizedRecipientId,
+      notifPayload
+    );
+    console.log(`[DIAG] NotificationService: sent to ${normalizedRecipientId}`);
 
     const endTime = Date.now();
     console.log(`Request completed in ${endTime - startTime}ms`);
@@ -1354,11 +1406,13 @@ router.put("/notifications/:id/read", auth, async (req, res) => {
 // Получение списка провайдеров (доступно только admin)
 router.get("/providers", auth, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Access denied. Admins only." });
+    if (!["admin", "user"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Access denied." });
     }
-
-    const providers = await User.find({ role: "provider" }, "name email _id");
+    const providers = await User.find(
+      { role: "provider" },
+      "name email _id status"
+    );
     res.json(providers);
   } catch (error) {
     console.error("Error fetching providers:", error);
@@ -1369,39 +1423,65 @@ router.get("/providers", auth, async (req, res) => {
 // Получение списка чатов пользователя
 router.get("/my-chats", auth, async (req, res) => {
   try {
-    console.log("Fetching chats for user:", req.user.id);
+    console.log("[my-chats] Fetching chats for user:", req.user.id);
 
-    // Получаем все запросы пользователя
-    const userRequests = await ServiceRequest.find({
-      userId: req.user.id,
-    }).populate("userId", "name email phone address status");
-    console.log("Found user requests:", userRequests.length);
-
-    // Получаем все сообщения пользователя
+    // Получаем все сообщения пользователя (где он отправитель или получатель)
     const userMessages = await Message.find({
       $or: [{ senderId: req.user.id }, { recipientId: req.user.id }],
     });
-    console.log("Found user messages:", userMessages.length);
+    console.log("[my-chats] Found user messages:", userMessages.length);
 
-    // Находим id запросов, по которым есть сообщения
-    const requestIdsWithMessages = [
-      ...new Set(
-        userMessages
-          .filter((msg) => msg.requestId) // Убеждаемся, что requestId существует
-          .map((msg) => msg.requestId.toString())
-      ),
-    ];
-    console.log("Request IDs with messages:", requestIdsWithMessages);
+    // Группируем по (requestId, providerId)
+    const chatMap = new Map();
+    for (const msg of userMessages) {
+      const requestId = msg.requestId ? msg.requestId.toString() : null;
+      if (!requestId) continue;
+      // Определяем providerId для этого сообщения
+      let providerId = null;
+      if (msg.senderId.toString() === req.user.id && msg.recipientId) {
+        // Если пользователь отправитель, ищем провайдера среди получателей
+        const recipient = await User.findById(msg.recipientId).select("role");
+        if (recipient && recipient.role === "provider") {
+          providerId = msg.recipientId.toString();
+        }
+      } else if (msg.recipientId.toString() === req.user.id && msg.senderId) {
+        // Если пользователь получатель, ищем провайдера среди отправителей
+        const sender = await User.findById(msg.senderId).select("role");
+        if (sender && sender.role === "provider") {
+          providerId = msg.senderId.toString();
+        }
+      }
+      if (!providerId) continue;
+      const key = `${requestId}_${providerId}`;
+      if (!chatMap.has(key)) {
+        chatMap.set(key, { requestId, providerId });
+      }
+    }
 
-    // Фильтруем запросы
-    const chats = userRequests.filter((request) =>
-      requestIdsWithMessages.includes(request._id.toString())
-    );
-    console.log("Final chats count:", chats.length);
-
-    res.json(chats);
+    // Собираем инфу о провайдерах
+    const chatList = [];
+    for (const { requestId, providerId } of chatMap.values()) {
+      const provider = await User.findById(providerId).select(
+        "_id name email status"
+      );
+      chatList.push({
+        requestId,
+        providerId,
+        userId: req.user.id,
+        provider: provider
+          ? {
+              _id: provider._id,
+              name: provider.name,
+              email: provider.email,
+              status: provider.status,
+            }
+          : null,
+      });
+    }
+    console.log("[my-chats] Final chat list:", chatList.length);
+    res.json(chatList);
   } catch (error) {
-    console.error("Error fetching user chats:", error);
+    console.error("[my-chats] Error fetching user chats:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1410,7 +1490,7 @@ router.get("/my-chats", auth, async (req, res) => {
 router.get("/provider-chats", auth, async (req, res) => {
   try {
     console.log(
-      "Fetching provider chats for user:",
+      "[provider-chats] Fetching provider chats for user:",
       req.user.id,
       "role:",
       req.user.role
@@ -1422,76 +1502,64 @@ router.get("/provider-chats", auth, async (req, res) => {
         .json({ error: "Access denied. Providers and admins only." });
     }
 
-    // Получаем все сообщения, где пользователь является отправителем или получателем
-    const userMessages = await Message.find({
+    // Получаем все сообщения, где провайдер является отправителем или получателем
+    const providerMessages = await Message.find({
       $or: [{ senderId: req.user.id }, { recipientId: req.user.id }],
     });
-    console.log("Found provider messages:", userMessages.length);
+    console.log(
+      "[provider-chats] Found provider messages:",
+      providerMessages.length
+    );
 
-    // Находим уникальные ID запросов из сообщений
-    const requestIds = [
-      ...new Set(
-        userMessages
-          .filter((msg) => msg.requestId)
-          .map((msg) => msg.requestId.toString())
-      ),
-    ];
-    console.log("Found request IDs:", requestIds);
-
-    // Получаем все запросы по найденным ID
-    const requests = await ServiceRequest.find({
-      _id: { $in: requestIds },
-      userId: { $ne: req.user.id }, // Исключаем собственные запросы пользователя
-    }).populate("userId", "name email phone status");
-    console.log("Final provider chats count:", requests.length);
-
-    res.json(requests);
-  } catch (error) {
-    console.error("Error fetching provider chats:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Создание запроса на услугу (доступно для авторизованных пользователей)
-router.post("/requests", auth, async (req, res) => {
-  try {
-    const { providerId, offerId, serviceType, message } = req.body;
-
-    // Проверка обязательных полей
-    if (!providerId || !serviceType) {
-      return res
-        .status(400)
-        .json({ error: "Provider ID and service type are required" });
+    // Группируем по (requestId, userId)
+    const chatMap = new Map();
+    for (const msg of providerMessages) {
+      const requestId = msg.requestId ? msg.requestId.toString() : null;
+      if (!requestId) continue;
+      // Определяем userId для этого сообщения
+      let userId = null;
+      if (msg.senderId.toString() === req.user.id && msg.recipientId) {
+        // Если провайдер отправитель, ищем пользователя среди получателей
+        const recipient = await User.findById(msg.recipientId).select("role");
+        if (recipient && recipient.role === "user") {
+          userId = msg.recipientId.toString();
+        }
+      } else if (msg.recipientId.toString() === req.user.id && msg.senderId) {
+        // Если провайдер получатель, ищем пользователя среди отправителей
+        const sender = await User.findById(msg.senderId).select("role");
+        if (sender && sender.role === "user") {
+          userId = msg.senderId.toString();
+        }
+      }
+      if (!userId) continue;
+      const key = `${requestId}_${userId}`;
+      if (!chatMap.has(key)) {
+        chatMap.set(key, { requestId, userId });
+      }
     }
 
-    // Создание запроса
-    const newRequest = new ServiceRequest({
-      userId: req.user.id,
-      providerId,
-      offerId, // Может быть undefined, если запрос не связан с конкретным предложением
-      serviceType,
-      description: message || "",
-      status: "pending",
-    });
-
-    await newRequest.save();
-    console.log("Created new service request:", {
-      id: newRequest._id,
-      userId: newRequest.userId,
-      providerId: newRequest.providerId,
-      serviceType: newRequest.serviceType,
-    });
-
-    // Отправляем уведомление провайдеру
-    const io = require("../socket").getIO();
-    io.to(providerId).emit("new_request", {
-      requestId: newRequest._id,
-      message: `New service request from ${req.user.name}`,
-    });
-
-    res.status(201).json(newRequest);
+    // Собираем инфу о пользователях
+    const chatList = [];
+    for (const { requestId, userId } of chatMap.values()) {
+      const user = await User.findById(userId).select("_id name email status");
+      chatList.push({
+        requestId,
+        providerId: req.user.id,
+        userId,
+        user: user
+          ? {
+              _id: user._id,
+              name: user.name,
+              email: user.email,
+              status: user.status,
+            }
+          : null,
+      });
+    }
+    console.log("[provider-chats] Final chat list:", chatList.length);
+    res.json(chatList);
   } catch (error) {
-    console.error("Error creating service request:", error);
+    console.error("[provider-chats] Error fetching provider chats:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1707,6 +1775,15 @@ router.get("/requests/:id", auth, async (req, res) => {
         select: "title serviceType",
       });
 
+    console.log(`[GET /requests/${requestId}] raw request:`, request);
+    if (request) {
+      console.log(`[GET /requests/${requestId}] userId:`, request.userId);
+      console.log(
+        `[GET /requests/${requestId}] providerId:`,
+        request.providerId
+      );
+    }
+
     if (!request) {
       console.log(`[GET /requests/${requestId}] Request not found`);
       return res.status(404).json({ error: "Request not found" });
@@ -1714,27 +1791,50 @@ router.get("/requests/:id", auth, async (req, res) => {
 
     console.log(`[GET /requests/${requestId}] Found request:`, {
       id: request._id,
-      userId: request.userId._id.toString(),
-      providerId: request.providerId._id.toString(),
+      userId:
+        request.userId && request.userId._id
+          ? request.userId._id.toString()
+          : null,
+      providerId:
+        request.providerId && request.providerId._id
+          ? request.providerId._id.toString()
+          : null,
       status: request.status,
     });
 
-    // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером)
+    // Безопасно получаем userId и providerId
+    const userIdObj =
+      request.userId && request.userId._id
+        ? request.userId._id.toString()
+        : null;
+    const providerIdObj =
+      request.providerId && request.providerId._id
+        ? request.providerId._id.toString()
+        : null;
     const userIdStr = userId.toString();
-    const requestUserIdStr = request.userId._id.toString();
-    const requestProviderIdStr = request.providerId._id.toString();
 
-    console.log(`[GET /requests/${requestId}] Checking access:`, {
-      userId: userIdStr,
-      requestUserId: requestUserIdStr,
-      requestProviderId: requestProviderIdStr,
+    // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером, если он есть)
+    console.log("Checking access rights for request details (patched):", {
+      userIdStr,
+      userIdObj,
+      providerIdObj,
+      role: req.user.role,
     });
-
-    if (userIdStr !== requestUserIdStr && userIdStr !== requestProviderIdStr) {
+    if (
+      userIdStr !== userIdObj &&
+      providerIdObj &&
+      userIdStr !== providerIdObj
+    ) {
       console.log(
         `[GET /requests/${requestId}] Access denied for user: ${userIdStr}`
       );
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (req.user.role === "provider" && !providerIdObj) {
+      // Общий запрос — разрешаем доступ любому провайдеру
+      console.log(
+        `[GET /requests/${requestId}] Access granted for provider to general request: ${userIdStr}`
+      );
     }
 
     // Если дошли сюда, значит доступ разрешен
@@ -1745,8 +1845,8 @@ router.get("/requests/:id", auth, async (req, res) => {
     // Формируем объект с информацией о запросе, который будет совместим с ChatRequest
     const chatRequestData = {
       _id: request._id,
-      userId: request.userId,
-      providerId: request.providerId,
+      userId: request.userId || null,
+      providerId: request.providerId || null,
       offerId: request.offerId,
       serviceType: request.serviceType,
       description: request.description,

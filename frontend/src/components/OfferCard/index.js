@@ -225,8 +225,6 @@ const OfferCard = memo(
       return <EmptyOfferCard />;
     }
 
-    console.log("OfferCard render", safeOfferId); // временно для проверки мемоизации
-
     return (
       <>
         <MotionCard

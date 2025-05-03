@@ -37,6 +37,9 @@ import {
   isMessageBelongsToChat,
   normalizeId,
 } from "../../utils/messageUtils";
+import ChatInput from "./ChatInput";
+import MessagesList from "./MessagesList";
+import InfoPanel from "./InfoPanel";
 
 const HEADER_HEIGHT = 64;
 
@@ -44,6 +47,7 @@ const ChatLayout = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "row",
   width: "100%",
+  height: "100%",
   background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
   [theme.breakpoints.down("md")]: {
     flexDirection: "column",
@@ -55,6 +59,8 @@ const ChatLayout = styled(Box)(({ theme }) => ({
 const ChatPanel = styled(Box)(({ theme }) => ({
   flex: "0 0 65%",
   minWidth: 0,
+  minHeight: 0,
+  height: "100%",
   display: "flex",
   flexDirection: "column",
   borderRight: `1px solid ${theme.palette.divider}`,
@@ -62,20 +68,7 @@ const ChatPanel = styled(Box)(({ theme }) => ({
     flex: "1 1 100%",
     borderRight: "none",
     borderBottom: `1px solid ${theme.palette.divider}`,
-  },
-}));
-
-const InfoPanel = styled(Box)(({ theme }) => ({
-  flex: "0 0 35%",
-  minWidth: 260,
-  maxWidth: 420,
-  background: theme.palette.background.paper,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "stretch",
-  padding: theme.spacing(3, 2),
-  [theme.breakpoints.down("md")]: {
-    display: "none",
+    height: "auto",
   },
 }));
 
@@ -84,6 +77,8 @@ const ChatContainer = styled(Box)(({ theme }) => ({
   flexDirection: "column",
   overflow: "hidden",
   background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
+  height: "100%",
+  minHeight: 0,
 }));
 
 const ChatHeader = styled(Box)(({ theme }) => ({
@@ -106,20 +101,13 @@ const ChatParticipant = styled(Box)(({ theme }) => ({
 }));
 
 const MessagesContainer = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
+  flex: "1 1 auto",
   overflowY: "auto",
   display: "flex",
   flexDirection: "column",
   background: "transparent",
   padding: theme.spacing(1, 0),
-}));
-
-const MessagesList = styled(MUIList)(({ theme }) => ({
-  padding: 0,
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  maxWidth: "100%",
+  minHeight: 0,
 }));
 
 const ChatInputContainer = styled(Box)(({ theme }) => ({
@@ -129,6 +117,7 @@ const ChatInputContainer = styled(Box)(({ theme }) => ({
   gap: theme.spacing(0.5),
   backgroundColor: theme.palette.background.paper,
   position: "relative",
+  flexShrink: 0,
 }));
 
 const Message = styled(Paper)(({ theme, isUser }) => ({
@@ -175,6 +164,9 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
     fontSize: "0.97rem",
     minHeight: 36,
     padding: 0,
+    border: "2px solid blue",
+    background: "#e6f7ff",
+    height: 40,
     "&.Mui-focused": {
       boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.13)}`,
     },
@@ -240,7 +232,7 @@ const OfferCardChat = styled(Box)(({ theme }) => ({
   },
 }));
 
-const ChatModal = ({ open, onClose, requestId }) => {
+const ChatModal = ({ open, onClose, requestId, userId, providerId }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { socket, isConnected } = useSocket();
@@ -274,6 +266,7 @@ const ChatModal = ({ open, onClose, requestId }) => {
   useEffect(() => {
     if (!open) return;
     chatInitializedRef.current = false;
+    initializationRef.current = false;
     setMessages([]);
     setNewMessage("");
     setRecipientId("");
@@ -346,32 +339,57 @@ const ChatModal = ({ open, onClose, requestId }) => {
     try {
       const response = await ChatService.get(`/requests/${requestId}`);
       setChatInfo(response);
-      if (!response?.userId || !response?.providerId) {
-        throw new Error("Некорректные данные запроса");
+      if (!response?.userId) {
+        throw new Error("Некорректные данные запроса: отсутствует userId");
       }
       const currentUserId = normalizeId(user._id);
-      const isProvider = currentUserId === normalizeId(response.providerId);
-      const newRecipientId = isProvider
-        ? normalizeId(response.userId)
-        : normalizeId(response.providerId);
-      const newRecipientName = isProvider
-        ? response.userId?.name || "Клиент"
-        : response.providerId?.name || "Провайдер";
+      let newRecipientId = "";
+      let newRecipientName = "";
+      if (userId && providerId) {
+        if (currentUserId === normalizeId(providerId)) {
+          newRecipientId = normalizeId(userId);
+          newRecipientName = response.userId?.name || "Клиент";
+        } else if (currentUserId === normalizeId(userId)) {
+          newRecipientId = normalizeId(providerId);
+          newRecipientName =
+            response.provider?.name || response.providerId?.name || "Провайдер";
+        }
+      } else if (response.providerId && response.providerId._id) {
+        const isProvider = currentUserId === normalizeId(response.providerId);
+        newRecipientId = isProvider
+          ? normalizeId(response.userId)
+          : normalizeId(response.providerId);
+        newRecipientName = isProvider
+          ? response.userId?.name || "Клиент"
+          : response.providerId?.name || "Провайдер";
+      } else {
+        if (user.role === "provider") {
+          newRecipientId = normalizeId(response.userId);
+          newRecipientName = response.userId?.name || "Клиент";
+        } else {
+          newRecipientId = "";
+          newRecipientName = "";
+        }
+      }
       setRecipientId(newRecipientId);
       setRecipientName(newRecipientName);
       await fetchMessages(newRecipientId);
       setIsInitialized(true);
     } catch (err) {
-      setError("Не удалось загрузить информацию о чате");
+      setError(err.message || "Не удалось загрузить информацию о чате");
       setLoading(false);
     }
-  }, [requestId, user?._id]);
+  }, [requestId, user?._id, user?.role, userId, providerId]);
 
   // Загрузка сообщений
   const fetchMessages = useCallback(
     async (currentRecipientId) => {
       const recipientToUse = currentRecipientId || recipientId;
-      if (!requestId || !recipientToUse) return;
+      if (!requestId || !recipientToUse) {
+        setLoading(false);
+        setError("Не удалось определить получателя для загрузки сообщений");
+        return;
+      }
       try {
         setLoading(true);
         const fetchedMessages = await ChatService.getMessages(requestId);
@@ -390,7 +408,7 @@ const ChatModal = ({ open, onClose, requestId }) => {
         setLoading(false);
         scrollToBottom();
       } catch (err) {
-        setError("Ошибка при загрузке сообщений");
+        setError(err.message || "Ошибка при загрузке сообщений");
         setLoading(false);
       }
     },
@@ -583,6 +601,12 @@ const ChatModal = ({ open, onClose, requestId }) => {
     return groups;
   }, [messages, user?._id]);
 
+  useEffect(() => {
+    if (open && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, open, scrollToBottom]);
+
   // --- Рендер ---
   return (
     <Dialog
@@ -596,6 +620,7 @@ const ChatModal = ({ open, onClose, requestId }) => {
           ? {
               height: 600,
               maxHeight: "90vh",
+              minHeight: 0,
               borderRadius: 3,
               overflow: "hidden",
             }
@@ -617,14 +642,17 @@ const ChatModal = ({ open, onClose, requestId }) => {
       <DialogContent
         sx={{
           p: 0,
-          height: isMobile ? "100%" : 600,
+          height: "100%",
+          minHeight: 0,
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <ChatLayout sx={{ height: "100%" }}>
-          <ChatPanel>
-            <ChatContainer>
+        <ChatLayout sx={{ height: "100%", minHeight: 0, flex: "1 1 0%" }}>
+          <ChatPanel sx={{ height: "100%", minHeight: 0, flex: "1 1 0%" }}>
+            <ChatContainer
+              sx={{ height: "100%", minHeight: 0, flex: "1 1 0%" }}
+            >
               {/* Карточка товара/услуги/запроса над сообщениями */}
               {chatInfo && chatInfo.offerId && (
                 <OfferCardChat>
@@ -681,7 +709,15 @@ const ChatModal = ({ open, onClose, requestId }) => {
                   {error}
                 </Alert>
               )}
-              <MessagesContainer ref={messagesContainerRef}>
+              <MessagesContainer
+                sx={{
+                  flex: "1 1 0%",
+                  maxHeight: "82%",
+                  minHeight: 0,
+                  overflowY: "auto",
+                }}
+                ref={messagesContainerRef}
+              >
                 {loading ? (
                   <Box
                     sx={{
@@ -701,6 +737,26 @@ const ChatModal = ({ open, onClose, requestId }) => {
                     />
                     <Typography variant="body2" color="text.secondary">
                       Загрузка сообщений...
+                    </Typography>
+                  </Box>
+                ) : error ? (
+                  <Box
+                    sx={{
+                      p: 3,
+                      textAlign: "center",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                      backgroundColor: theme.palette.background.default,
+                    }}
+                  >
+                    <Typography variant="body1" color="error" sx={{ mb: 1 }}>
+                      {error}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Попробуйте обновить страницу или выбрать другой чат.
                     </Typography>
                   </Box>
                 ) : messages.length === 0 ? (
@@ -743,126 +799,13 @@ const ChatModal = ({ open, onClose, requestId }) => {
                     </Typography>
                   </Box>
                 ) : (
-                  <MessagesList>
-                    {groupedMessages.map((group) => (
-                      <MessageGroup key={group.id} isUser={group.isUser}>
-                        {!group.isUser && (
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              ml: 2,
-                              mt: 1,
-                              color: theme.palette.text.secondary,
-                              fontSize: "0.7rem",
-                            }}
-                          >
-                            {recipientName}
-                          </Typography>
-                        )}
-                        {group.messages.map((msg, msgIndex) => (
-                          <MessageItem
-                            key={msg._id || msgIndex}
-                            isUser={group.isUser}
-                          >
-                            {!group.isUser && msgIndex === 0 && (
-                              <Avatar
-                                sx={{
-                                  width: 28,
-                                  height: 28,
-                                  mr: 1,
-                                  opacity: 0.9,
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                                }}
-                              >
-                                {recipientName.charAt(0).toUpperCase()}
-                              </Avatar>
-                            )}
-                            {!group.isUser && msgIndex > 0 && (
-                              <Box sx={{ width: 28, mr: 1 }} />
-                            )}
-                            <Message isUser={group.isUser} elevation={0}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 400,
-                                  whiteSpace: "pre-wrap",
-                                  wordBreak: "break-word",
-                                }}
-                              >
-                                {msg.text || msg.message || ""}
-                              </Typography>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  justifyContent: "flex-end",
-                                  alignItems: "center",
-                                  mt: 0.5,
-                                  gap: 0.5,
-                                }}
-                              >
-                                <Typography
-                                  variant="caption"
-                                  color={
-                                    group.isUser
-                                      ? "rgba(255,255,255,0.8)"
-                                      : "text.secondary"
-                                  }
-                                  sx={{ fontSize: "0.65rem" }}
-                                >
-                                  {getRelativeTime(
-                                    new Date(msg.timestamp || msg.createdAt)
-                                  )}
-                                </Typography>
-                                {group.isUser && (
-                                  <>
-                                    {msg.isSending && (
-                                      <Box
-                                        sx={{
-                                          display: "flex",
-                                          ml: 0.5,
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        <Typography
-                                          variant="caption"
-                                          color="inherit"
-                                          sx={{
-                                            opacity: 0.7,
-                                            fontSize: "0.65rem",
-                                          }}
-                                        >
-                                          отправляется
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                    {msg.hasError && (
-                                      <Typography
-                                        variant="caption"
-                                        color="error"
-                                        sx={{ ml: 0.5, fontSize: "0.65rem" }}
-                                      >
-                                        ошибка
-                                      </Typography>
-                                    )}
-                                    {msg.read && (
-                                      <DoneAllIcon
-                                        sx={{
-                                          fontSize: 14,
-                                          color: theme.palette.success.main,
-                                          opacity: 0.8,
-                                        }}
-                                      />
-                                    )}
-                                  </>
-                                )}
-                              </Box>
-                            </Message>
-                          </MessageItem>
-                        ))}
-                      </MessageGroup>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </MessagesList>
+                  <MessagesList
+                    groupedMessages={groupedMessages}
+                    recipientName={recipientName}
+                    user={user}
+                    theme={theme}
+                    messagesEndRef={messagesEndRef}
+                  />
                 )}
                 {isTyping && (
                   <TypingIndicator
@@ -875,152 +818,17 @@ const ChatModal = ({ open, onClose, requestId }) => {
                   </TypingIndicator>
                 )}
               </MessagesContainer>
-              <ChatInputContainer>
-                <IconButton
-                  color="primary"
-                  size="small"
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    color: theme.palette.text.secondary,
-                  }}
-                >
-                  <EmojiEmotionsIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  color="primary"
-                  size="small"
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    color: theme.palette.text.secondary,
-                  }}
-                >
-                  <AttachFileIcon fontSize="small" />
-                </IconButton>
-                <StyledTextField
-                  fullWidth
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Введите сообщение..."
-                  variant="outlined"
-                  size="small"
-                  disabled={!isConnected}
-                  multiline
-                  maxRows={3}
-                  InputProps={{ sx: { px: 2, py: 0.75 } }}
-                />
-                <Tooltip title="Отправить">
-                  <span>
-                    <IconButton
-                      color="primary"
-                      disabled={!newMessage.trim() || !isConnected}
-                      onClick={sendMessage}
-                      sx={{
-                        bgcolor:
-                          newMessage.trim() && isConnected
-                            ? theme.palette.primary.main
-                            : "transparent",
-                        color:
-                          newMessage.trim() && isConnected
-                            ? "white"
-                            : undefined,
-                        width: 36,
-                        height: 36,
-                        minWidth: 36,
-                        "&:hover": {
-                          bgcolor:
-                            newMessage.trim() && isConnected
-                              ? theme.palette.primary.dark
-                              : undefined,
-                        },
-                      }}
-                    >
-                      <SendIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </ChatInputContainer>
+              <ChatInput
+                newMessage={newMessage}
+                setNewMessage={setNewMessage}
+                sendMessage={sendMessage}
+                isConnected={isConnected}
+                handleKeyPress={handleKeyPress}
+              />
             </ChatContainer>
           </ChatPanel>
           {!isMobile && (
-            <InfoPanel>
-              {chatInfo &&
-                user &&
-                (() => {
-                  const currentUserId = user._id;
-                  let contact = null;
-                  if (chatInfo.userId && chatInfo.providerId) {
-                    if (
-                      normalizeId(chatInfo.userId._id) ===
-                      normalizeId(currentUserId)
-                    ) {
-                      contact = chatInfo.providerId;
-                    } else {
-                      contact = chatInfo.userId;
-                    }
-                  }
-                  if (!contact) return null;
-                  return (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        mb: 3,
-                      }}
-                    >
-                      <Avatar
-                        sx={{
-                          width: 64,
-                          height: 64,
-                          mb: 1,
-                          bgcolor: theme.palette.primary.main,
-                        }}
-                      >
-                        {contact.name
-                          ? contact.name.charAt(0).toUpperCase()
-                          : "?"}
-                      </Avatar>
-                      <Typography
-                        variant="h6"
-                        fontWeight={600}
-                        sx={{ mb: 0.5 }}
-                      >
-                        {contact.name}
-                      </Typography>
-                      {contact.email && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mt: 0.5 }}
-                        >
-                          <b>Email:</b> {contact.email}
-                        </Typography>
-                      )}
-                      {contact.phone && contact.phone !== "" && (
-                        <Typography variant="body2" color="text.secondary">
-                          <b>Телефон:</b> {contact.phone}
-                        </Typography>
-                      )}
-                      {contact.status && (
-                        <Typography
-                          variant="body2"
-                          color={
-                            contact.status === "online"
-                              ? "success.main"
-                              : "text.secondary"
-                          }
-                        >
-                          <b>Статус:</b>{" "}
-                          {contact.status === "online" ? "В сети" : "Не в сети"}
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })()}
-            </InfoPanel>
+            <InfoPanel chatInfo={chatInfo} user={user} theme={theme} />
           )}
         </ChatLayout>
       </DialogContent>
@@ -1032,6 +840,8 @@ ChatModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   requestId: PropTypes.string.isRequired,
+  userId: PropTypes.string,
+  providerId: PropTypes.string,
 };
 
 export default ChatModal;

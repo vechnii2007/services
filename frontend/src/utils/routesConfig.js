@@ -15,9 +15,11 @@ import PaymentDashboard from "../pages/PaymentDashboard";
 import Profile from "../pages/Profile";
 import Landing from "../pages/Landing";
 import AdminPanel from "../components/AdminPanel/AdminPanelTabs";
+import Notifications from "../pages/Notifications";
 import React, { useContext } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import RequestDetails from "../pages/RequestDetails";
 
 // Проверка авторизации для страницы Favorites
 const FavoritesWithAuth = () => {
@@ -95,4 +97,14 @@ export const routesConfig = [
     requiredRole: ["user", "provider", "admin"],
   },
   { path: "/admin", element: <AdminPanel />, requiredRole: "admin" }, // Переименован маршрут
+  {
+    path: "/notifications",
+    element: <Notifications />,
+    requiredRole: null,
+  },
+  {
+    path: "/requests/:id",
+    element: <RequestDetails />,
+    requiredRole: null,
+  },
 ];

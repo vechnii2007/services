@@ -14,6 +14,9 @@ import RouteGuard from "../utils/RouteGuard";
 import { routesConfig } from "../utils/routesConfig";
 import { AuthContext } from "../context/AuthContext";
 import { useChatModal } from "../context/ChatModalContext";
+import toast, { Toaster } from "react-hot-toast";
+import useSocket from "../hooks/useSocket";
+import useNotification from "../composables/useNotification";
 
 const AppContent = () => {
   const { t } = useTranslation();
@@ -27,6 +30,8 @@ const AppContent = () => {
     requestId: modalRequestId,
   } = useChatModal();
   const navigate = useNavigate();
+  const { socket } = useSocket();
+  const { addNotification } = useNotification();
 
   // Определяем, находимся ли на лендинге
   const isLandingPage = location.pathname === "/";
@@ -34,7 +39,6 @@ const AppContent = () => {
   const toggleDrawer = (open) => () => {
     setDrawerOpen(open);
   };
-
   useEffect(() => {
     // Проверяем, совпадает ли путь с /chat/:requestId
     const match = matchPath("/chat/:requestId", location.pathname);
@@ -58,6 +62,21 @@ const AppContent = () => {
     }
     // eslint-disable-next-line
   }, [isOpen, location.pathname]);
+
+  // Показываем toast при получении уведомления по сокету
+  useEffect(() => {
+    if (!socket) return;
+    const handleNotification = (notification) => {
+      toast(notification.message || t("Новое уведомление"), { icon: "🔔" });
+      if (addNotification) {
+        addNotification(notification);
+      }
+    };
+    socket.on("notification", handleNotification);
+    return () => {
+      socket.off("notification", handleNotification);
+    };
+  }, [socket, t, addNotification]);
 
   if (loading) {
     return (
@@ -100,6 +119,7 @@ const AppContent = () => {
             overflowX: "hidden",
           }}
         >
+          <Toaster />
           <Routes>
             {routesConfig.map(({ path, element, requiredRole }) => (
               <Route

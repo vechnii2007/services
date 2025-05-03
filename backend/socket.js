@@ -206,6 +206,27 @@ const initializeSocket = (server) => {
         if (recipientSocketId) {
           io.to(recipientSocketId).emit("private_message", messageToSend);
         }
+
+        // --- PATCH: отправка уведомления через NotificationService ---
+        try {
+          const NotificationService = require("./services/NotificationService");
+          const notifPayload = {
+            type: "message",
+            message: `Новое сообщение от ${socket.user.name}`,
+            relatedId: newMessage._id,
+            senderId: userId,
+            requestId: requestId || null,
+          };
+          await NotificationService.sendNotification(
+            normalizedRecipientId,
+            notifPayload
+          );
+          console.log(
+            `[DIAG][socket] NotificationService: sent to ${normalizedRecipientId}`
+          );
+        } catch (notifErr) {
+          console.error("[DIAG][socket] NotificationService error:", notifErr);
+        }
       } catch (error) {
         console.error("Error sending private message:", error);
         socket.emit("error", { message: error.message });

@@ -142,7 +142,6 @@ const Header = ({ onDrawerToggle }) => {
   const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleLangMenu = (event) => setLangAnchorEl(event.currentTarget);
@@ -157,24 +156,6 @@ const Header = ({ onDrawerToggle }) => {
   const handleClose = () => setAnchorEl(null);
   const handleLangClose = () => setLangAnchorEl(null);
   const handleNotificationsClose = () => setNotificationsAnchor(null);
-
-  // Функция для получения количества непрочитанных сообщений
-  const fetchUnreadMessagesCount = useCallback(async () => {
-    try {
-      // Используем новый метод из ChatService
-      const count = await ChatService.getUnreadMessagesCount();
-      setUnreadMessagesCount(count);
-    } catch (error) {
-      console.error("[Header] Error fetching unread messages count:", error);
-    }
-  }, []);
-
-  // Загружаем количество непрочитанных сообщений при монтировании
-  useEffect(() => {
-    if (user) {
-      fetchUnreadMessagesCount();
-    }
-  }, [user, fetchUnreadMessagesCount]);
 
   // Настройка WebSocket для получения уведомлений в реальном времени
   useEffect(() => {
@@ -203,9 +184,6 @@ const Header = ({ onDrawerToggle }) => {
 
       // Если сообщение от другого пользователя (не от текущего)
       if (messageData.senderId && user && messageData.senderId !== user._id) {
-        // Обновляем полный счетчик непрочитанных сообщений
-        fetchUnreadMessagesCount();
-
         // Показываем уведомление, если страница не активна
         if (
           document.visibilityState !== "visible" &&
@@ -283,22 +261,7 @@ const Header = ({ onDrawerToggle }) => {
         console.warn("[Header] Socket not available during cleanup");
       }
     };
-  }, [socket, isConnected, user, fetchUnreadMessagesCount, navigate, openChat]);
-
-  // Периодическое обновление счетчика непрочитанных сообщений
-  useEffect(() => {
-    if (user) {
-      // Первоначальная загрузка
-      fetchUnreadMessagesCount();
-
-      // Устанавливаем интервал обновления каждые 30 секунд
-      const interval = setInterval(() => {
-        fetchUnreadMessagesCount();
-      }, 30000);
-
-      return () => clearInterval(interval);
-    }
-  }, [user, fetchUnreadMessagesCount]);
+  }, [socket, isConnected, user, navigate, openChat]);
 
   const loadNotifications = async () => {
     try {
@@ -496,17 +459,6 @@ const Header = ({ onDrawerToggle }) => {
             </Drawer>
             {/* Краткие иконки справа */}
             <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-              {user && (
-                <IconButton
-                  color="inherit"
-                  onClick={() => navigate("/chat-list")}
-                >
-                  {" "}
-                  <Badge badgeContent={unreadMessagesCount} color="error">
-                    <MessageIcon />
-                  </Badge>{" "}
-                </IconButton>
-              )}
               <IconButton color="inherit" onClick={handleNotificationsClick}>
                 {" "}
                 <Badge badgeContent={unreadCount} color="error">
@@ -541,17 +493,6 @@ const Header = ({ onDrawerToggle }) => {
             />
             <Box sx={{ flexGrow: 1 }} />
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              {user && (
-                <IconButton
-                  color="inherit"
-                  onClick={() => navigate("/chat-list")}
-                >
-                  {" "}
-                  <Badge badgeContent={unreadMessagesCount} color="error">
-                    <MessageIcon />
-                  </Badge>{" "}
-                </IconButton>
-              )}
               <IconButton color="inherit" onClick={handleLangMenu}>
                 <LanguageIcon />
               </IconButton>
