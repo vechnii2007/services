@@ -269,8 +269,18 @@ const OfferDetails = () => {
         <Box sx={{ maxWidth: 1260, mx: "auto" }}>
           <Skeleton variant="text" width="50%" height={60} />
           <Grid container spacing={3} sx={{ mt: 2 }}>
-            <Grid item xs={12} md={5}>
-              <Skeleton variant="rectangular" height={400} />
+            <Grid item xs={12} md={5} sx={{ width: "100%" }}>
+              <Box sx={{ width: "100%" }}>
+                <Skeleton
+                  variant="rectangular"
+                  sx={{
+                    width: "100%",
+                    height: { xs: 220, sm: 260, md: 600 },
+                    borderRadius: 2,
+                    bgcolor: "grey.100",
+                  }}
+                />
+              </Box>
             </Grid>
             <Grid item xs={12} md={7}>
               <Skeleton variant="text" height={40} width="60%" />
