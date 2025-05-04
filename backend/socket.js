@@ -51,11 +51,6 @@ const initializeSocket = (server) => {
 
   io.on("connection", (socket) => {
     const userId = socket.user.id;
-    console.log("User connected:", {
-      userId,
-      userName: socket.user.name,
-      socketId: socket.id,
-    });
 
     // Сохраняем сокет пользователя
     connectedUsers.set(userId, socket.id);
@@ -221,9 +216,6 @@ const initializeSocket = (server) => {
             normalizedRecipientId,
             notifPayload
           );
-          console.log(
-            `[DIAG][socket] NotificationService: sent to ${normalizedRecipientId}`
-          );
         } catch (notifErr) {
           console.error("[DIAG][socket] NotificationService error:", notifErr);
         }
@@ -265,15 +257,8 @@ const initializeSocket = (server) => {
 
     socket.on("disconnect", () => {
       if (!socket.user?.id) {
-        console.log("Unknown user disconnected:", socket.id);
         return;
       }
-
-      console.log("User disconnected:", {
-        userId,
-        userName: socket.user.name,
-        socketId: socket.id,
-      });
 
       // Очищаем комнаты пользователя
       if (userRooms.has(userId)) {

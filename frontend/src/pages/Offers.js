@@ -117,6 +117,8 @@ const Offers = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [locations, setLocations] = useState([]);
+  const [popularSearches, setPopularSearches] = useState([]);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -279,91 +281,22 @@ const Offers = () => {
     providerId,
   ]);
 
-  // Эффект для начальной загрузки категорий
+  // useEffect для начальной загрузки данных (категории, counts, промо, избранное)
   useEffect(() => {
-    // Функция-помощник для получения категорий
-    const getFetchCategories = async () => {
-      try {
-        if (typeof OfferService.fetchCategories === "function") {
-          return await OfferService.fetchCategories();
-        } else {
-          console.warn("[Offers] Using fallback for categories");
-          return [];
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching categories:", error);
-        return [];
-      }
-    };
-
-    // Функция-помощник для получения счетчиков категорий
-    const getFetchCategoryCounts = async () => {
-      try {
-        if (typeof OfferService.fetchCategoryCounts === "function") {
-          return await OfferService.fetchCategoryCounts();
-        } else {
-          console.warn("[Offers] Using fallback for category counts");
-          return {};
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching category counts:", error);
-        return {};
-      }
-    };
-
-    // Функция-помощник для получения избранных предложений
-    const getFavorites = async () => {
-      try {
-        if (!isAuthenticated) {
-          setFavorites({});
-          return;
-        }
-        if (typeof OfferService.fetchFavorites === "function") {
-          const favoritesData = await OfferService.fetchFavorites();
-          setFavorites(favoritesData || {});
-        } else {
-          setFavorites({});
-        }
-      } catch (error) {
-        setFavorites({});
-        console.error("[Offers] Error fetching favorites:", error);
-      }
-    };
-
-    // Функция-помощник для получения промо-предложений
-    const getPromotedOffers = async () => {
-      try {
-        if (typeof OfferService.getPromotedOffers === "function") {
-          const response = await OfferService.getPromotedOffers();
-          return response;
-        } else {
-          console.warn("[Offers] getPromotedOffers is not a function");
-          return { offers: [], total: 0, hasMore: false };
-        }
-      } catch (error) {
-        console.error("[Offers] Error fetching promoted offers:", error);
-        return { offers: [], total: 0, hasMore: false };
-      }
-    };
-
     const loadInitialData = async () => {
       const loadStart = Date.now();
-
       try {
         const [categoriesResponse, countsResponse] = await Promise.all([
           getFetchCategories(),
           getFetchCategoryCounts(),
         ]);
-
         const transformedCounts = {};
         categoriesResponse?.forEach((category) => {
           transformedCounts[category.name] =
             countsResponse?.[category.name] || 0;
         });
-
         setCategories(categoriesResponse || []);
         setCounts(transformedCounts);
-
         // Загружаем промо-оферы, если они не загружены ранее
         if (!window.promotedOffersLoaded) {
           try {
@@ -378,10 +311,9 @@ const Offers = () => {
             "[Offers] Skipping promoted offers load - already loaded"
           );
         }
-
         // Загружаем избранные, если пользователь авторизован
         await getFavorites();
-
+        await Promise.all([loadLocations(), loadPopularSearches()]);
         const loadTime = Date.now() - loadStart;
         console.log(`[Offers] Initial data load completed in ${loadTime}ms`);
       } catch (error) {
@@ -389,9 +321,9 @@ const Offers = () => {
         toast.error(t("errors.loadingFailed"));
       }
     };
-
     loadInitialData();
-  }, [isAuthenticated, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredOffers = useMemo(() => {
     const filtered = filterOffers(offers, { searchQuery });
@@ -512,6 +444,97 @@ const Offers = () => {
     }
   }, [selectedCategory]);
 
+  // --- Вспомогательные функции для загрузки данных ---
+  const getFetchCategories = async () => {
+    try {
+      if (typeof OfferService.fetchCategories === "function") {
+        return await OfferService.fetchCategories();
+      } else {
+        console.warn("[Offers] Using fallback for categories");
+        return [];
+      }
+    } catch (error) {
+      console.error("[Offers] Error fetching categories:", error);
+      return [];
+    }
+  };
+
+  const getFetchCategoryCounts = async () => {
+    try {
+      if (typeof OfferService.fetchCategoryCounts === "function") {
+        return await OfferService.fetchCategoryCounts();
+      } else {
+        console.warn("[Offers] Using fallback for category counts");
+        return {};
+      }
+    } catch (error) {
+      console.error("[Offers] Error fetching category counts:", error);
+      return {};
+    }
+  };
+
+  const getPromotedOffers = async () => {
+    try {
+      if (typeof OfferService.getPromotedOffers === "function") {
+        const response = await OfferService.getPromotedOffers();
+        return response;
+      } else {
+        console.warn("[Offers] getPromotedOffers is not a function");
+        return { offers: [], total: 0, hasMore: false };
+      }
+    } catch (error) {
+      console.error("[Offers] Error fetching promoted offers:", error);
+      return { offers: [], total: 0, hasMore: false };
+    }
+  };
+
+  const getFavorites = async () => {
+    try {
+      if (!isAuthenticated) {
+        setFavorites({});
+        return;
+      }
+      if (typeof OfferService.fetchFavorites === "function") {
+        const favoritesData = await OfferService.fetchFavorites();
+        setFavorites(favoritesData || {});
+      } else {
+        setFavorites({});
+      }
+    } catch (error) {
+      setFavorites({});
+      console.error("[Offers] Error fetching favorites:", error);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const locationsList = await searchService.getLocations();
+      setLocations(
+        locationsList.map((location) => ({
+          label: location,
+          region: "",
+        }))
+      );
+    } catch (error) {
+      console.error("Error loading locations:", error);
+    }
+  };
+
+  const loadPopularSearches = async () => {
+    try {
+      const searches = await searchService.getPopularSearches(5);
+      setPopularSearches(
+        searches.map((search) => ({
+          label: search.query,
+          value: search.query,
+          category: search.category,
+        }))
+      );
+    } catch (error) {
+      console.error("Error loading popular searches:", error);
+    }
+  };
+
   if (loading && categories.length === 0) {
     return (
       <LoadingContainer>
@@ -582,6 +605,8 @@ const Offers = () => {
                   handleSearch();
                 }}
                 isSearching={loading}
+                locations={locations}
+                popularSearches={popularSearches}
               />
               <Button
                 variant="contained"
@@ -615,6 +640,8 @@ const Offers = () => {
             onCategoryChange={handleCategoryClick}
             onSearch={handleSearch}
             isSearching={loading}
+            locations={locations}
+            popularSearches={popularSearches}
           />
         </Box>
       )}

@@ -91,7 +91,7 @@ function Reviews({
 }) {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
-  const [reviews] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({ rating: 0, count: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -106,51 +106,23 @@ function Reviews({
   const loadReviews = useCallback(async () => {
     try {
       setLoading(true);
-
+      let data;
       if (offerId) {
-        try {
-          console.log(`[Reviews] Loading reviews for offer: ${offerId}`);
-          await ReviewService.getReviewsByOffer(offerId);
-          console.log(
-            `[Reviews] Retrieved reviews for offer ${offerId}:`,
-            reviews
-          );
-        } catch (error) {
-          console.error(
-            `[Reviews] Error fetching reviews for offer ${offerId}:`,
-            error
-          );
-          setError(t("error_loading_reviews"));
-        }
+        data = await ReviewService.getReviewsByOffer(offerId);
       } else if (providerId) {
-        try {
-          console.log(`[Reviews] Loading reviews for provider: ${providerId}`);
-          await ReviewService.getReviewsByProvider(providerId);
-          console.log(
-            `[Reviews] Retrieved reviews for provider ${providerId}:`,
-            reviews
-          );
-        } catch (error) {
-          console.error(
-            `[Reviews] Error fetching reviews for provider ${providerId}:`,
-            error
-          );
-          setError(t("error_loading_reviews"));
-        }
+        data = await ReviewService.getReviewsByProvider(providerId);
       } else {
         throw new Error("Необходимо указать offerId или providerId");
       }
-
-      if (reviews) {
-        setStats(reviews.stats || { rating: 0, count: 0 });
-      }
+      setReviews(data.reviews || []);
+      setStats(data.stats || { rating: 0, count: 0 });
     } catch (error) {
       console.error("Error loading reviews:", error);
       setError(t("error_loading_reviews"));
     } finally {
       setLoading(false);
     }
-  }, [offerId, providerId, reviews, t]);
+  }, [offerId, providerId, t]);
 
   useEffect(() => {
     loadReviews();

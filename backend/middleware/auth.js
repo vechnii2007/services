@@ -18,13 +18,6 @@ module.exports = (req, res, next) => {
 
     req.user = decoded;
 
-    // Логируем для отладки
-    console.log("[auth] User authenticated:", {
-      id: req.user.id,
-      _id: req.user._id,
-      role: req.user.role,
-    });
-
     next();
   } catch (error) {
     console.error("[auth] Token verification error:", error.message);

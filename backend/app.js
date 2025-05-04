@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 const errorHandler = require("./middleware/errorHandler");
@@ -48,6 +47,11 @@ app._router.stack.forEach((middleware) => {
       }
     });
   }
+});
+
+app.use((req, res, next) => {
+  console.log("[APP] INCOMING:", req.method, req.url);
+  next();
 });
 
 module.exports = app;

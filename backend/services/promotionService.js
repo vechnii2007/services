@@ -5,6 +5,7 @@ const { ApiError } = require("../utils/errors");
 const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 const NotificationService = require("./NotificationService");
+const Review = require("../models/Review");
 
 class PromotionService {
   // Длительность поднятия в днях
@@ -171,14 +172,33 @@ class PromotionService {
         Offer.countDocuments(query),
       ]);
 
+      // Для каждого оффера получаем рейтинг и количество отзывов
+      const offersWithRating = await Promise.all(
+        offers.map(async (offer) => {
+          const ratingInfo = await Review.getAverageRatingByOffer(offer._id);
+          return {
+            ...offer._doc,
+            rating: ratingInfo.rating,
+            reviewCount: ratingInfo.count,
+            provider: offer.providerId
+              ? {
+                  _id: offer.providerId._id,
+                  name: offer.providerId.name,
+                  avatar: offer.providerId.avatar,
+                }
+              : null,
+          };
+        })
+      );
+
       console.log("[PromotionService] Query completed successfully:", {
-        offersFound: offers.length,
+        offersFound: offersWithRating.length,
         totalPromoted: total,
         hasMore: total > skip + limit,
       });
 
       return {
-        offers,
+        offers: offersWithRating,
         total,
         hasMore: total > skip + limit,
       };

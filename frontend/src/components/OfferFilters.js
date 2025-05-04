@@ -42,13 +42,14 @@ const OfferFilters = ({
   onCategoryChange,
   onSearch,
   isSearching = false,
+  locations = [],
+  popularSearches = [],
 }) => {
   const { t } = useTranslation();
   const searchRef = useRef(null);
   const filtersRef = useRef(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [popularSearches, setPopularSearches] = useState([]);
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY)) || [];
@@ -56,32 +57,6 @@ const OfferFilters = ({
       return [];
     }
   });
-  const [locations, setLocations] = useState([]);
-  const [isLoadingPopular, setIsLoadingPopular] = useState(false);
-
-  const loadPopularSearches = useCallback(async () => {
-    try {
-      setIsLoadingPopular(true);
-      const searches = await searchService.getPopularSearches(5);
-      setPopularSearches(
-        searches.map((search) => ({
-          label: search.query,
-          icon: getCategoryIcon(search.category),
-          value: search.query,
-          category: search.category,
-        }))
-      );
-    } catch (error) {
-      console.error("Error loading popular searches:", error);
-    } finally {
-      setIsLoadingPopular(false);
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    loadPopularSearches();
-    loadLocations();
-  }, [loadPopularSearches]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -101,21 +76,6 @@ const OfferFilters = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  // Загрузка локаций
-  const loadLocations = async () => {
-    try {
-      const locationsList = await searchService.getLocations();
-      setLocations(
-        locationsList.map((location) => ({
-          label: location,
-          region: "",
-        }))
-      );
-    } catch (error) {
-      console.error("Error loading locations:", error);
-    }
-  };
 
   // Получение иконки для категории
   const getCategoryIcon = (categoryName) => {
@@ -153,21 +113,6 @@ const OfferFilters = ({
     setShowSuggestions(false);
     saveToRecentSearches(searchQuery);
     if (onSearch) onSearch();
-  };
-
-  const handlePopularSearchClick = (search) => {
-    setSearchQuery(search.label);
-    if (search.category) {
-      onCategoryChange?.(search.category);
-    }
-    setShowSuggestions(false);
-    handleSearch();
-  };
-
-  const handleRecentSearchClick = (search) => {
-    setSearchQuery(search);
-    setShowSuggestions(false);
-    handleSearch();
   };
 
   const handleKeyPress = (event) => {
@@ -290,7 +235,6 @@ const OfferFilters = ({
                 >
                   <TrendingUpIcon fontSize="small" color="primary" />
                   {t("popular_searches")}
-                  {isLoadingPopular && <CircularProgress size={16} />}
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   {popularSearches.map((search) => (
@@ -298,7 +242,7 @@ const OfferFilters = ({
                       key={search.value}
                       icon={<span>{search.icon}</span>}
                       label={search.label}
-                      onClick={() => handlePopularSearchClick(search)}
+                      onClick={() => handleSearch()}
                       sx={{
                         "&:hover": {
                           bgcolor: "primary.light",
@@ -331,7 +275,7 @@ const OfferFilters = ({
                           label={search}
                           variant="outlined"
                           size="small"
-                          onClick={() => handleRecentSearchClick(search)}
+                          onClick={() => handleSearch()}
                           onDelete={() => {
                             const newSearches = recentSearches.filter(
                               (s) => s !== search

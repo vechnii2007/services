@@ -24,6 +24,14 @@ const { UPLOADS_PATH } = require("../config/uploadConfig");
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
 
+router.use((req, res, next) => {
+  if (req.url.startsWith("/reviews")) {
+    return next("route");
+  }
+  console.log("[SERVICE ROUTES] CATCH-ALL:", req.method, req.originalUrl);
+  next();
+});
+
 // Получение всех категорий (доступно всем)
 router.get("/categories", categoryController.getAllCategories);
 
