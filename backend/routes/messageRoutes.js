@@ -174,7 +174,7 @@ router.post("/", auth, async (req, res) => {
     const notifPayload = {
       type: "message",
       message: `Новое сообщение от ${req.user.name}`,
-      relatedId: newMessage._id,
+      relatedId: messageData.requestId || null,
       senderId: req.user.id,
       requestId: messageData.requestId || null,
     };

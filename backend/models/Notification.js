@@ -20,6 +20,11 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       refPath: "refModel",
     },
+    requestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ServiceRequest",
+      default: null,
+    },
     refModel: {
       type: String,
       enum: ["Message", "ServiceRequest", "Offer"],

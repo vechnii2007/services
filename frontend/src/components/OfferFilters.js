@@ -21,6 +21,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { motion, AnimatePresence } from "framer-motion";
 import { searchService } from "../services/searchService";
 
+// Используем motion вместо устаревшего motion.create
 const MotionPaper = motion(Paper);
 const MotionBox = motion(Box);
 
@@ -396,4 +397,5 @@ const OfferFilters = ({
   );
 };
 
-export default OfferFilters;
+// Экспортируем компонент обернутый в memo для предотвращения ненужных ререндеров
+export default React.memo(OfferFilters);

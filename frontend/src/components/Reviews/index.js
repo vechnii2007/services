@@ -270,7 +270,7 @@ function Reviews({
             emptyIcon={<StarIcon fontSize="inherit" />}
           />
           <Typography variant="subtitle2" sx={{ mt: 1 }}>
-            {stats.count} {t("reviews_count", { count: stats.count })}
+            {t("reviews_count", { count: stats.count })}
           </Typography>
         </BigRating>
       </RatingSummary>

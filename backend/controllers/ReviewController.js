@@ -250,3 +250,23 @@ exports.deleteReview = async (req, res) => {
     });
   }
 };
+
+/**
+ * Получение всех отзывов, оставленных пользователем (userId)
+ */
+exports.getReviewsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const reviews = await Review.find({ userId, status: "approved" })
+      .populate("offerId", "title")
+      .sort({ createdAt: -1 });
+    // Можно добавить stats, если потребуется
+    return res.status(200).json({ reviews });
+  } catch (error) {
+    console.error("Error in getReviewsByUser:", error);
+    return res.status(500).json({
+      error: "Ошибка сервера при получении отзывов пользователя",
+      details: error.message,
+    });
+  }
+};

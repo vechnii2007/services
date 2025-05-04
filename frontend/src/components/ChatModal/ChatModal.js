@@ -110,16 +110,6 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
   minHeight: 0,
 }));
 
-const ChatInputContainer = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(1),
-  borderTop: `1px solid ${theme.palette.divider}`,
-  display: "flex",
-  gap: theme.spacing(0.5),
-  backgroundColor: theme.palette.background.paper,
-  position: "relative",
-  flexShrink: 0,
-}));
-
 const Message = styled(Paper)(({ theme, isUser }) => ({
   padding: theme.spacing(1, 1.5),
   margin: theme.spacing(0.25, 0.5),
@@ -139,47 +129,6 @@ const Message = styled(Paper)(({ theme, isUser }) => ({
   wordBreak: "break-word",
   fontSize: "0.97rem",
   minHeight: 28,
-}));
-
-const MessageGroup = styled(Box)(({ theme, isUser }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: isUser ? "flex-end" : "flex-start",
-  marginBottom: theme.spacing(0.5),
-  width: "100%",
-}));
-
-const MessageItem = styled(Box)(({ theme, isUser }) => ({
-  display: "flex",
-  alignItems: "flex-end",
-  marginBottom: theme.spacing(0.25),
-  width: "100%",
-  justifyContent: isUser ? "flex-end" : "flex-start",
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: theme.spacing(2.5),
-    backgroundColor: alpha(theme.palette.background.default, 0.95),
-    fontSize: "0.97rem",
-    minHeight: 36,
-    padding: 0,
-    border: "2px solid blue",
-    background: "#e6f7ff",
-    height: 40,
-    "&.Mui-focused": {
-      boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.13)}`,
-    },
-    "& .MuiOutlinedInput-notchedOutline": {
-      borderColor: alpha(theme.palette.divider, 0.7),
-    },
-    "&:hover .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.primary.light,
-    },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: theme.palette.primary.main,
-    },
-  },
 }));
 
 const TypingIndicator = styled(Typography)(({ theme }) => ({
@@ -232,474 +181,541 @@ const OfferCardChat = styled(Box)(({ theme }) => ({
   },
 }));
 
-const ChatModal = ({ open, onClose, requestId, userId, providerId }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { socket, isConnected } = useSocket();
-  const { user } = useAuth();
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [recipientId, setRecipientId] = useState("");
-  const [recipientName, setRecipientName] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
-  const chatInitializedRef = useRef(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const initializationRef = useRef(false);
-  const reconnectTimeoutRef = useRef(null);
-  const lastMessageRef = useRef(new Set());
-  const socketRef = useRef(null);
-  const messagesContainerRef = useRef(null);
-  const [chatInfo, setChatInfo] = useState(null);
+const ChatModal = React.forwardRef(
+  (
+    { open, onClose, requestId, userId, providerId, request: requestProp },
+    ref
+  ) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const { socket, isConnected } = useSocket();
+    const { user } = useAuth();
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState("");
+    const [recipientId, setRecipientId] = useState("");
+    const [recipientName, setRecipientName] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [isTyping, setIsTyping] = useState(false);
+    const messagesEndRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
+    const chatInitializedRef = useRef(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+    const initializationRef = useRef(false);
+    const reconnectTimeoutRef = useRef(null);
+    const lastMessageRef = useRef(new Set());
+    const socketRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+    const [chatInfo, setChatInfo] = useState(null);
+    // Локальное состояние для контроля открытия, чтобы не потерять состояние при обновлении пропсов
+    const [localOpen, setLocalOpen] = useState(open);
+    const initialOpenRef = useRef(false);
 
-  // Скролл вниз
-  const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, []);
-
-  // Проверка параметров при инициализации
-  useEffect(() => {
-    if (!open) return;
-    chatInitializedRef.current = false;
-    initializationRef.current = false;
-    setMessages([]);
-    setNewMessage("");
-    setRecipientId("");
-    setRecipientName("");
-    setError("");
-    setLoading(true);
-    setIsInitialized(false);
-    setChatInfo(null);
-  }, [open, requestId]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (chatInitializedRef.current) return;
-    if (!requestId) {
-      setError("Отсутствует ID запроса (requestId)");
-      setLoading(false);
-      return;
-    }
-    if (!user?._id) {
-      setError("Информация о пользователе недоступна");
-      setLoading(false);
-      return;
-    }
-    chatInitializedRef.current = true;
-  }, [open, requestId, user]);
-
-  // Обработчик нового сообщения
-  const handleNewMessage = useCallback(
-    (newMsg) => {
-      if (!newMsg._id) return;
-      if (lastMessageRef.current.has(newMsg._id)) return;
-      lastMessageRef.current.add(newMsg._id);
-      if (lastMessageRef.current.size > 100) {
-        const values = Array.from(lastMessageRef.current);
-        lastMessageRef.current = new Set(values.slice(-50));
+    // Синхронизируем локальное состояние с пропсами
+    useEffect(() => {
+      if (open) {
+        console.log("[ChatModal] Opening dialog");
+        setLocalOpen(true);
+        initialOpenRef.current = true;
+      } else if (initialOpenRef.current) {
+        // Только если диалог был открыт хотя бы раз
+        console.log("[ChatModal] Closing dialog");
+        setLocalOpen(false);
       }
-      const normalizedMessage = normalizeMessage({
-        ...newMsg,
-        text: newMsg.message || newMsg.text,
+    }, [open]);
+
+    // Добавляем логирование пропсов
+    useEffect(() => {
+      console.log("[ChatModal] Props received:", {
+        open,
+        localOpen,
+        requestId,
+        userId,
+        providerId,
       });
-      if (!normalizedMessage) return;
+    }, [open, localOpen, requestId, userId, providerId]);
+
+    // Скролл вниз
+    const scrollToBottom = useCallback(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, []);
+
+    // Проверка параметров при инициализации
+    useEffect(() => {
+      if (!open) return;
+      chatInitializedRef.current = false;
+      initializationRef.current = false;
+      setMessages([]);
+      setNewMessage("");
+      setRecipientId("");
+      setRecipientName("");
+      setError("");
+      setLoading(true);
+      setIsInitialized(false);
+      setChatInfo(null);
+    }, [open, requestId]);
+
+    useEffect(() => {
+      if (!open) return;
+      if (chatInitializedRef.current) return;
+      if (!requestId) {
+        setError("Отсутствует ID запроса (requestId)");
+        setLoading(false);
+        return;
+      }
+      if (!user?._id) {
+        setError("Информация о пользователе недоступна");
+        setLoading(false);
+        return;
+      }
+      chatInitializedRef.current = true;
+    }, [open, requestId, user]);
+
+    // Загрузка сообщений
+    const fetchMessages = useCallback(
+      async (currentRecipientId) => {
+        const recipientToUse = currentRecipientId || recipientId;
+        if (!requestId || !recipientToUse) {
+          setLoading(false);
+          setError("Не удалось определить получателя для загрузки сообщений");
+          return;
+        }
+        try {
+          setLoading(true);
+          console.log(
+            "[ChatModal] fetchMessages вызван для requestId:",
+            requestId,
+            "recipientId:",
+            recipientToUse
+          );
+          const fetchedMessages = await ChatService.getMessages(requestId);
+          const normalizedMessages = fetchedMessages
+            .map((msg) => normalizeMessage(msg))
+            .filter(
+              (msg) =>
+                msg !== null &&
+                isMessageBelongsToChat(msg, {
+                  requestId,
+                  currentUserId: user?._id,
+                  recipientId: recipientToUse,
+                })
+            );
+          setMessages(normalizedMessages);
+          setLoading(false);
+          scrollToBottom();
+        } catch (err) {
+          setError(err.message || "Ошибка при загрузке сообщений");
+          setLoading(false);
+        }
+      },
+      [requestId, recipientId, user?._id, scrollToBottom]
+    );
+
+    // Загрузка информации о чате
+    const fetchChatInfo = useCallback(async () => {
+      if (!requestId || !user?._id) return;
+      console.log("[ChatModal] fetchChatInfo вызван для requestId:", requestId);
+      try {
+        let response = requestProp;
+        if (!response) {
+          response = await ChatService.get(`/requests/${requestId}`);
+        }
+        setChatInfo(response);
+        if (!response?.userId) {
+          throw new Error("Некорректные данные запроса: отсутствует userId");
+        }
+        const currentUserId = normalizeId(user._id);
+        let newRecipientId = "";
+        let newRecipientName = "";
+        if (userId && providerId) {
+          if (currentUserId === normalizeId(providerId)) {
+            newRecipientId = normalizeId(userId);
+            newRecipientName = response.userId?.name || "Клиент";
+          } else if (currentUserId === normalizeId(userId)) {
+            newRecipientId = normalizeId(providerId);
+            newRecipientName =
+              response.provider?.name ||
+              response.providerId?.name ||
+              "Провайдер";
+          }
+        } else if (response.providerId && response.providerId._id) {
+          const isProvider = currentUserId === normalizeId(response.providerId);
+          newRecipientId = isProvider
+            ? normalizeId(response.userId)
+            : normalizeId(response.providerId);
+          newRecipientName = isProvider
+            ? response.userId?.name || "Клиент"
+            : response.providerId?.name || "Провайдер";
+        } else {
+          if (user.role === "provider") {
+            newRecipientId = normalizeId(response.userId);
+            newRecipientName = response.userId?.name || "Клиент";
+          } else {
+            newRecipientId = "";
+            newRecipientName = "";
+          }
+        }
+        setRecipientId(newRecipientId);
+        setRecipientName(newRecipientName);
+        setIsInitialized(true);
+      } catch (err) {
+        setError(err.message || "Не удалось загрузить информацию о чате");
+        setLoading(false);
+      }
+    }, [requestId, user?._id, user?.role, userId, providerId, requestProp]);
+
+    // useEffect для загрузки сообщений только при изменении recipientId и open
+    useEffect(() => {
+      if (recipientId && open) {
+        fetchMessages(recipientId);
+      }
+    }, [recipientId, open]);
+
+    // Обработчик нового сообщения
+    const handleNewMessage = useCallback(
+      (newMsg) => {
+        if (!newMsg._id) return;
+        if (lastMessageRef.current.has(newMsg._id)) return;
+        lastMessageRef.current.add(newMsg._id);
+        if (lastMessageRef.current.size > 100) {
+          const values = Array.from(lastMessageRef.current);
+          lastMessageRef.current = new Set(values.slice(-50));
+        }
+        const normalizedMessage = normalizeMessage({
+          ...newMsg,
+          text: newMsg.message || newMsg.text,
+        });
+        if (!normalizedMessage) return;
+        if (
+          !isMessageBelongsToChat(normalizedMessage, {
+            requestId,
+            currentUserId: user?._id,
+            recipientId,
+          })
+        ) {
+          return;
+        }
+        setMessages((prevMessages) => {
+          const isDuplicate = prevMessages.some(
+            (msg) =>
+              msg._id === normalizedMessage._id ||
+              (msg.timestamp === normalizedMessage.timestamp &&
+                msg.message === normalizedMessage.message &&
+                msg.senderId === normalizedMessage.senderId)
+          );
+          if (isDuplicate) return prevMessages;
+          return [...prevMessages, normalizedMessage];
+        });
+        scrollToBottom();
+      },
+      [requestId, user?._id, recipientId, scrollToBottom]
+    );
+
+    // Инициализация чата
+    useEffect(() => {
+      if (!open) return;
+      if (!user?._id || !requestId || initializationRef.current) return;
+      initializationRef.current = true;
+      fetchChatInfo();
+    }, [open, user?._id, requestId, fetchChatInfo]);
+
+    // Эффект для подключения к сокету
+    useEffect(() => {
       if (
-        !isMessageBelongsToChat(normalizedMessage, {
-          requestId,
-          currentUserId: user?._id,
-          recipientId,
-        })
+        !open ||
+        !socket ||
+        !isConnected ||
+        !requestId ||
+        !user?._id ||
+        !recipientId ||
+        !isInitialized
       ) {
         return;
       }
-      setMessages((prevMessages) => {
-        const isDuplicate = prevMessages.some(
-          (msg) =>
-            msg._id === normalizedMessage._id ||
-            (msg.timestamp === normalizedMessage.timestamp &&
-              msg.message === normalizedMessage.message &&
-              msg.senderId === normalizedMessage.senderId)
-        );
-        if (isDuplicate) return prevMessages;
-        return [...prevMessages, normalizedMessage];
-      });
-      scrollToBottom();
-    },
-    [requestId, user?._id, recipientId, scrollToBottom]
-  );
-
-  // Загрузка информации о чате
-  const fetchChatInfo = useCallback(async () => {
-    if (!requestId || !user?._id) return;
-    try {
-      const response = await ChatService.get(`/requests/${requestId}`);
-      setChatInfo(response);
-      if (!response?.userId) {
-        throw new Error("Некорректные данные запроса: отсутствует userId");
-      }
-      const currentUserId = normalizeId(user._id);
-      let newRecipientId = "";
-      let newRecipientName = "";
-      if (userId && providerId) {
-        if (currentUserId === normalizeId(providerId)) {
-          newRecipientId = normalizeId(userId);
-          newRecipientName = response.userId?.name || "Клиент";
-        } else if (currentUserId === normalizeId(userId)) {
-          newRecipientId = normalizeId(providerId);
-          newRecipientName =
-            response.provider?.name || response.providerId?.name || "Провайдер";
-        }
-      } else if (response.providerId && response.providerId._id) {
-        const isProvider = currentUserId === normalizeId(response.providerId);
-        newRecipientId = isProvider
-          ? normalizeId(response.userId)
-          : normalizeId(response.providerId);
-        newRecipientName = isProvider
-          ? response.userId?.name || "Клиент"
-          : response.providerId?.name || "Провайдер";
-      } else {
-        if (user.role === "provider") {
-          newRecipientId = normalizeId(response.userId);
-          newRecipientName = response.userId?.name || "Клиент";
-        } else {
-          newRecipientId = "";
-          newRecipientName = "";
-        }
-      }
-      setRecipientId(newRecipientId);
-      setRecipientName(newRecipientName);
-      await fetchMessages(newRecipientId);
-      setIsInitialized(true);
-    } catch (err) {
-      setError(err.message || "Не удалось загрузить информацию о чате");
-      setLoading(false);
-    }
-  }, [requestId, user?._id, user?.role, userId, providerId]);
-
-  // Загрузка сообщений
-  const fetchMessages = useCallback(
-    async (currentRecipientId) => {
-      const recipientToUse = currentRecipientId || recipientId;
-      if (!requestId || !recipientToUse) {
-        setLoading(false);
-        setError("Не удалось определить получателя для загрузки сообщений");
+      const participants = [
+        normalizeId(user._id),
+        normalizeId(recipientId),
+      ].sort();
+      const chatRoomId = participants.join("_");
+      if (socketRef.current === chatRoomId) {
         return;
       }
-      try {
-        setLoading(true);
-        const fetchedMessages = await ChatService.getMessages(requestId);
-        const normalizedMessages = fetchedMessages
-          .map((msg) => normalizeMessage(msg))
-          .filter(
-            (msg) =>
-              msg !== null &&
-              isMessageBelongsToChat(msg, {
-                requestId,
-                currentUserId: user?._id,
-                recipientId: recipientToUse,
-              })
-          );
-        setMessages(normalizedMessages);
-        setLoading(false);
-        scrollToBottom();
-      } catch (err) {
-        setError(err.message || "Ошибка при загрузке сообщений");
-        setLoading(false);
-      }
-    },
-    [requestId, recipientId, user?._id, scrollToBottom]
-  );
-
-  // Инициализация чата
-  useEffect(() => {
-    if (!open) return;
-    if (!user?._id || !requestId || initializationRef.current) return;
-    initializationRef.current = true;
-    fetchChatInfo();
-  }, [open, user?._id, requestId, fetchChatInfo]);
-
-  // Эффект для подключения к сокету
-  useEffect(() => {
-    if (
-      !open ||
-      !socket ||
-      !isConnected ||
-      !requestId ||
-      !user?._id ||
-      !recipientId ||
-      !isInitialized
-    ) {
-      return;
-    }
-    const participants = [
-      normalizeId(user._id),
-      normalizeId(recipientId),
-    ].sort();
-    const chatRoomId = participants.join("_");
-    if (socketRef.current === chatRoomId) {
-      return;
-    }
-    const connectToRoom = () => {
-      if (socketRef.current) {
-        socket.emit("leaveRoom", socketRef.current);
-      }
-      socket.emit("joinRoom", requestId, { chatRoomId });
-      socketRef.current = chatRoomId;
-    };
-    connectToRoom();
-    const handleJoinedRoom = (data) => {};
-    const handleError = (error) => {
-      setError("Ошибка соединения: " + error.message);
-      if (socketRef.current === chatRoomId) {
+      const connectToRoom = () => {
+        if (socketRef.current) {
+          socket.emit("leaveRoom", socketRef.current);
+        }
+        socket.emit("joinRoom", requestId, { chatRoomId });
+        socketRef.current = chatRoomId;
+      };
+      connectToRoom();
+      const handleJoinedRoom = (data) => {};
+      const handleError = (error) => {
+        setError("Ошибка соединения: " + error.message);
+        if (socketRef.current === chatRoomId) {
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(connectToRoom, 5000);
+        }
+      };
+      socket.on("joinedRoom", handleJoinedRoom);
+      socket.on("private_message", handleNewMessage);
+      socket.on("error", handleError);
+      socket.on("typing", (data) => {
+        if (normalizeId(data.userId) === normalizeId(recipientId)) {
+          setIsTyping(true);
+          setTimeout(() => setIsTyping(false), 3000);
+        }
+      });
+      return () => {
+        if (socketRef.current === chatRoomId) {
+          socket.emit("leaveRoom", chatRoomId);
+          socket.off("joinedRoom", handleJoinedRoom);
+          socket.off("private_message", handleNewMessage);
+          socket.off("error", handleError);
+          socket.off("typing");
+          socketRef.current = null;
+        }
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
         }
-        reconnectTimeoutRef.current = setTimeout(connectToRoom, 5000);
-      }
-    };
-    socket.on("joinedRoom", handleJoinedRoom);
-    socket.on("private_message", handleNewMessage);
-    socket.on("error", handleError);
-    socket.on("typing", (data) => {
-      if (normalizeId(data.userId) === normalizeId(recipientId)) {
-        setIsTyping(true);
-        setTimeout(() => setIsTyping(false), 3000);
-      }
-    });
-    return () => {
-      if (socketRef.current === chatRoomId) {
-        socket.emit("leaveRoom", chatRoomId);
-        socket.off("joinedRoom", handleJoinedRoom);
-        socket.off("private_message", handleNewMessage);
-        socket.off("error", handleError);
-        socket.off("typing");
-        socketRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-  }, [
-    open,
-    socket,
-    isConnected,
-    requestId,
-    recipientId,
-    user,
-    isInitialized,
-    handleNewMessage,
-  ]);
-
-  // Очистка при размонтировании компонента
-  useEffect(() => {
-    if (!open) return;
-    return () => {
-      if (socketRef.current) {
-        socket.emit("leaveRoom", socketRef.current);
-        socketRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      lastMessageRef.current.clear();
-    };
-  }, [open, socket]);
-
-  // Отправка сообщения
-  const sendMessage = async () => {
-    if (
-      !newMessage.trim() ||
-      !socket ||
-      !isConnected ||
-      !requestId ||
-      !user?._id ||
-      !recipientId
-    )
-      return;
-    try {
-      const normalizedSenderId = normalizeId(user._id);
-      const normalizedRecipientId = normalizeId(recipientId);
-      const participants = [normalizedSenderId, normalizedRecipientId].sort();
-      const chatRoomId = participants.join("_");
-      const messageId = `msg_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      const timestamp = new Date().toISOString();
-      const messageData = {
-        _id: messageId,
-        message: newMessage.trim(),
-        senderId: normalizedSenderId,
-        recipientId: normalizedRecipientId,
-        requestId: normalizeId(requestId),
-        timestamp,
-        chatRoomId,
-        userId: {
-          _id: normalizedSenderId,
-          name: user.name || "Unknown",
-          role: user.role,
-        },
       };
-      const normalizedMessage = normalizeMessage({
-        ...messageData,
-        isSending: true,
+    }, [
+      open,
+      socket,
+      isConnected,
+      requestId,
+      recipientId,
+      user,
+      isInitialized,
+      handleNewMessage,
+    ]);
+
+    // Очистка при размонтировании компонента
+    useEffect(() => {
+      if (!open) return;
+      return () => {
+        if (socketRef.current) {
+          socket.emit("leaveRoom", socketRef.current);
+          socketRef.current = null;
+        }
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        lastMessageRef.current.clear();
+      };
+    }, [open, socket]);
+
+    // Отправка сообщения
+    const sendMessage = async () => {
+      if (
+        !newMessage.trim() ||
+        !socket ||
+        !isConnected ||
+        !requestId ||
+        !user?._id ||
+        !recipientId
+      )
+        return;
+      try {
+        const normalizedSenderId = normalizeId(user._id);
+        const normalizedRecipientId = normalizeId(recipientId);
+        const participants = [normalizedSenderId, normalizedRecipientId].sort();
+        const chatRoomId = participants.join("_");
+        const messageId = `msg_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+        const timestamp = new Date().toISOString();
+        const messageData = {
+          _id: messageId,
+          message: newMessage.trim(),
+          senderId: normalizedSenderId,
+          recipientId: normalizedRecipientId,
+          requestId: normalizeId(requestId),
+          timestamp,
+          chatRoomId,
+          userId: {
+            _id: normalizedSenderId,
+            name: user.name || "Unknown",
+            role: user.role,
+          },
+        };
+        const normalizedMessage = normalizeMessage({
+          ...messageData,
+          isSending: true,
+        });
+        if (normalizedMessage) {
+          setMessages((prev) => [...prev, normalizedMessage]);
+          scrollToBottom();
+        }
+        socket.emit("private_message", messageData);
+        setNewMessage("");
+      } catch (err) {
+        setError(err.message || "Ошибка при отправке сообщения");
+      }
+    };
+
+    const handleTyping = () => {
+      if (!socket || !isConnected) return;
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      socket.emit("typing", { recipientId, requestId });
+      typingTimeoutRef.current = setTimeout(() => {
+        typingTimeoutRef.current = null;
+      }, 2000);
+    };
+
+    const handleKeyPress = (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      } else {
+        handleTyping();
+      }
+    };
+
+    const groupedMessages = useMemo(() => {
+      const groups = [];
+      let currentGroup = null;
+      messages.forEach((msg, index) => {
+        const isUser = msg.senderId === user?._id;
+        if (!currentGroup || currentGroup.senderId !== msg.senderId) {
+          currentGroup = {
+            id: `group_${index}`,
+            senderId: msg.senderId,
+            isUser,
+            messages: [msg],
+          };
+          groups.push(currentGroup);
+        } else {
+          currentGroup.messages.push(msg);
+        }
       });
-      if (normalizedMessage) {
-        setMessages((prev) => [...prev, normalizedMessage]);
+      return groups;
+    }, [messages, user?._id]);
+
+    useEffect(() => {
+      if (open && messages.length > 0) {
         scrollToBottom();
       }
-      socket.emit("private_message", messageData);
-      setNewMessage("");
-    } catch (err) {
-      setError(err.message || "Ошибка при отправке сообщения");
-    }
-  };
+    }, [messages, open, scrollToBottom]);
 
-  const handleTyping = () => {
-    if (!socket || !isConnected) return;
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    socket.emit("typing", { recipientId, requestId });
-    typingTimeoutRef.current = setTimeout(() => {
-      typingTimeoutRef.current = null;
-    }, 2000);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    } else {
-      handleTyping();
-    }
-  };
-
-  const groupedMessages = useMemo(() => {
-    const groups = [];
-    let currentGroup = null;
-    messages.forEach((msg, index) => {
-      const isUser = msg.senderId === user?._id;
-      if (!currentGroup || currentGroup.senderId !== msg.senderId) {
-        currentGroup = {
-          id: `group_${index}`,
-          senderId: msg.senderId,
-          isUser,
-          messages: [msg],
-        };
-        groups.push(currentGroup);
-      } else {
-        currentGroup.messages.push(msg);
-      }
-    });
-    return groups;
-  }, [messages, user?._id]);
-
-  useEffect(() => {
-    if (open && messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages, open, scrollToBottom]);
-
-  // --- Рендер ---
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullScreen={isMobile}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: !isMobile
-          ? {
-              height: 600,
-              maxHeight: "90vh",
-              minHeight: 0,
-              borderRadius: 3,
-              overflow: "hidden",
-            }
-          : {},
-      }}
-      scroll="body"
-    >
-      <ChatHeader>
-        <Typography variant="h6" sx={{ flex: 1 }}>
-          {recipientName || "Чат"}
-        </Typography>
-        <IconButton
-          onClick={onClose}
-          sx={{ position: "absolute", right: 8, top: 8 }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </ChatHeader>
-      <DialogContent
-        sx={{
-          p: 0,
-          height: "100%",
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
+    // --- Рендер ---
+    return (
+      <Dialog
+        open={localOpen}
+        onClose={onClose}
+        maxWidth="md"
+        fullWidth
+        ref={ref}
+        scroll="paper"
+        PaperProps={{
+          sx: {
+            height: isMobile ? "100vh" : "90vh",
+            minHeight: isMobile ? 0 : 600,
+            borderRadius: isMobile ? 0 : 3,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            margin: "auto",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+          },
         }}
       >
-        <ChatLayout sx={{ height: "100%", minHeight: 0, flex: "1 1 0%" }}>
-          <ChatPanel sx={{ height: "100%", minHeight: 0, flex: "1 1 0%" }}>
-            <ChatContainer
-              sx={{ height: "100%", minHeight: 0, flex: "1 1 0%" }}
-            >
-              {/* Карточка товара/услуги/запроса над сообщениями */}
-              {chatInfo && chatInfo.offerId && (
-                <OfferCardChat>
-                  {chatInfo.offerId.image && (
-                    <Box
-                      component="img"
-                      src={chatInfo.offerId.image}
-                      alt={chatInfo.offerId.title}
-                      sx={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 2,
-                        objectFit: "cover",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                      }}
-                    />
-                  )}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="subtitle1" fontWeight={600} noWrap>
-                      {chatInfo.offerId.title}
+        <Box sx={{ display: "flex", flex: 1, height: "100%" }}>
+          {/* Левая часть: чат */}
+          <Box
+            sx={{
+              flex: "1 1 0%",
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+              minWidth: 0,
+              background: "#f7f9fc",
+            }}
+          >
+            {/* Шапка и карточка предложения */}
+            <ChatHeader>
+              <Typography variant="h6" sx={{ flex: 1, fontWeight: 600 }}>
+                Чат
+              </Typography>
+              <IconButton
+                aria-label="Закрыть"
+                onClick={onClose}
+                sx={{ ml: 1 }}
+                size="large"
+              >
+                <CloseIcon />
+              </IconButton>
+            </ChatHeader>
+            {chatInfo && chatInfo.offerId && (
+              <OfferCardChat>
+                {chatInfo.offerId.image && (
+                  <Box
+                    component="img"
+                    src={chatInfo.offerId.image}
+                    alt={chatInfo.offerId.title}
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 2,
+                      objectFit: "cover",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                    }}
+                  />
+                )}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" fontWeight={600} noWrap>
+                    {chatInfo.offerId.title}
+                  </Typography>
+                  {chatInfo.offerId.price && (
+                    <Typography
+                      variant="body2"
+                      color="primary"
+                      fontWeight={500}
+                    >
+                      {chatInfo.offerId.price} €
                     </Typography>
-                    {chatInfo.offerId.price && (
-                      <Typography
-                        variant="body2"
-                        color="primary"
-                        fontWeight={500}
-                      >
-                        {chatInfo.offerId.price} €
-                      </Typography>
-                    )}
-                    {chatInfo.offerId.serviceType && (
-                      <Typography variant="caption" color="text.secondary">
-                        {chatInfo.offerId.serviceType}
-                      </Typography>
-                    )}
-                    {chatInfo.offerId.description && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mt: 0.5, maxWidth: 320, whiteSpace: "pre-line" }}
-                      >
-                        {chatInfo.offerId.description}
-                      </Typography>
-                    )}
-                  </Box>
-                </OfferCardChat>
-              )}
+                  )}
+                  {chatInfo.offerId.serviceType && (
+                    <Typography variant="caption" color="text.secondary">
+                      {chatInfo.offerId.serviceType}
+                    </Typography>
+                  )}
+                  {chatInfo.offerId.description && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 0.5,
+                        maxWidth: 320,
+                        whiteSpace: "pre-line",
+                      }}
+                    >
+                      {chatInfo.offerId.description}
+                    </Typography>
+                  )}
+                </Box>
+              </OfferCardChat>
+            )}
+            {/* Сообщения */}
+            <Box
+              sx={{
+                flex: "1 1 auto",
+                overflowY: "auto",
+                minHeight: 0,
+                px: 2,
+                pb: 1,
+                pt: 1,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               {error && (
                 <Alert
                   severity="error"
@@ -709,115 +725,116 @@ const ChatModal = ({ open, onClose, requestId, userId, providerId }) => {
                   {error}
                 </Alert>
               )}
-              <MessagesContainer
-                sx={{
-                  flex: "1 1 0%",
-                  maxHeight: "82%",
-                  minHeight: 0,
-                  overflowY: "auto",
-                }}
-                ref={messagesContainerRef}
-              >
-                {loading ? (
-                  <Box
-                    sx={{
-                      p: 3,
-                      textAlign: "center",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      backgroundColor: theme.palette.background.default,
-                    }}
-                  >
-                    <CircularProgress
-                      size={32}
-                      sx={{ mb: 2, color: theme.palette.primary.main }}
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      Загрузка сообщений...
-                    </Typography>
-                  </Box>
-                ) : error ? (
-                  <Box
-                    sx={{
-                      p: 3,
-                      textAlign: "center",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      backgroundColor: theme.palette.background.default,
-                    }}
-                  >
-                    <Typography variant="body1" color="error" sx={{ mb: 1 }}>
-                      {error}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Попробуйте обновить страницу или выбрать другой чат.
-                    </Typography>
-                  </Box>
-                ) : messages.length === 0 ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      p: 3,
-                      textAlign: "center",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: "50%",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        mb: 2,
-                      }}
-                    >
-                      <SendIcon
-                        sx={{
-                          fontSize: 32,
-                          color: alpha(theme.palette.primary.main, 0.6),
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      Нет сообщений
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Начните общение прямо сейчас!
-                    </Typography>
-                  </Box>
-                ) : (
-                  <MessagesList
-                    groupedMessages={groupedMessages}
-                    recipientName={recipientName}
-                    user={user}
-                    theme={theme}
-                    messagesEndRef={messagesEndRef}
+              {loading ? (
+                <Box
+                  sx={{
+                    p: 3,
+                    textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    backgroundColor: theme.palette.background.default,
+                  }}
+                >
+                  <CircularProgress
+                    size={32}
+                    sx={{ mb: 2, color: theme.palette.primary.main }}
                   />
-                )}
-                {isTyping && (
-                  <TypingIndicator
-                    sx={{ position: "absolute", bottom: 4, left: 8 }}
+                  <Typography variant="body2" color="text.secondary">
+                    Загрузка сообщений...
+                  </Typography>
+                </Box>
+              ) : error ? (
+                <Box
+                  sx={{
+                    p: 3,
+                    textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    backgroundColor: theme.palette.background.default,
+                  }}
+                >
+                  <Typography variant="body1" color="error" sx={{ mb: 1 }}>
+                    {error}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Попробуйте обновить страницу или выбрать другой чат.
+                  </Typography>
+                </Box>
+              ) : messages.length === 0 ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    p: 3,
+                    textAlign: "center",
+                    color: "text.secondary",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: "50%",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      bgcolor: alpha(theme.palette.primary.main, 0.1),
+                      mb: 2,
+                    }}
                   >
-                    {recipientName} печатает
-                    <span className="dot"></span>
-                    <span className="dot"></span>
-                    <span className="dot"></span>
-                  </TypingIndicator>
-                )}
-              </MessagesContainer>
+                    <SendIcon
+                      sx={{
+                        fontSize: 32,
+                        color: alpha(theme.palette.primary.main, 0.6),
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="body1" sx={{ mb: 1 }}>
+                    Нет сообщений
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Начните общение прямо сейчас!
+                  </Typography>
+                </Box>
+              ) : (
+                <MessagesList
+                  groupedMessages={groupedMessages}
+                  recipientName={recipientName}
+                  user={user}
+                  theme={theme}
+                  messagesEndRef={messagesEndRef}
+                />
+              )}
+              {isTyping && (
+                <TypingIndicator
+                  sx={{ position: "absolute", bottom: 4, left: 8 }}
+                >
+                  {recipientName} печатает
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                </TypingIndicator>
+              )}
+            </Box>
+            {/* Поле ввода */}
+            <Box
+              sx={{
+                borderTop: `1px solid ${theme.palette.divider}`,
+                background: "#fff",
+                px: 2,
+                py: 1.5,
+                flexShrink: 0,
+              }}
+            >
               <ChatInput
                 newMessage={newMessage}
                 setNewMessage={setNewMessage}
@@ -825,16 +842,17 @@ const ChatModal = ({ open, onClose, requestId, userId, providerId }) => {
                 isConnected={isConnected}
                 handleKeyPress={handleKeyPress}
               />
-            </ChatContainer>
-          </ChatPanel>
+            </Box>
+          </Box>
+          {/* Правая часть: профиль/инфо */}
           {!isMobile && (
             <InfoPanel chatInfo={chatInfo} user={user} theme={theme} />
           )}
-        </ChatLayout>
-      </DialogContent>
-    </Dialog>
-  );
-};
+        </Box>
+      </Dialog>
+    );
+  }
+);
 
 ChatModal.propTypes = {
   open: PropTypes.bool.isRequired,
@@ -842,6 +860,7 @@ ChatModal.propTypes = {
   requestId: PropTypes.string.isRequired,
   userId: PropTypes.string,
   providerId: PropTypes.string,
+  request: PropTypes.object,
 };
 
 export default ChatModal;

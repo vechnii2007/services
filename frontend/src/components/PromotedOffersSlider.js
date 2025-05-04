@@ -1,5 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { Box, Typography, Card, CardContent, Skeleton } from "@mui/material";
+import React, { useEffect, useState, useRef } from "react";
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Skeleton,
+  useTheme,
+  useMediaQuery,
+  Chip,
+} from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { styled } from "@mui/material/styles";
 import { Pagination, Autoplay } from "swiper/modules";
@@ -8,15 +17,66 @@ import "swiper/css/pagination";
 import { useTranslation } from "react-i18next";
 import OfferCard from "./OfferCard";
 import OfferService from "../services/OfferService";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
-const StyledSwiper = styled(Swiper)(({ theme }) => ({
+const StyledSwiper = styled(Swiper)(({ theme, isMobile }) => ({
   width: "100%",
-  marginBottom: theme.spacing(4),
+  marginBottom: theme.spacing(3),
   "& .swiper-button-next, & .swiper-button-prev": {
     color: theme.palette.primary.main,
+    display: isMobile ? "none" : "flex",
+  },
+  "& .swiper-pagination": {
+    bottom: isMobile ? -5 : 5,
+  },
+  "& .swiper-pagination-bullet": {
+    backgroundColor: theme.palette.grey[400],
+    opacity: 0.5,
+    width: isMobile ? 6 : 8,
+    height: isMobile ? 6 : 8,
   },
   "& .swiper-pagination-bullet-active": {
-    backgroundColor: theme.palette.primary.main,
+    backgroundColor: theme.palette.error.main,
+    opacity: 1,
+  },
+}));
+
+// Заголовок с акцентом для промо-предложений
+const PromotedHeading = styled(Box)(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: theme.spacing(2),
+  [theme.breakpoints.down("sm")]: {
+    marginBottom: theme.spacing(1.5),
+  },
+}));
+
+const HeadingText = styled(Typography)(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  gap: theme.spacing(1),
+  fontWeight: 600,
+  "& svg": {
+    color: theme.palette.error.main,
+  },
+  [theme.breakpoints.down("sm")]: {
+    fontSize: "1.1rem",
+  },
+}));
+
+const PromoChip = styled(Chip)(({ theme }) => ({
+  backgroundColor: theme.palette.error.main,
+  color: theme.palette.common.white,
+  fontWeight: 600,
+  height: 24,
+  "& .MuiChip-label": {
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
+  [theme.breakpoints.down("sm")]: {
+    height: 20,
+    fontSize: "0.7rem",
   },
 }));
 
@@ -25,6 +85,9 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
   const [promoted, setPromoted] = useState([]);
   const [loading, setLoading] = useState(true);
   const [topCategories, setTopCategories] = useState([]);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const swiperRef = useRef(null);
 
   useEffect(() => {
     const fetchPromotedOffers = async () => {
@@ -264,41 +327,73 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
   }
 
   return (
-    <Box sx={{ mb: 6 }}>
+    <Box sx={{ mb: isMobile ? 4 : 6 }}>
       {/* Секция с промо-предложениями */}
       {promoted.length > 0 && (
         <>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: "medium" }}>
-            {t("promoted_offers")}
-          </Typography>
+          <PromotedHeading>
+            <HeadingText variant={isMobile ? "subtitle1" : "h6"}>
+              <TrendingUpIcon />
+              {t("promoted_offers")}
+            </HeadingText>
+            <PromoChip
+              label={t("top_offers")}
+              size={isMobile ? "small" : "medium"}
+            />
+          </PromotedHeading>
 
           <StyledSwiper
             slidesPerView={1}
-            spaceBetween={16}
-            pagination={{ clickable: true }}
+            spaceBetween={isMobile ? 8 : 16}
+            pagination={{ clickable: true, dynamicBullets: true }}
             autoplay={{ delay: 5000, disableOnInteraction: false }}
             modules={[Pagination, Autoplay]}
+            isMobile={isMobile}
+            onSwiper={(swiper) => {
+              swiperRef.current = swiper;
+            }}
             breakpoints={{
+              0: {
+                slidesPerView: 1.2,
+                spaceBetween: 8,
+              },
+              400: {
+                slidesPerView: 1.5,
+                spaceBetween: 10,
+              },
               600: {
                 slidesPerView: 2,
+                spaceBetween: 12,
               },
               960: {
                 slidesPerView: 3,
+                spaceBetween: 16,
               },
               1280: {
                 slidesPerView: 4,
+                spaceBetween: 16,
               },
             }}
           >
             {loading
-              ? Array.from(new Array(4)).map((_, index) => (
+              ? Array.from(new Array(isMobile ? 2 : 4)).map((_, index) => (
                   <SwiperSlide key={`skeleton-${index}`}>
-                    <Card sx={{ m: 1 }}>
-                      <Skeleton variant="rectangular" height={140} />
-                      <CardContent>
+                    <Card
+                      sx={{
+                        m: isMobile ? 0.5 : 1,
+                        borderRadius: isMobile ? 1 : 2,
+                      }}
+                    >
+                      <Skeleton
+                        variant="rectangular"
+                        height={isMobile ? 100 : 140}
+                      />
+                      <CardContent sx={{ p: isMobile ? 1 : 2 }}>
                         <Skeleton variant="text" height={24} width="80%" />
                         <Skeleton variant="text" height={20} width="60%" />
-                        <Skeleton variant="text" height={20} width="40%" />
+                        {!isMobile && (
+                          <Skeleton variant="text" height={20} width="40%" />
+                        )}
                       </CardContent>
                     </Card>
                   </SwiperSlide>

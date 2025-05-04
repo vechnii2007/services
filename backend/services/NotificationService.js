@@ -35,6 +35,7 @@ class NotificationService {
         message: notification.message,
         type: notification.type,
         relatedId: notification.relatedId,
+        requestId: notification.requestId || null,
         refModel: this._getRefModel(notification.type, notification.relatedId),
       });
       console.log(

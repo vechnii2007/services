@@ -1,25 +1,42 @@
-import Offers from "../pages/Offers";
-import OfferDetails from "../pages/OfferDetails";
-import Register from "../pages/Register";
-import Login from "../pages/Login";
-import CreateOffer from "../pages/CreateOffer";
-import MyOffers from "../pages/MyOffers";
-import ServiceRequestForm from "../pages/ServiceRequestForm";
-import MyRequests from "../pages/MyRequests";
-import ProviderRequests from "../pages/ProviderRequests";
-import ChatList from "../pages/ChatList";
-import Chat from "../pages/Chat";
-import ChatTester from "../pages/ChatTester";
-import Favorites from "../pages/Favorites";
-import PaymentDashboard from "../pages/PaymentDashboard";
-import Profile from "../pages/Profile";
-import Landing from "../pages/Landing";
-import AdminPanel from "../components/AdminPanel/AdminPanelTabs";
-import Notifications from "../pages/Notifications";
-import React, { useContext } from "react";
+import React, { useContext, lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import RequestDetails from "../pages/RequestDetails";
+
+// Ленивая загрузка компонентов
+const Offers = lazy(() => import("../pages/Offers"));
+const OfferDetails = lazy(() => import("../pages/OfferDetails"));
+const Register = lazy(() => import("../pages/Register"));
+const Login = lazy(() => import("../pages/Login"));
+const CreateOffer = lazy(() => import("../pages/CreateOffer"));
+const MyOffers = lazy(() => import("../pages/MyOffers"));
+const ServiceRequestForm = lazy(() => import("../pages/ServiceRequestForm"));
+const MyRequests = lazy(() => import("../pages/MyRequests"));
+const ProviderRequests = lazy(() => import("../pages/ProviderRequests"));
+const ChatList = lazy(() => import("../pages/ChatList"));
+const Favorites = lazy(() => import("../pages/Favorites"));
+const PaymentDashboard = lazy(() => import("../pages/PaymentDashboard"));
+const Profile = lazy(() => import("../pages/Profile"));
+const Landing = lazy(() => import("../pages/Landing"));
+const AdminPanel = lazy(() =>
+  import("../components/AdminPanel/AdminPanelTabs")
+);
+const Notifications = lazy(() => import("../pages/Notifications"));
+const RequestDetails = lazy(() => import("../pages/RequestDetails"));
+const ProfileById = lazy(() => import("../pages/ProfileById"));
+
+// Компонент загрузки для Suspense
+const Loading = () => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      height: "100vh",
+    }}
+  >
+    Загрузка...
+  </div>
+);
 
 // Проверка авторизации для страницы Favorites
 const FavoritesWithAuth = () => {
@@ -36,50 +53,67 @@ const FavoritesWithAuth = () => {
     return null;
   }
 
-  return <Favorites />;
+  return (
+    <Suspense fallback={<Loading />}>
+      <Favorites />
+    </Suspense>
+  );
 };
 
+// Обертка с Suspense для всех компонентов
+const withSuspense = (Component) => (
+  <Suspense fallback={<Loading />}>
+    <Component />
+  </Suspense>
+);
+
+// Стабильная ссылка на компонент Offers для предотвращения ненужных перерендеров
+const MemoizedOffers = React.memo(Offers);
+const OffersPage = () => (
+  <Suspense fallback={<Loading />}>
+    <MemoizedOffers />
+  </Suspense>
+);
+
 export const routesConfig = [
-  { path: "/", element: <Landing />, requiredRole: null },
-  { path: "/offers", element: <Offers />, requiredRole: null },
-  { path: "/offers/:id", element: <OfferDetails />, requiredRole: null },
-  { path: "/register", element: <Register />, requiredRole: null },
-  { path: "/login", element: <Login />, requiredRole: null },
+  { path: "/", element: withSuspense(Landing), requiredRole: null },
+  { path: "/offers", element: <OffersPage />, requiredRole: null },
+  {
+    path: "/offers/:id",
+    element: withSuspense(OfferDetails),
+    requiredRole: null,
+  },
+  { path: "/register", element: withSuspense(Register), requiredRole: null },
+  { path: "/login", element: withSuspense(Login), requiredRole: null },
   {
     path: "/create-offer",
-    element: <CreateOffer />,
+    element: withSuspense(CreateOffer),
     requiredRole: ["provider", "admin"],
   },
   {
     path: "/my-offers",
-    element: <MyOffers />,
+    element: withSuspense(MyOffers),
     requiredRole: ["provider", "admin"],
   },
   {
     path: "/create-request",
-    element: <ServiceRequestForm />,
+    element: withSuspense(ServiceRequestForm),
     requiredRole: "user",
   },
-  { path: "/my-requests", element: <MyRequests />, requiredRole: "user" },
+  {
+    path: "/my-requests",
+    element: withSuspense(MyRequests),
+    requiredRole: "user",
+  },
   {
     path: "/provider-requests",
-    element: <ProviderRequests />,
+    element: withSuspense(ProviderRequests),
     requiredRole: "provider",
   },
   {
     path: "/chat-list",
-    element: <ChatList />,
+    element: withSuspense(ChatList),
     requiredRole: ["user", "provider"],
-  },
-  {
-    path: "/chat-tester",
-    element: <ChatTester />,
-    requiredRole: ["user", "provider", "admin"],
-  },
-  {
-    path: "/chat-tester/:requestId",
-    element: <ChatTester />,
-    requiredRole: ["user", "provider", "admin"],
   },
   {
     path: "/favorites",
@@ -88,23 +122,28 @@ export const routesConfig = [
   },
   {
     path: "/payment-dashboard",
-    element: <PaymentDashboard />,
+    element: withSuspense(PaymentDashboard),
     requiredRole: ["user", "provider", "admin"],
   },
   {
     path: "/profile",
-    element: <Profile />,
+    element: withSuspense(Profile),
     requiredRole: ["user", "provider", "admin"],
   },
-  { path: "/admin", element: <AdminPanel />, requiredRole: "admin" }, // Переименован маршрут
+  {
+    path: "/profile/:id",
+    element: withSuspense(ProfileById),
+    requiredRole: null,
+  },
+  { path: "/admin", element: withSuspense(AdminPanel), requiredRole: "admin" }, // Переименован маршрут
   {
     path: "/notifications",
-    element: <Notifications />,
+    element: withSuspense(Notifications),
     requiredRole: null,
   },
   {
     path: "/requests/:id",
-    element: <RequestDetails />,
+    element: withSuspense(RequestDetails),
     requiredRole: null,
   },
 ];

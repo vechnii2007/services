@@ -98,7 +98,7 @@ const OfferList = forwardRef(
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        style={{ minWidth: 320, maxWidth: 360 }}
+        style={{ minWidth: "auto", maxWidth: "100%" }}
       >
         <OfferCard
           offer={offer}
@@ -179,4 +179,5 @@ OfferList.defaultProps = {
   onLoadMore: null,
 };
 
-export default OfferList;
+// Оборачиваем в memo для предотвращения ненужных ререндеров
+export default React.memo(OfferList);

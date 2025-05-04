@@ -1,14 +1,36 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Typography, Box, Tooltip } from "@mui/material";
+import { Card, Typography, Box, Tooltip, Chip, Avatar } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
+import CategoryIcon from "@mui/icons-material/Category";
+import HealthcareIcon from "@mui/icons-material/HealthAndSafety";
+import EducationIcon from "@mui/icons-material/School";
+import FinanceIcon from "@mui/icons-material/AccountBalance";
+import HouseholdIcon from "@mui/icons-material/HomeWork";
+import TransportIcon from "@mui/icons-material/DirectionsCar";
+import LegalIcon from "@mui/icons-material/Gavel";
+import WorkIcon from "@mui/icons-material/Work";
+import DevicesIcon from "@mui/icons-material/Devices";
+import { alpha } from "@mui/material/styles";
 
-const CategoryCardWrapper = styled(Card)(({ theme }) => ({
+// Карточка категории для десктопа
+const CategoryCardWrapper = styled(Card)(({ theme, selected }) => ({
   position: "relative",
   width: 110,
   height: 110,
+  borderRadius: theme.shape.borderRadius,
+  overflow: "hidden",
+  cursor: "pointer",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  boxShadow: selected
+    ? `0 0 0 2px ${theme.palette.primary.main}, 0 4px 10px rgba(0,0,0,0.15)`
+    : "0 1px 4px rgba(0,0,0,0.1)",
+  "&:hover": {
+    transform: "translateY(-4px)",
+    boxShadow: "0 6px 14px rgba(0,0,0,0.15)",
+  },
   [theme.breakpoints.up("sm")]: {
     width: 140,
     height: 120,
@@ -25,13 +47,81 @@ const CategoryCardWrapper = styled(Card)(({ theme }) => ({
     width: 280,
     height: 180,
   },
-  borderRadius: theme.shape.borderRadius,
-  overflow: "hidden",
-  cursor: "pointer",
-  transition: "transform 0.3s ease",
-  "&:hover": {
-    transform: "translateY(-4px)",
+  // Скрываем на мобильных устройствах
+  [theme.breakpoints.down("sm")]: {
+    display: "none",
   },
+}));
+
+// Компактная карточка для мобильных устройств
+const MobileCategoryCard = styled(Card)(({ theme, selected }) => ({
+  // Показываем только на мобильных
+  display: "none",
+  width: 80,
+  height: 95,
+  borderRadius: theme.shape.borderRadius,
+  cursor: "pointer",
+  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  boxShadow: selected
+    ? `0 0 0 2px ${theme.palette.primary.main}, 0 2px 8px rgba(0,0,0,0.15)`
+    : "0 1px 3px rgba(0,0,0,0.1)",
+  overflow: "hidden",
+  position: "relative",
+  border: selected ? `2px solid ${theme.palette.primary.main}` : "none",
+  "&:hover": {
+    transform: "translateY(-2px)",
+    boxShadow: "0 3px 10px rgba(0,0,0,0.15)",
+  },
+  [theme.breakpoints.down("sm")]: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+}));
+
+const MobileImageWrapper = styled(Box)(({ theme }) => ({
+  width: "100%",
+  height: 50,
+  overflow: "hidden",
+  position: "relative",
+  backgroundColor: theme.palette.grey[100],
+}));
+
+const MobileImage = styled("img")({
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+});
+
+const MobileTitle = styled(Typography)({
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  textAlign: "center",
+  padding: "4px 2px",
+  lineHeight: 1.2,
+  maxHeight: "28px",
+  overflow: "hidden",
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+});
+
+const MobileCountBadge = styled(Box)(({ theme }) => ({
+  position: "absolute",
+  top: 4,
+  right: 4,
+  zIndex: 2,
+  background: theme.palette.primary.main,
+  color: theme.palette.common.white,
+  borderRadius: "50%",
+  minWidth: 18,
+  height: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+  fontSize: 10,
+  boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
 }));
 
 const CategoryImage = styled("img")({
@@ -39,21 +129,6 @@ const CategoryImage = styled("img")({
   height: "100%",
   objectFit: "cover",
 });
-
-const CategoryContent = styled(Box)(({ theme }) => ({
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  right: 0,
-  padding: theme.spacing(1.5, 1),
-  background:
-    "linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.85) 100%)",
-  color: theme.palette.common.white,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-  gap: theme.spacing(0.5),
-}));
 
 const CategoryCountBadge = styled(Box)(({ theme }) => ({
   position: "absolute",
@@ -63,14 +138,14 @@ const CategoryCountBadge = styled(Box)(({ theme }) => ({
   background: theme.palette.primary.main,
   color: theme.palette.common.white,
   borderRadius: "50%",
-  minWidth: 28,
-  height: 28,
+  minWidth: 24,
+  height: 24,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontWeight: 700,
-  fontSize: 15,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+  fontSize: 13,
+  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
 }));
 
 const CategoryTitleBar = styled(Box)(({ theme }) => ({
@@ -100,8 +175,25 @@ const CategoryTitle = styled(Typography)({
   whiteSpace: "nowrap",
 });
 
+// Функция для получения иконки категории
+const getCategoryIcon = (categoryName) => {
+  const icons = {
+    healthcare: <HealthcareIcon />,
+    education: <EducationIcon />,
+    finance: <FinanceIcon />,
+    household: <HouseholdIcon />,
+    transport: <TransportIcon />,
+    legal: <LegalIcon />,
+    jobs: <WorkIcon />,
+    technology: <DevicesIcon />,
+  };
+
+  return icons[categoryName] || <CategoryIcon />;
+};
+
 const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
   const { t } = useTranslation();
+  const icon = getCategoryIcon(category.name);
 
   const getFallbackImageUrl = (categoryName) =>
     `https://placehold.co/300x180/e0e0e0/808080?text=${encodeURIComponent(
@@ -119,22 +211,41 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
 
   return (
     <Tooltip title={t(category.description || "")} enterDelay={700}>
-      <CategoryCardWrapper onClick={onClick}>
-        <CategoryImage
-          src={imageUrl}
-          alt={category.label || t(category.name)}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = getFallbackImageUrl(category.name);
-          }}
-        />
-        <CategoryCountBadge>{count}</CategoryCountBadge>
-        <CategoryTitleBar>
-          <CategoryTitle variant="subtitle1">
-            {t(category.label || category.name)}
-          </CategoryTitle>
-        </CategoryTitleBar>
-      </CategoryCardWrapper>
+      <>
+        {/* Карточка для десктопа */}
+        <CategoryCardWrapper selected={selected} onClick={onClick}>
+          <CategoryImage
+            src={imageUrl}
+            alt={category.label || t(category.name)}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = getFallbackImageUrl(category.name);
+            }}
+          />
+          <CategoryCountBadge>{count}</CategoryCountBadge>
+          <CategoryTitleBar>
+            <CategoryTitle variant="subtitle1">
+              {t(category.label || category.name)}
+            </CategoryTitle>
+          </CategoryTitleBar>
+        </CategoryCardWrapper>
+
+        {/* Компактная карточка для мобильных устройств */}
+        <MobileCategoryCard selected={selected} onClick={onClick}>
+          <MobileImageWrapper>
+            <MobileImage
+              src={imageUrl}
+              alt={category.label || t(category.name)}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = getFallbackImageUrl(category.name);
+              }}
+            />
+            <MobileCountBadge>{count}</MobileCountBadge>
+          </MobileImageWrapper>
+          <MobileTitle>{t(category.label || category.name)}</MobileTitle>
+        </MobileCategoryCard>
+      </>
     </Tooltip>
   );
 };

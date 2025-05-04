@@ -29,6 +29,7 @@ import {
   LocalOffer as OfferIcon,
   Update as UpdateIcon,
   Delete as DeleteIcon,
+  FavoriteBorder as FavoriteBorderIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -43,7 +44,12 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../assets/images/logo.svg";
 import { useChatModal } from "../../context/ChatModalContext";
 
-const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
+const NotificationItem = ({
+  notification,
+  onMarkAsRead,
+  onDelete,
+  onAction,
+}) => {
   const getIcon = () => {
     switch (notification.type) {
       case "message":
@@ -75,7 +81,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
       }
     >
       <ListItemButton
-        onClick={() => onMarkAsRead(notification._id)}
+        onClick={() => onAction(notification)}
         sx={{
           backgroundColor: notification.read ? "transparent" : "action.hover",
           "&:hover": {
@@ -96,19 +102,41 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
               sx={{
                 fontWeight: notification.read ? "regular" : "medium",
                 fontSize: "0.875rem",
+                wordBreak: "break-word",
+                whiteSpace: "pre-line",
+                overflowWrap: "break-word",
+                maxWidth: "100%",
+                display: "block",
               }}
             >
               {notification.message}
             </Typography>
           }
           secondary={
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                maxWidth: "100%",
+                display: "block",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+                whiteSpace: "pre-line",
+              }}
+            >
               {formatDistance(new Date(notification.createdAt), new Date(), {
                 addSuffix: true,
                 locale: ru,
               })}
             </Typography>
           }
+          sx={{
+            maxWidth: "100%",
+            display: "block",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            whiteSpace: "pre-line",
+          }}
         />
         {!notification.read && (
           <Box
@@ -326,6 +354,25 @@ const Header = ({ onDrawerToggle }) => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const handleNotificationAction = (notification) => {
+    // Отметить как прочитанное
+    handleMarkAsRead(notification._id);
+    // Переход по типу уведомления
+    if (notification.type === "message" && notification.requestId) {
+      openChat(notification.requestId);
+      handleNotificationsClose();
+    } else if (notification.type === "offer" && notification.relatedId) {
+      navigate(`/offers/${notification.relatedId}`);
+      handleNotificationsClose();
+    } else if (
+      (notification.type === "status" || notification.type === "request") &&
+      notification.relatedId
+    ) {
+      navigate(`/requests/${notification.relatedId}`);
+      handleNotificationsClose();
+    }
+  };
+
   // Drawer-меню для мобильных
   const drawerContent = (
     <Box
@@ -360,6 +407,15 @@ const Header = ({ onDrawerToggle }) => {
               <AccountCircle />
             </ListItemIcon>{" "}
             <ListItemText primary={t("profile")} />{" "}
+          </ListItem>
+        )}
+        {user && (
+          <ListItem button onClick={() => navigate("/favorites")}>
+            {" "}
+            <ListItemIcon>
+              <FavoriteBorderIcon />
+            </ListItemIcon>{" "}
+            <ListItemText primary={t("favorites")} />{" "}
           </ListItem>
         )}
         {user && (
@@ -522,8 +578,8 @@ const Header = ({ onDrawerToggle }) => {
                 transformOrigin={{ vertical: "top", horizontal: "right" }}
                 PaperProps={{
                   sx: {
-                    width: { xs: "100%", sm: 360 },
-                    maxWidth: "100%",
+                    width: { xs: 420, sm: 420 },
+                    maxWidth: 480,
                     maxHeight: { xs: "80vh", sm: "70vh" },
                     overflow: "auto",
                     mt: 1,
@@ -531,9 +587,9 @@ const Header = ({ onDrawerToggle }) => {
                   },
                 }}
                 sx={{
-                  width: { xs: "100%", sm: "auto" },
+                  width: { xs: 420, sm: 420 },
                   "& .MuiPopover-paper": {
-                    width: { xs: "100%", sm: 360 },
+                    width: { xs: 420, sm: 420 },
                     left: { xs: "0 !important", sm: "auto" },
                     right: { xs: "0 !important", sm: "auto" },
                   },
@@ -545,15 +601,28 @@ const Header = ({ onDrawerToggle }) => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    flexDirection: "row",
+                    gap: 2,
+                    flexWrap: "nowrap",
                   }}
                 >
-                  <Typography variant="h6">{t("notifications")}</Typography>
-                  <Box sx={{ display: "flex", gap: 1 }}>
+                  <Typography variant="h6" sx={{ minWidth: 120 }}>
+                    {t("notifications")}
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1.5,
+                      flexWrap: "nowrap",
+                      width: "auto",
+                    }}
+                  >
                     {unreadCount > 0 && (
                       <Button
                         size="small"
                         onClick={handleMarkAllAsRead}
                         disabled={loading}
+                        sx={{ minWidth: 120, whiteSpace: "normal" }}
                       >
                         {t("mark_all_read")}
                       </Button>
@@ -564,6 +633,7 @@ const Header = ({ onDrawerToggle }) => {
                         navigate("/notifications");
                         handleNotificationsClose();
                       }}
+                      sx={{ minWidth: 120, whiteSpace: "normal" }}
                     >
                       {t("view_all")}
                     </Button>
@@ -582,6 +652,7 @@ const Header = ({ onDrawerToggle }) => {
                         notification={notification}
                         onMarkAsRead={handleMarkAsRead}
                         onDelete={handleDelete}
+                        onAction={handleNotificationAction}
                       />
                     ))}
                   </List>

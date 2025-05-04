@@ -15,6 +15,9 @@ router.get("/provider/:providerId", reviewController.getReviewsByProvider);
 // Получение отзыва по ID - доступно всем
 router.get("/:reviewId", reviewController.getReviewById);
 
+// Получение отзывов, оставленных пользователем (userId) - доступно всем
+router.get("/user/:userId", reviewController.getReviewsByUser);
+
 // Создание нового отзыва - требуется аутентификация
 router.post("/", authenticateJWT, reviewController.createReview);
 

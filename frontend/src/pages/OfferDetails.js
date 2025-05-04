@@ -208,8 +208,18 @@ const OfferDetails = () => {
     setShareAnchorEl(null);
   };
 
-  const handleContactProvider = async () => {
+  const handleContactProvider = async (e) => {
+    // Останавливаем всплытие события, чтобы предотвратить конфликты
+    if (e && typeof e.stopPropagation === "function") {
+      e.stopPropagation();
+    }
+
+    let response = null;
+
     try {
+      console.log("[OfferDetails] handleContactProvider START");
+      console.log("[OfferDetails] openChat function:", openChat);
+
       const providerId = offer.providerId._id;
       const offerId = offer._id;
 
@@ -225,6 +235,8 @@ const OfferDetails = () => {
           providerId,
         },
       });
+
+      console.log("[OfferDetails] Existing requests:", existingRequests.data);
 
       let requestId;
 
@@ -252,8 +264,20 @@ const OfferDetails = () => {
         console.log("[OfferDetails] Created new request:", requestId);
       }
 
-      // Переходим в чат
-      openChat(requestId);
+      // Переходим в чат - вызываем с небольшой задержкой для предотвращения конфликта событий
+      console.log("[OfferDetails] Calling openChat with requestId:", requestId);
+      setTimeout(() => {
+        openChat({
+          requestId,
+          providerId: offer.providerId?._id,
+          userId: offer.userId?._id,
+          request:
+            existingRequests.data && existingRequests.data.length > 0
+              ? existingRequests.data[0]
+              : response?.data || null,
+        });
+        console.log("[OfferDetails] openChat called");
+      }, 100);
 
       // Сбрасываем счетчик непрочитанных сообщений
       setUnreadMessages(0);
@@ -282,7 +306,7 @@ const OfferDetails = () => {
                 />
               </Box>
             </Grid>
-            <Grid item xs={12} md={7}>
+            <Grid item xs={12} md={7} width={"100%"}>
               <Skeleton variant="text" height={40} width="60%" />
               <Skeleton variant="text" height={30} width="40%" sx={{ mt: 1 }} />
               <Skeleton
@@ -418,21 +442,8 @@ const OfferDetails = () => {
           </Stack>
         </Box>
 
-        {/* Сообщения об успехе/ошибке */}
+        {/* Сообщения об ошибке */}
         <AnimatePresence>
-          {success && (
-            <MotionBox
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              sx={{ mb: 2 }}
-            >
-              <Alert severity="success" onClose={() => setSuccess("")}>
-                {success}
-              </Alert>
-            </MotionBox>
-          )}
-
           {error && (
             <MotionBox
               initial={{ opacity: 0, y: -20 }}
@@ -644,16 +655,34 @@ const OfferDetails = () => {
                           : "P"}
                       </Avatar>
                       <Box sx={{ flex: 1, width: "100%" }}>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{
-                            textAlign: { xs: "center", sm: "left" },
-                            fontSize: { xs: 15, sm: 18 },
-                            fontWeight: 500,
-                          }}
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
                         >
-                          {safeProvider.name}
-                        </Typography>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{
+                              textAlign: { xs: "center", sm: "left" },
+                              fontSize: { xs: 15, sm: 18 },
+                              fontWeight: 500,
+                            }}
+                          >
+                            {safeProvider.name}
+                          </Typography>
+                          {safeProvider._id && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              href={`/profile/${safeProvider._id}`}
+                              sx={{
+                                textTransform: "none",
+                                fontSize: 13,
+                                ml: 1,
+                              }}
+                            >
+                              Профиль
+                            </Button>
+                          )}
+                        </Box>
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -758,6 +787,8 @@ const OfferDetails = () => {
                             minHeight: 32,
                             fontSize: 14,
                             py: 0.5,
+                            position: "relative",
+                            zIndex: 5,
                           }}
                         >
                           {t("chat")}

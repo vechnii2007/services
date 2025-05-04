@@ -728,9 +728,9 @@ router.post("/requests", auth, async (req, res) => {
     if (!serviceType) {
       return res.status(400).json({ error: "Service type is required" });
     }
-    if (!message) {
-      return res.status(400).json({ error: "Description is required" });
-    }
+    // if (!message) {
+    //   return res.status(400).json({ error: "Description is required" });
+    // }
 
     // Создание запроса
     const newRequest = new ServiceRequest({

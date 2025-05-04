@@ -30,20 +30,6 @@ import PromoteOfferModal from "../PromoteOfferModal";
 // Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
 
-const StatusChip = styled(Chip)(({ theme, status }) => ({
-  position: "absolute",
-  top: 16,
-  left: 16,
-  zIndex: 1,
-  backgroundColor:
-    status === "active" ? theme.palette.success.main : theme.palette.grey[500],
-  color: theme.palette.common.white,
-  fontWeight: "bold",
-  "& .MuiChip-icon": {
-    color: theme.palette.common.white,
-  },
-}));
-
 const PromoteButton = styled(IconButton)(({ theme }) => ({
   position: "absolute",
   top: 16,
@@ -62,16 +48,26 @@ const PromotedBadge = styled(Box)(({ theme }) => ({
   position: "absolute",
   top: 0,
   right: 0,
-  backgroundColor: theme.palette.success.main,
+  backgroundColor: theme.palette.error.main,
   color: theme.palette.common.white,
-  padding: theme.spacing(0.5, 1),
+  padding: theme.spacing(0.5, 1.2),
   borderRadius: `0 ${theme.shape.borderRadius}px 0 ${theme.shape.borderRadius}px`,
-  fontSize: "0.75rem",
-  fontWeight: "bold",
+  fontSize: "0.8rem",
+  fontWeight: "800",
   zIndex: 5,
   display: "flex",
   alignItems: "center",
   gap: theme.spacing(0.5),
+  boxShadow: "0px 2px 4px rgba(0,0,0,0.2)",
+  "&:before": {
+    content: '""',
+    position: "absolute",
+    left: -10,
+    top: 0,
+    borderStyle: "solid",
+    borderWidth: "0 10px 10px 0",
+    borderColor: `transparent ${theme.palette.error.main} transparent transparent`,
+  },
 }));
 
 // Фолбэк-компонент, который показывается вместо ошибки
@@ -252,24 +248,12 @@ const OfferCard = memo(
           }}
           onClick={handleViewClick}
         >
-          {isPromoted && (
+          {(isPromoted || promotionStatus?.isPromoted) && (
             <PromotedBadge>
               <TrendingUpIcon fontSize="small" />
               TOP
             </PromotedBadge>
           )}
-
-          <StatusChip
-            icon={
-              offer.status === "active" ? (
-                <CheckCircleIcon />
-              ) : (
-                <PauseCircleIcon />
-              )
-            }
-            label={t(`offer.status.${offer.status || "inactive"}`)}
-            status={offer.status}
-          />
 
           {shouldShowPromoteButton && (
             <PromoteButton
@@ -281,10 +265,6 @@ const OfferCard = memo(
             </PromoteButton>
           )}
 
-          {promotionStatus?.isPromoted && (
-            <PromotedBadge>{t("offer.promoted")}</PromotedBadge>
-          )}
-
           <OfferImage
             image={safeOfferImage}
             images={offer?.images}
@@ -292,7 +272,14 @@ const OfferCard = memo(
           />
 
           <CardContent sx={{ p: 2, flexGrow: 1 }}>
-            <Box sx={{ mb: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                mb: 1.5,
+              }}
+            >
               <Chip
                 icon={<CategoryIcon />}
                 label={t(safeServiceType)}
@@ -301,6 +288,7 @@ const OfferCard = memo(
                   backgroundColor: (theme) => theme.palette.grey[200],
                   color: (theme) => theme.palette.text.secondary,
                   fontWeight: "medium",
+                  height: "24px",
                 }}
               />
             </Box>
@@ -323,7 +311,13 @@ const OfferCard = memo(
             />
 
             <Box
-              sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mt: 2,
+                pt: 1,
+                borderTop: (theme) => `1px solid ${theme.palette.divider}`,
+              }}
             >
               <IconButton onClick={handleViewClick} size="small">
                 <VisibilityIcon />

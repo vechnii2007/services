@@ -275,6 +275,71 @@ class OfferService extends BaseService {
       return null;
     }
   }
+
+  async getTopCategories(limit = 5) {
+    try {
+      console.log(`[OfferService] Getting top ${limit} categories`);
+      const response = await this.get("/categories/top", { limit });
+      return {
+        categories: response.categories || [],
+        totalCategories: response.total || 0,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("[OfferService] Error getting top categories:", {
+        limit,
+        error: error.message,
+        status: error.response?.status,
+      });
+      // Используем фолбэк данные из PromotedOffersSlider
+      return {
+        categories: [
+          {
+            id: "1",
+            name: "healthcare",
+            label: "Медицина",
+            count: 12,
+            hasImage: true,
+            imageUrl: "/uploads/images/healthcare.jpg",
+          },
+          {
+            id: "2",
+            name: "household",
+            label: "Бытовые услуги",
+            count: 8,
+            hasImage: true,
+            imageUrl: "/uploads/images/household.jpg",
+          },
+          {
+            id: "3",
+            name: "finance",
+            label: "Финансы",
+            count: 6,
+            hasImage: true,
+            imageUrl: "/uploads/images/finance.jpg",
+          },
+          {
+            id: "4",
+            name: "education",
+            label: "Образование",
+            count: 5,
+            hasImage: true,
+            imageUrl: "/uploads/images/education.jpg",
+          },
+          {
+            id: "5",
+            name: "transport",
+            label: "Транспорт",
+            count: 3,
+            hasImage: true,
+            imageUrl: "/uploads/images/transport.jpg",
+          },
+        ],
+        totalCategories: 5,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
 }
 
 export default new OfferService();
