@@ -176,17 +176,23 @@ class PromotionService {
       const offersWithRating = await Promise.all(
         offers.map(async (offer) => {
           const ratingInfo = await Review.getAverageRatingByOffer(offer._id);
+          let provider = null;
+          if (offer.providerId && typeof offer.providerId === "object") {
+            provider = {
+              _id: offer.providerId._id,
+              name: offer.providerId.name,
+              email: offer.providerId.email,
+              avatar: offer.providerId.avatar,
+              status: offer.providerId.status,
+              providerInfo: offer.providerId.providerInfo,
+              createdAt: offer.providerId.createdAt,
+            };
+          }
           return {
             ...offer._doc,
             rating: ratingInfo.rating,
             reviewCount: ratingInfo.count,
-            provider: offer.providerId
-              ? {
-                  _id: offer.providerId._id,
-                  name: offer.providerId.name,
-                  avatar: offer.providerId.avatar,
-                }
-              : null,
+            provider,
           };
         })
       );
