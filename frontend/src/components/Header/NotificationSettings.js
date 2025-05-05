@@ -24,7 +24,6 @@ const NotificationSettings = () => {
     email: true,
     push: true,
   });
-  const [pushPermission, setPushPermission] = useState("default");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -36,8 +35,6 @@ const NotificationSettings = () => {
         setLoading(true);
         const data = await NotificationService.getNotificationPreferences();
         setPreferences(data);
-        const permission = await NotificationService.getNotificationStatus();
-        setPushPermission(permission);
       } catch (err) {
         console.error("Error loading notification preferences:", err);
         setError(t("error_loading_preferences"));
@@ -66,58 +63,6 @@ const NotificationSettings = () => {
       console.error("Error updating preferences:", err);
       setError(t("error_updating_preferences"));
       setTimeout(() => setError(null), 3000);
-    }
-  };
-
-  // Запрос разрешения на push-уведомления
-  const requestPushPermission = async () => {
-    try {
-      setLoading(true);
-      const permissionGranted =
-        await NotificationService.requestNotificationPermission();
-      setPushPermission(permissionGranted ? "granted" : "denied");
-
-      if (permissionGranted) {
-        if ("serviceWorker" in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          const subscribed = await NotificationService.createPushSubscription(
-            registration
-          );
-
-          if (subscribed) {
-            setSuccess(t("push_subscribed"));
-            setPreferences({ ...preferences, push: true });
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error requesting push permission:", err);
-      setError(t("error_push_permission"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Отписка от push-уведомлений
-  const unsubscribeFromPush = async () => {
-    try {
-      setLoading(true);
-      if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        const unsubscribed = await NotificationService.removePushSubscription(
-          registration
-        );
-
-        if (unsubscribed) {
-          setSuccess(t("push_unsubscribed"));
-          setPreferences({ ...preferences, push: false });
-        }
-      }
-    } catch (err) {
-      console.error("Error unsubscribing from push:", err);
-      setError(t("error_push_unsubscribe"));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -197,49 +142,7 @@ const NotificationSettings = () => {
           }
           label={t("email_notifications")}
         />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={preferences.push}
-              onChange={handleToggle("push")}
-              disabled={pushPermission !== "granted"}
-            />
-          }
-          label={t("push_notifications")}
-        />
       </FormGroup>
-
-      <Box sx={{ mt: 2 }}>
-        {pushPermission === "granted" ? (
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={unsubscribeFromPush}
-            disabled={loading}
-          >
-            {loading ? <CircularProgress size={24} /> : t("disable_push")}
-          </Button>
-        ) : (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={requestPushPermission}
-            disabled={loading || pushPermission === "denied"}
-          >
-            {loading ? <CircularProgress size={24} /> : t("enable_push")}
-          </Button>
-        )}
-
-        {pushPermission === "denied" && (
-          <Typography
-            variant="caption"
-            color="error"
-            sx={{ display: "block", mt: 1 }}
-          >
-            {t("notifications_blocked")}
-          </Typography>
-        )}
-      </Box>
     </Paper>
   );
 };

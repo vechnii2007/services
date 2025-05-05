@@ -21,13 +21,7 @@ const AdminPanelTabs = () => {
       await AdminService.clearCache();
       setCacheCleared(true);
     } catch (e) {
-      // fallback: если не получилось через сервер, пробуем локально
-      if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: "CLEAR_CACHE" });
-        setCacheCleared(true);
-      } else {
-        alert("Service worker не активен или не поддерживается.");
-      }
+      alert("Не удалось очистить кэш через сервер.");
     }
   };
 

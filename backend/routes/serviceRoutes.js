@@ -206,9 +206,11 @@ router.get("/offers/promoted", async (req, res) => {
 
 // Получение конкретного предложения по ID (доступно всем, включая гостей)
 router.get("/offers/:id", async (req, res) => {
+  console.log(`[Offer API] Получен запрос на offer id: ${req.params.id}`);
   try {
     const service = await ServiceOffer.findById(req.params.id);
     if (service) {
+      console.log(`[Offer API] Найден ServiceOffer: ${service._id}`);
       return res.json({ ...service._doc, type: "ServiceOffer" });
     }
 
@@ -218,6 +220,7 @@ router.get("/offers/:id", async (req, res) => {
     });
 
     if (offer) {
+      console.log(`[Offer API] Найден Offer: ${offer._id}`);
       // Получаем рейтинг и отзывы по предложению
       const offerRatingInfo = await Review.getAverageRatingByOffer(offer._id);
       // Форматируем ответ
@@ -226,16 +229,18 @@ router.get("/offers/:id", async (req, res) => {
         type: "Offer",
         rating: offerRatingInfo.rating,
         reviewCount: offerRatingInfo.count,
-        provider: {
-          _id: offer.providerId._id,
-          name: offer.providerId.name,
-          email: offer.providerId.email,
-          phone: offer.providerId.phone,
-          address: offer.providerId.address,
-          status: offer.providerId.status,
-          createdAt: offer.providerId.createdAt,
-          providerInfo: offer.providerId.providerInfo,
-        },
+        provider: offer.providerId
+          ? {
+              _id: offer.providerId._id,
+              name: offer.providerId.name,
+              email: offer.providerId.email,
+              phone: offer.providerId.phone,
+              address: offer.providerId.address,
+              status: offer.providerId.status,
+              createdAt: offer.providerId.createdAt,
+              providerInfo: offer.providerId.providerInfo,
+            }
+          : null,
       };
 
       // Добавляем URL для изображений
@@ -264,9 +269,14 @@ router.get("/offers/:id", async (req, res) => {
       return res.json(formattedOffer);
     }
 
+    console.log(`[Offer API] Offer not found: ${req.params.id}`);
     res.status(404).json({ error: "Offer not found" });
   } catch (error) {
-    res.status(500).json({ error: "Server error" });
+    console.error(
+      `[Offer API] Ошибка при получении offer id ${req.params.id}:`,
+      error
+    );
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 });
 

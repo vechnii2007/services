@@ -36,7 +36,6 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data && response.data.token) {
         setToken(response.data.token);
-        await updateUser();
         return response.data;
       } else {
         throw new Error("Invalid response format");
