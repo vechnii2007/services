@@ -1,0 +1,440 @@
+Subject: [PATCH] added google auth and change user role
+---
+Index: .gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+--- /dev/null	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
++++ b/.gitignore	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -0,0 +1,1 @@
++backend/node_modules/ 
+\ No newline at end of file
+Index: backend/.env
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/.env b/backend/.env
+--- a/backend/.env	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/backend/.env	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -6,4 +6,7 @@
+ WEB_PUSH_CONTACT=mailto:vechniy2007@gmail.com
+ CLOUDINARY_CLOUD_NAME=dcery2t0t
+ CLOUDINARY_API_KEY=313924683454243
+-CLOUDINARY_API_SECRET=DgJ5818uIhPJMSBTfAY2PKxiZ7M
+\ No newline at end of file
++CLOUDINARY_API_SECRET=DgJ5818uIhPJMSBTfAY2PKxiZ7M
++GOOGLE_CLIENT_ID=495806713115-ulkqrps6bqbsk7gq9o6ps9ctmh0pt250.apps.googleusercontent.com
++GOOGLE_CLIENT_SECRET=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
++GOOGLE_CALLBACK_URL=http://localhost:5001/api/users/auth/google/callback
+\ No newline at end of file
+Index: backend/config/passport.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/config/passport.js b/backend/config/passport.js
+new file mode 100644
+--- /dev/null	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
++++ b/backend/config/passport.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -0,0 +1,54 @@
++const passport = require("passport");
++const GoogleStrategy = require("passport-google-oauth20").Strategy;
++const User = require("../models/User");
++require("dotenv").config();
++
++passport.use(
++  new GoogleStrategy(
++    {
++      clientID: process.env.GOOGLE_CLIENT_ID,
++      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
++      callbackURL: process.env.GOOGLE_CALLBACK_URL,
++    },
++    async (accessToken, refreshToken, profile, done) => {
++      try {
++        let user = await User.findOne({ googleId: profile.id });
++        if (!user) {
++          // Если пользователя с таким googleId нет, ищем по email
++          const email =
++            profile.emails && profile.emails[0] && profile.emails[0].value;
++          user = await User.findOne({ email });
++          if (user) {
++            user.googleId = profile.id;
++            await user.save();
++          } else {
++            user = await User.create({
++              googleId: profile.id,
++              name: profile.displayName || "Google User",
++              email: email,
++              password: Math.random().toString(36).slice(-8), // временный пароль
++            });
++          }
++        }
++        return done(null, user);
++      } catch (err) {
++        return done(err, null);
++      }
++    }
++  )
++);
++
++passport.serializeUser((user, done) => {
++  done(null, user.id);
++});
++
++passport.deserializeUser(async (id, done) => {
++  try {
++    const user = await User.findById(id);
++    done(null, user);
++  } catch (err) {
++    done(err, null);
++  }
++});
++
++module.exports = passport;
+Index: backend/index.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/index.js b/backend/index.js
+--- a/backend/index.js	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/backend/index.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -17,6 +17,7 @@
+ const searchRoutes = require("./routes/search");
+ const reviewRoutes = require("./routes/reviewRoutes");
+ const { UPLOADS_DIR, UPLOADS_PATH } = require("./config/uploadConfig");
++const passport = require("./config/passport");
+ 
+ // Логирование для проверки JWT_SECRET
+ console.log("JWT_SECRET:", process.env.JWT_SECRET);
+@@ -162,3 +163,5 @@
+ mongoose.connection.on("error", (err) => {
+   console.error("MongoDB connection error:", err);
+ });
++
++app.use(passport.initialize());
+Index: backend/models/User.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/models/User.js b/backend/models/User.js
+--- a/backend/models/User.js	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/backend/models/User.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -124,6 +124,11 @@
+       type: Date,
+       default: Date.now,
+     },
++    googleId: {
++      type: String,
++      unique: true,
++      sparse: true,
++    },
+   },
+   { timestamps: true }
+ );
+Index: backend/routes/userRoutes.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/routes/userRoutes.js b/backend/routes/userRoutes.js
+--- a/backend/routes/userRoutes.js	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/backend/routes/userRoutes.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -4,6 +4,8 @@
+ const jwt = require("jsonwebtoken");
+ const User = require("../models/User");
+ const auth = require("../middleware/auth");
++const passport = require("../config/passport");
++require("dotenv").config();
+ 
+ // Регистрация пользователя
+ router.post("/register", async (req, res) => {
+@@ -206,7 +208,7 @@
+ });
+ 
+ // Получение информации о пользователе по ID (для публичного доступа)
+-router.get("/:id", async (req, res) => {
++router.get(":id", async (req, res) => {
+   try {
+     const user = await User.findById(req.params.id).select(
+       "-password -email -phone -__v"
+@@ -242,5 +244,49 @@
+     res.status(500).json({ error: "Server error" });
+   }
+ });
++
++// Google OAuth2: старт (оба пути)
++router.get(
++  "/auth/google",
++  passport.authenticate("google", { scope: ["profile", "email"] })
++);
++
++// Google OAuth2: callback (оба пути)
++router.get(
++  "/auth/google/callback",
++  passport.authenticate("google", { session: false, failureRedirect: "/" }),
++  (req, res) => {
++    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
++      expiresIn: "7d",
++    });
++    res.redirect(
++      `${
++        process.env.FRONTEND_URL || "http://localhost:3000"
++      }/oauth-success?token=${token}`
++    );
++  }
++);
++
++// Обновление профиля пользователя (роль, телефон, адрес и т.д.)
++router.put("/profile", auth, async (req, res) => {
++  try {
++    const user = await User.findById(req.user.id);
++    if (!user) {
++      return res.status(404).json({ error: "User not found" });
++    }
++    // Разрешаем менять только name, phone, address, role (но не admin)
++    const { name, phone, address, role } = req.body;
++    if (name) user.name = name;
++    if (phone) user.phone = phone;
++    if (address) user.address = address;
++    if (role && ["user", "provider"].includes(role)) {
++      user.role = role;
++    }
++    await user.save();
++    res.json({ success: true, user });
++  } catch (error) {
++    res.status(500).json({ error: "Server error" });
++  }
++});
+ 
+ module.exports = router;
+Index: frontend/src/pages/Login.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/frontend/src/pages/Login.js b/frontend/src/pages/Login.js
+--- a/frontend/src/pages/Login.js	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/frontend/src/pages/Login.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -98,6 +98,19 @@
+             >
+               {t("login")}
+             </Button>
++            <Button
++              fullWidth
++              variant="outlined"
++              color="primary"
++              sx={{ mb: 2 }}
++              onClick={() => {
++                window.location.href =
++                  process.env.REACT_APP_API_URL + "/users/auth/google" ||
++                  "http://localhost:5001/api/users/auth/google";
++              }}
++            >
++              Войти через Google
++            </Button>
+           </Box>
+         </CardContent>
+       </Card>
+Index: frontend/src/pages/OauthSuccess.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/frontend/src/pages/OauthSuccess.js b/frontend/src/pages/OauthSuccess.js
+new file mode 100644
+--- /dev/null	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
++++ b/frontend/src/pages/OauthSuccess.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -0,0 +1,133 @@
++import React, { useEffect, useContext, useState } from "react";
++import { useNavigate, useLocation } from "react-router-dom";
++import { AuthContext } from "../context/AuthContext";
++import {
++  Dialog,
++  DialogTitle,
++  DialogContent,
++  DialogActions,
++  Button,
++  TextField,
++  MenuItem,
++  Box,
++  Typography,
++} from "@mui/material";
++
++const ROLE_OPTIONS = [
++  { value: "user", label: "Пользователь" },
++  { value: "provider", label: "Провайдер" },
++];
++
++const OauthSuccess = () => {
++  const navigate = useNavigate();
++  const location = useLocation();
++  const { refetch, user, updateUser } = useContext(AuthContext);
++  const [showProfileDialog, setShowProfileDialog] = useState(false);
++  const [form, setForm] = useState({ role: "user", phone: "", address: "" });
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState("");
++
++  useEffect(() => {
++    const params = new URLSearchParams(location.search);
++    const token = params.get("token");
++    if (token) {
++      localStorage.setItem("token", token);
++      if (typeof refetch === "function") {
++        refetch();
++      }
++    } else {
++      navigate("/login", { replace: true });
++    }
++    // eslint-disable-next-line
++  }, []);
++
++  useEffect(() => {
++    if (user) {
++      if (!user.role || !["user", "provider"].includes(user.role)) {
++        setShowProfileDialog(true);
++        setForm({
++          role: "user",
++          phone: user.phone || "",
++          address: user.address || "",
++        });
++      } else {
++        navigate("/offers", { replace: true });
++      }
++    }
++  }, [user, navigate]);
++
++  const handleChange = (e) => {
++    setForm({ ...form, [e.target.name]: e.target.value });
++  };
++
++  const handleSubmit = async () => {
++    setLoading(true);
++    setError("");
++    try {
++      await updateUser(form);
++      setShowProfileDialog(false);
++      navigate("/offers", { replace: true });
++    } catch (err) {
++      setError("Ошибка при обновлении профиля");
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  return (
++    <>
++      <div>Авторизация через Google... Пожалуйста, подождите.</div>
++      <Dialog open={showProfileDialog} disableEscapeKeyDown>
++        <DialogTitle>Завершите регистрацию</DialogTitle>
++        <DialogContent>
++          <Typography sx={{ mb: 2 }}>
++            Пожалуйста, выберите роль и заполните недостающие данные:
++          </Typography>
++          <TextField
++            select
++            label="Роль"
++            name="role"
++            value={form.role}
++            onChange={handleChange}
++            fullWidth
++            sx={{ mb: 2 }}
++          >
++            {ROLE_OPTIONS.map((option) => (
++              <MenuItem key={option.value} value={option.value}>
++                {option.label}
++              </MenuItem>
++            ))}
++          </TextField>
++          <TextField
++            label="Телефон"
++            name="phone"
++            value={form.phone}
++            onChange={handleChange}
++            fullWidth
++            sx={{ mb: 2 }}
++          />
++          <TextField
++            label="Адрес"
++            name="address"
++            value={form.address}
++            onChange={handleChange}
++            fullWidth
++            sx={{ mb: 2 }}
++          />
++          {error && (
++            <Typography color="error" sx={{ mb: 1 }}>
++              {error}
++            </Typography>
++          )}
++        </DialogContent>
++        <DialogActions>
++          <Button onClick={handleSubmit} variant="contained" disabled={loading}>
++            Сохранить
++          </Button>
++        </DialogActions>
++      </Dialog>
++    </>
++  );
++};
++
++export default OauthSuccess;
+Index: frontend/src/pages/Profile.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/frontend/src/pages/Profile.js b/frontend/src/pages/Profile.js
+--- a/frontend/src/pages/Profile.js	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/frontend/src/pages/Profile.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -184,6 +184,18 @@
+                   <MenuItem value="offline">{t("offline")}</MenuItem>
+                 </Select>
+               </FormControl>
++              <FormControl fullWidth margin="normal">
++                <InputLabel>Роль</InputLabel>
++                <Select
++                  name="role"
++                  value={formData.role || user.role || "user"}
++                  onChange={handleChange}
++                  disabled={user.role === "admin"}
++                >
++                  <MenuItem value="user">Пользователь</MenuItem>
++                  <MenuItem value="provider">Провайдер</MenuItem>
++                </Select>
++              </FormControl>
+               <Button
+                 type="submit"
+                 variant="contained"
+Index: frontend/src/utils/routesConfig.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/frontend/src/utils/routesConfig.js b/frontend/src/utils/routesConfig.js
+--- a/frontend/src/utils/routesConfig.js	(revision a46ac85cec51b4eddd29baadf0266eeef62d3b81)
++++ b/frontend/src/utils/routesConfig.js	(revision bd8fe5ccd0c378bffe0cda733f7f9edc6930f659)
+@@ -23,6 +23,7 @@
+ const Notifications = lazy(() => import("../pages/Notifications"));
+ const RequestDetails = lazy(() => import("../pages/RequestDetails"));
+ const ProfileById = lazy(() => import("../pages/ProfileById"));
++const OauthSuccess = lazy(() => import("../pages/OauthSuccess"));
+ 
+ // Компонент загрузки для Suspense
+ const Loading = () => (
+@@ -145,5 +146,10 @@
+     path: "/requests/:id",
+     element: withSuspense(RequestDetails),
+     requiredRole: null,
++  },
++  {
++    path: "/oauth-success",
++    element: withSuspense(OauthSuccess),
++    requiredRole: null,
+   },
+ ];
