@@ -60,13 +60,11 @@ const ChatList = () => {
 
         // Получаем запросы, созданные пользователем
         const userRes = await axios.get(`/services/my-chats`);
-        console.log("User requests:", userRes.data);
         setUserRequests(userRes.data);
 
         let providerRes = { data: [] };
         if (user && (user.role === "provider" || user.role === "admin")) {
           providerRes = await axios.get(`/services/provider-chats`);
-          console.log("Provider requests:", providerRes.data);
           setProviderRequests(providerRes.data);
         } else {
           setProviderRequests([]);
@@ -110,7 +108,6 @@ const ChatList = () => {
         } else {
           setMessage("Error: " + error.message);
         }
-        console.error(error);
       } finally {
         setLoading(false);
       }

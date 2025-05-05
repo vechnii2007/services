@@ -22,7 +22,7 @@ import { routesConfig } from "../utils/routesConfig";
 import { AuthContext } from "../context/AuthContext";
 import { useChatModal } from "../context/ChatModalContext";
 import toast, { Toaster } from "react-hot-toast";
-import useSocket from "../hooks/useSocket";
+import { SocketContext } from "../context/SocketContext";
 import useNotification from "../composables/useNotification";
 
 // Мемоизированные компоненты для предотвращения ререндеров
@@ -32,7 +32,6 @@ const MemoToaster = memo(Toaster);
 
 // Избегаем частых ререндеров за счет мемоизации компонента
 const AppContent = () => {
-  console.log("[AppContent] RENDER", Math.random());
   const { t } = useTranslation();
   const location = useLocation();
   const { user, loading } = useContext(AuthContext);
@@ -44,7 +43,7 @@ const AppContent = () => {
     requestId: modalRequestId,
   } = useChatModal();
   const navigate = useNavigate();
-  const { socket } = useSocket();
+  const { socket } = useContext(SocketContext);
   const { addNotification } = useNotification();
 
   // Используем useRef для хранения информации о монтировании/размонтировании без вызова ререндеров
@@ -87,15 +86,9 @@ const AppContent = () => {
   useEffect(() => {
     if (!mountInfoRef.current.mounted) {
       mountInfoRef.current.mounted = true;
-      console.log(
-        "[AppContent] MOUNT",
-        mountInfoRef.current.mountTime,
-        new Error().stack
-      );
     }
 
     return () => {
-      console.log("[AppContent] UNMOUNT", new Date().toISOString());
       mountInfoRef.current.mounted = false;
       mountInfoRef.current.mountTime = new Date().toISOString();
     };

@@ -25,12 +25,9 @@ class OfferService extends BaseService {
 
   async getMyOffers() {
     try {
-      console.log("Fetching my offers...");
       const response = await this.get("/my-offers");
-      console.log("My offers response:", response);
       return response;
     } catch (error) {
-      console.error("Error fetching my offers:", error);
       throw error;
     }
   }
@@ -104,7 +101,6 @@ class OfferService extends BaseService {
 
   async toggleFavorite(offerId, offerType = "offer") {
     if (!offerId) {
-      console.warn("[OfferService] toggleFavorite called without offerId");
       return {
         success: false,
         isFavorite: false,
@@ -113,11 +109,6 @@ class OfferService extends BaseService {
     }
 
     try {
-      console.log("[OfferService] Toggling favorite status:", {
-        offerId,
-        offerType,
-      });
-
       const serverOfferType =
         offerType === "offer"
           ? "Offer"
@@ -129,8 +120,6 @@ class OfferService extends BaseService {
         offerId,
         offerType: serverOfferType,
       });
-
-      console.log("[OfferService] Toggle favorite response:", response);
 
       const isFavorite = response?.message?.includes("Added to favorites");
 
@@ -145,13 +134,7 @@ class OfferService extends BaseService {
         }
 
         localStorage.setItem("userFavorites", JSON.stringify(favorites));
-        console.log("[OfferService] Updated localStorage favorites:", {
-          isFavorite,
-          offerId,
-        });
-      } catch (e) {
-        console.error("[OfferService] Error updating localStorage:", e);
-      }
+      } catch (e) {}
 
       return {
         success: true,
@@ -159,7 +142,6 @@ class OfferService extends BaseService {
         message: response?.message || "",
       };
     } catch (error) {
-      console.error("[OfferService] Error in toggleFavorite:", error);
       return {
         success: false,
         isFavorite: false,
@@ -171,10 +153,8 @@ class OfferService extends BaseService {
   async getCategoryStats() {
     try {
       const response = await this.get("/categories/stats");
-      console.log("[OfferService] Category stats:", response);
       return response;
     } catch (error) {
-      console.error("[OfferService] Error getting category stats:", error);
       return {
         stats: [],
         totalOffers: 0,
@@ -189,23 +169,13 @@ class OfferService extends BaseService {
 
   async getPromotionStatus(offerId) {
     if (!offerId) {
-      console.warn("[OfferService] getPromotionStatus called without offerId");
       return { isPromoted: false };
     }
 
     try {
-      console.log(
-        `[OfferService] Checking promotion status for offer: ${offerId}`
-      );
       const response = await this.get(`/offers/${offerId}/promotion-status`);
       return response || { isPromoted: false };
     } catch (error) {
-      console.error("[OfferService] Error checking promotion status:", {
-        offerId,
-        error: error.message,
-        status: error.response?.status,
-      });
-
       return {
         isPromoted: false,
         error: error.message,
@@ -219,66 +189,34 @@ class OfferService extends BaseService {
 
     for (let attempt = 0; attempt <= retryAttempts; attempt++) {
       try {
-        console.log(
-          `[OfferService] Getting promoted offers (attempt ${attempt + 1}/${
-            retryAttempts + 1
-          }):`,
-          { limit, skip }
-        );
         const response = await this.get("/offers/promoted", { limit, skip });
-        console.log("[OfferService] Promoted offers received:", {
-          count: response?.offers?.length || 0,
-          total: response?.total || 0,
-        });
         return response;
       } catch (error) {
         lastError = error;
-        console.error(
-          `[OfferService] Error getting promoted offers (attempt ${
-            attempt + 1
-          }/${retryAttempts + 1}):`,
-          {
-            error: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-          }
-        );
-
         if (attempt < retryAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     }
 
-    console.error(
-      "[OfferService] All attempts to fetch promoted offers failed"
-    );
     throw lastError;
   }
 
   async getProviderInfo(providerId) {
     if (!providerId) {
-      console.warn("[OfferService] getProviderInfo called without providerId");
       return null;
     }
 
     try {
-      console.log(`[OfferService] Getting provider info for ID: ${providerId}`);
       const response = await this.get(`/users/${providerId}`);
       return response;
     } catch (error) {
-      console.error("[OfferService] Error getting provider info:", {
-        providerId,
-        error: error.message,
-        status: error.response?.status,
-      });
       return null;
     }
   }
 
   async getTopCategories(limit = 5) {
     try {
-      console.log(`[OfferService] Getting top ${limit} categories`);
       const response = await this.get("/categories/top", { limit });
       return {
         categories: response.categories || [],
@@ -286,12 +224,6 @@ class OfferService extends BaseService {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.error("[OfferService] Error getting top categories:", {
-        limit,
-        error: error.message,
-        status: error.response?.status,
-      });
-      // Используем фолбэк данные из PromotedOffersSlider
       return {
         categories: [
           {

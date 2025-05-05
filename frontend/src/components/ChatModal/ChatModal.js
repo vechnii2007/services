@@ -4,6 +4,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useContext,
 } from "react";
 import PropTypes from "prop-types";
 import Dialog from "@mui/material/Dialog";
@@ -28,7 +29,6 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 import { styled, alpha } from "@mui/material/styles";
-import { useSocket } from "../../hooks/useSocket";
 import { useAuth } from "../../context/AuthContext";
 import ChatService from "../../services/ChatService";
 import { getRelativeTime } from "../../utils/dateUtils";
@@ -40,6 +40,7 @@ import {
 import ChatInput from "./ChatInput";
 import MessagesList from "./MessagesList";
 import InfoPanel from "./InfoPanel";
+import { SocketContext } from "../../context/SocketContext";
 
 const HEADER_HEIGHT = 64;
 
@@ -188,7 +189,7 @@ const ChatModal = React.forwardRef(
   ) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-    const { socket, isConnected } = useSocket();
+    const { socket, isConnected } = useContext(SocketContext);
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
@@ -214,26 +215,15 @@ const ChatModal = React.forwardRef(
     // Синхронизируем локальное состояние с пропсами
     useEffect(() => {
       if (open) {
-        console.log("[ChatModal] Opening dialog");
         setLocalOpen(true);
         initialOpenRef.current = true;
       } else if (initialOpenRef.current) {
-        // Только если диалог был открыт хотя бы раз
-        console.log("[ChatModal] Closing dialog");
         setLocalOpen(false);
       }
     }, [open]);
 
     // Добавляем логирование пропсов
-    useEffect(() => {
-      console.log("[ChatModal] Props received:", {
-        open,
-        localOpen,
-        requestId,
-        userId,
-        providerId,
-      });
-    }, [open, localOpen, requestId, userId, providerId]);
+    useEffect(() => {}, [open, localOpen, requestId, userId, providerId]);
 
     // Скролл вниз
     const scrollToBottom = useCallback(() => {
@@ -284,12 +274,6 @@ const ChatModal = React.forwardRef(
         }
         try {
           setLoading(true);
-          console.log(
-            "[ChatModal] fetchMessages вызван для requestId:",
-            requestId,
-            "recipientId:",
-            recipientToUse
-          );
           const fetchedMessages = await ChatService.getMessages(requestId);
           const normalizedMessages = fetchedMessages
             .map((msg) => normalizeMessage(msg))
@@ -316,7 +300,6 @@ const ChatModal = React.forwardRef(
     // Загрузка информации о чате
     const fetchChatInfo = useCallback(async () => {
       if (!requestId || !user?._id) return;
-      console.log("[ChatModal] fetchChatInfo вызван для requestId:", requestId);
       try {
         let response = requestProp;
         if (!response) {

@@ -93,102 +93,71 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
     const fetchPromotedOffers = async () => {
       // Функция-помощник для получения топ-категорий
       const fetchTopCategories = async (limit = 5) => {
-        try {
-          console.log(
-            `[PromotedOffersSlider] Fetching top ${limit} categories`
-          );
-          if (typeof OfferService.getTopCategories !== "function") {
-            console.warn(
-              "[PromotedOffersSlider] getTopCategories is not a function, using mock data"
-            );
-            return {
-              categories: [
-                {
-                  id: "1",
-                  name: "healthcare",
-                  label: "Медицина",
-                  count: 12,
-                  hasImage: true,
-                  imageUrl: "/uploads/images/healthcare.jpg",
-                },
-                {
-                  id: "2",
-                  name: "household",
-                  label: "Бытовые услуги",
-                  count: 8,
-                  hasImage: true,
-                  imageUrl: "/uploads/images/household.jpg",
-                },
-                {
-                  id: "3",
-                  name: "finance",
-                  label: "Финансы",
-                  count: 6,
-                  hasImage: true,
-                  imageUrl: "/uploads/images/finance.jpg",
-                },
-                {
-                  id: "4",
-                  name: "education",
-                  label: "Образование",
-                  count: 5,
-                  hasImage: true,
-                  imageUrl: "/uploads/images/education.jpg",
-                },
-                {
-                  id: "5",
-                  name: "transport",
-                  label: "Транспорт",
-                  count: 3,
-                  hasImage: true,
-                  imageUrl: "/uploads/images/transport.jpg",
-                },
-              ],
-              totalCategories: 5,
-              timestamp: new Date().toISOString(),
-            };
-          }
-          const data = await OfferService.getTopCategories(limit);
-          console.log("[PromotedOffersSlider] Top categories response:", data);
-          return data;
-        } catch (error) {
-          console.error(
-            "[PromotedOffersSlider] Error fetching top categories:",
-            error
+        if (typeof OfferService.getTopCategories !== "function") {
+          console.warn(
+            "[PromotedOffersSlider] getTopCategories is not a function, using mock data"
           );
           return {
-            categories: [],
-            totalCategories: 0,
+            categories: [
+              {
+                id: "1",
+                name: "healthcare",
+                label: "Медицина",
+                count: 12,
+                hasImage: true,
+                imageUrl: "/uploads/images/healthcare.jpg",
+              },
+              {
+                id: "2",
+                name: "household",
+                label: "Бытовые услуги",
+                count: 8,
+                hasImage: true,
+                imageUrl: "/uploads/images/household.jpg",
+              },
+              {
+                id: "3",
+                name: "finance",
+                label: "Финансы",
+                count: 6,
+                hasImage: true,
+                imageUrl: "/uploads/images/finance.jpg",
+              },
+              {
+                id: "4",
+                name: "education",
+                label: "Образование",
+                count: 5,
+                hasImage: true,
+                imageUrl: "/uploads/images/education.jpg",
+              },
+              {
+                id: "5",
+                name: "transport",
+                label: "Транспорт",
+                count: 3,
+                hasImage: true,
+                imageUrl: "/uploads/images/transport.jpg",
+              },
+            ],
+            totalCategories: 5,
             timestamp: new Date().toISOString(),
           };
         }
+        const data = await OfferService.getTopCategories(limit);
+        return data;
       };
 
       // Функция-помощник для получения промо-предложений
       const fetchPromotedOffersData = async (limit = 5) => {
-        try {
-          console.log(
-            `[PromotedOffersSlider] Fetching promoted offers (limit: ${limit})`
-          );
-          if (typeof OfferService.getPromotedOffers !== "function") {
-            console.warn(
-              "[PromotedOffersSlider] getPromotedOffers is not a function, using empty data"
-            );
-            return { offers: [], total: 0, hasMore: false };
-          }
-          const response = await OfferService.getPromotedOffers(limit);
-          console.log(
-            "[PromotedOffersSlider] Promoted offers response:",
-            response
-          );
-          return response;
-        } catch (error) {
-          console.error(
-            "[PromotedOffersSlider] Error fetching promoted offers:",
-            error
+        if (typeof OfferService.getPromotedOffers !== "function") {
+          console.warn(
+            "[PromotedOffersSlider] getPromotedOffers is not a function, using empty data"
           );
           return { offers: [], total: 0, hasMore: false };
         }
+        const response = await OfferService.getPromotedOffers(limit);
+        return response;
       };
 
       // Проверяем, был ли уже запрос за последние 5 минут
@@ -202,17 +171,11 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
 
       // Если данные есть в window, используем их
       if (window.promotedOffersData) {
-        console.log(
-          "[PromotedOffersSlider] Using cached promoted offers from window"
-        );
         setPromoted(window.promotedOffersData);
         setLoading(false);
 
         // Также проверяем закешированные топ-категории
         if (window.topCategoriesData) {
-          console.log(
-            "[PromotedOffersSlider] Using cached top categories from window"
-          );
           setTopCategories(window.topCategoriesData);
           return;
         }
@@ -232,17 +195,11 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
           );
 
           if (cachedOffers && cachedOffers.length > 0) {
-            console.log(
-              "[PromotedOffersSlider] Using cached promoted offers from sessionStorage"
-            );
             setPromoted(cachedOffers);
             window.promotedOffersData = cachedOffers;
           }
 
           if (cachedCategories && cachedCategories.length > 0) {
-            console.log(
-              "[PromotedOffersSlider] Using cached top categories from sessionStorage"
-            );
             setTopCategories(cachedCategories);
             window.topCategoriesData = cachedCategories;
           }
@@ -264,15 +221,7 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
       try {
         // Если нет промо-предложений, загружаем их
         if (!window.promotedOffersData) {
-          console.log(
-            "[PromotedOffersSlider] Fetching promoted offers from API"
-          );
-          // Используем метод экземпляра для getPromotedOffers
           const response = await fetchPromotedOffersData(5);
-          console.log(
-            "[PromotedOffersSlider] Fetched promoted offers:",
-            response
-          );
 
           const offers = response.offers || [];
           setPromoted(offers);
@@ -289,14 +238,7 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
 
         // Если нет топ-категорий, загружаем их
         if (!window.topCategoriesData) {
-          console.log(
-            "[PromotedOffersSlider] Fetching top categories from API"
-          );
           const categoriesResponse = await fetchTopCategories(5);
-          console.log(
-            "[PromotedOffersSlider] Fetched top categories:",
-            categoriesResponse
-          );
 
           const categories = categoriesResponse.categories || [];
           setTopCategories(categories);

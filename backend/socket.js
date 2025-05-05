@@ -282,7 +282,14 @@ const getIO = () => {
   return io;
 };
 
+function emitClearCache() {
+  if (io) {
+    io.emit("clear_cache");
+  }
+}
+
 module.exports = {
   initializeSocket,
   getIO,
+  emitClearCache,
 };

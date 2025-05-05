@@ -143,14 +143,6 @@ const OfferCard = memo(
     useEffect(() => {
       const checkPromotionStatus = async () => {
         try {
-          console.log("Checking promotion status for offer:", {
-            offerId: safeOfferId,
-            shouldShowPromoteButton,
-            canPromote,
-            isOwner,
-            userRole,
-          });
-
           if (!safeOfferId) {
             return;
           }

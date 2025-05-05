@@ -5,26 +5,24 @@ const CACHE_NAME = `uniserv-cache-${CACHE_VERSION}`;
 // Список URL, которые будут кэшироваться для оффлайн-режима
 const urlsToCache = ["/", "/index.html", "/manifest.json", "/favicon.ico"];
 
+// TTL для кэша (5 минут)
+const CACHE_TTL = 5 * 60 * 1000;
+
 // Установка сервис-воркера и кэширование ресурсов
 self.addEventListener("install", (event) => {
-  console.log("[ServiceWorker] Installing...");
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then((cache) => {
-        console.log("[ServiceWorker] Caching app shell");
-        // Попытка кэшировать каждый файл отдельно, чтобы избежать ошибки при отсутствии некоторых файлов
         return Promise.all(
           urlsToCache.map((url) =>
-            cache.add(url).catch((error) => {
-              console.warn(`[ServiceWorker] Failed to cache: ${url}`, error);
+            cache.add(url).catch(() => {
               return Promise.resolve(); // Продолжаем несмотря на ошибку
             })
           )
         );
       })
       .then(() => {
-        console.log("[ServiceWorker] Install completed");
         return self.skipWaiting();
       })
   );
@@ -32,7 +30,6 @@ self.addEventListener("install", (event) => {
 
 // Активация сервис-воркера и очистка старых кэшей
 self.addEventListener("activate", (event) => {
-  console.log("[ServiceWorker] Activating...");
   event.waitUntil(
     caches
       .keys()
@@ -40,14 +37,12 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log("[ServiceWorker] Removing old cache:", cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log("[ServiceWorker] Activate completed");
         return self.clients.claim();
       })
   );
@@ -55,42 +50,52 @@ self.addEventListener("activate", (event) => {
 
 // Обработка fetch-запросов с использованием стратегии network-first
 self.addEventListener("fetch", (event) => {
-  // Пропускаем запросы к API без кэширования
+  // Не кэшируем API, сервисы и категории
   if (
     event.request.url.includes("/api/") ||
-    event.request.url.includes("/services/")
+    event.request.url.includes("/services/") ||
+    event.request.url.includes("/categories")
   ) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Проверяем, что ответ валидный
-        if (!response || response.status !== 200 || response.type !== "basic") {
-          return response;
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+      if (cached) {
+        // Проверяем TTL
+        const cachedTime = await cache.match(event.request.url + ":ts");
+        const now = Date.now();
+        if (cachedTime) {
+          const ts = await cachedTime.text();
+          if (now - Number(ts) < CACHE_TTL) {
+            return cached;
+          } else {
+            // Устарело — удаляем
+            await cache.delete(event.request);
+            await cache.delete(event.request.url + ":ts");
+          }
+        } else {
+          // Нет метки времени — считаем устаревшим
+          await cache.delete(event.request);
         }
-
-        // Клонируем ответ, так как он может быть использован только один раз
-        const responseToCache = response.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
-        return response;
-      })
-      .catch(() => {
-        // При ошибке сети, пытаемся получить из кэша
-        return caches.match(event.request);
-      })
+      }
+      // Нет валидного кэша — идём в сеть
+      const response = await fetch(event.request);
+      if (response && response.status === 200 && response.type === "basic") {
+        cache.put(event.request, response.clone());
+        cache.put(
+          event.request.url + ":ts",
+          new Response(Date.now().toString())
+        );
+      }
+      return response;
+    })
   );
 });
 
 // Обработка push-уведомлений
 self.addEventListener("push", (event) => {
-  console.log("[ServiceWorker] Push received:", event);
-
   let data = {};
   try {
     data = event.data.json();
@@ -100,8 +105,6 @@ self.addEventListener("push", (event) => {
       message: event.data ? event.data.text() : "Получено уведомление",
     };
   }
-
-  console.log("[ServiceWorker] Push data:", data);
 
   const title = data.title || "Новое уведомление";
   const options = {
@@ -133,8 +136,6 @@ self.addEventListener("push", (event) => {
 
 // Обработка клика по уведомлению
 self.addEventListener("notificationclick", (event) => {
-  console.log("[ServiceWorker] Notification click received:", event);
-
   event.notification.close();
 
   // Получаем данные из уведомления
@@ -193,6 +194,16 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SET_TOKEN") {
     self.CACHED_TOKEN = event.data.token;
-    console.log("[ServiceWorker] Token updated");
+  }
+});
+
+// Обработка команды CLEAR_CACHE
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "CLEAR_CACHE") {
+    caches.keys().then((cacheNames) => {
+      cacheNames.forEach((cacheName) => {
+        caches.delete(cacheName);
+      });
+    });
   }
 });

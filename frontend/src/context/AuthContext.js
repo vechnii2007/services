@@ -27,21 +27,22 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log("Attempting login with:", { email });
+      // console.log("Attempting login with:", { email });
       const response = await api.post("/users/login", {
         email,
         password,
       });
-      console.log("Login response:", response.data);
+      // console.log("Login response:", response.data);
 
       if (response.data && response.data.token) {
         setToken(response.data.token);
+        await updateUser();
         return response.data;
       } else {
         throw new Error("Invalid response format");
       }
     } catch (error) {
-      console.error("Login error:", error.response || error);
+      // console.error("Login error:", error.response || error);
       throw error;
     }
   };
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setToken(null);
+    // updateUser(null); // удалено, чтобы не было бесконечного цикла
   };
 
   const isAuthenticated = Boolean(token && user);

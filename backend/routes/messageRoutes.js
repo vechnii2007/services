@@ -53,14 +53,6 @@ router.get("/request/:requestId", auth, async (req, res) => {
     if (!providerIdStr) {
       // Общий запрос
       const currentUser = await User.findById(req.user.id);
-      console.log(
-        "[GET /messages/request/:requestId] General request access check",
-        {
-          userIdStr,
-          currentUserId: req.user.id,
-          currentUserRole: currentUser?.role,
-        }
-      );
       if (userIdStr !== req.user.id && currentUser?.role !== "provider") {
         return res
           .status(403)
@@ -154,14 +146,6 @@ router.post("/", auth, async (req, res) => {
       messageData.requestId = requestId;
     }
 
-    // --- PATCH: логирование для диагностики уведомлений ---
-    console.log("[DIAG][messageRoutes] POST /messages:", {
-      recipientId: normalizedRecipientId,
-      senderId: req.user.id,
-      requestId,
-      message,
-    });
-
     const newMessage = await Message.create(messageData);
     await newMessage.populate("senderId", "name avatar");
     await newMessage.populate("recipientId", "name avatar");
@@ -178,19 +162,9 @@ router.post("/", auth, async (req, res) => {
       senderId: req.user.id,
       requestId: messageData.requestId || null,
     };
-    console.log(
-      "[DIAG][messageRoutes] NotificationService.sendNotification call",
-      {
-        recipientId: normalizedRecipientId,
-        notifPayload,
-      }
-    );
     await NotificationService.sendNotification(
       normalizedRecipientId,
       notifPayload
-    );
-    console.log(
-      `[DIAG][messageRoutes] NotificationService: sent to ${normalizedRecipientId}`
     );
 
     res.status(201).json(newMessage);
@@ -206,14 +180,9 @@ router.get("/:requestId", auth, async (req, res) => {
     const { requestId } = req.params;
     const userId = req.user.id;
 
-    console.log(
-      `[GET /messages/${requestId}] Запрос сообщений от пользователя: ${userId}`
-    );
-
     // Проверка доступа к сообщениям
     const chatRequest = await ServiceRequest.findById(requestId);
     if (!chatRequest) {
-      console.log(`[GET /messages/${requestId}] Запрос не найден`);
       return res.status(404).json({ message: "Запрос не найден" });
     }
 
@@ -222,17 +191,10 @@ router.get("/:requestId", auth, async (req, res) => {
       chatRequest.userId.toString() !== userId &&
       chatRequest.providerId.toString() !== userId
     ) {
-      console.log(
-        `[GET /messages/${requestId}] Отказано в доступе. Запрос принадлежит user: ${chatRequest.userId}, provider: ${chatRequest.providerId}`
-      );
       return res.status(403).json({ message: "Доступ запрещен" });
     }
 
     const messages = await Message.find({ requestId }).sort({ createdAt: 1 });
-
-    console.log(
-      `[GET /messages/${requestId}] Найдено сообщений: ${messages.length}`
-    );
 
     res.json(messages);
   } catch (error) {
@@ -243,37 +205,21 @@ router.get("/:requestId", auth, async (req, res) => {
 
 // Получение сообщений по requestId
 router.get("/request/:requestId", auth, async (req, res) => {
-  const startTime = Date.now();
-  console.log("=== GET MESSAGES BY REQUEST ID ===");
-  console.log(`Time: ${new Date().toISOString()}`);
-  console.log(`User: ${req.user.id} (${req.user.name}, ${req.user.role})`);
-  console.log(`RequestId: ${req.params.requestId}`);
-
   try {
     const { requestId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(requestId)) {
-      console.error("Invalid requestId format:", requestId);
       return res.status(400).json({ error: "Invalid requestId format" });
     }
 
-    console.log("Searching for request:", requestId);
     const request = await ServiceRequest.findById(requestId)
       .populate("userId", "name _id")
       .populate("providerId", "name _id")
       .lean();
 
     if (!request) {
-      console.error("Request not found:", requestId);
       return res.status(404).json({ error: "Request not found" });
     }
-
-    console.log("Found request:", {
-      id: request._id,
-      userId: request.userId._id,
-      providerId: request.providerId._id,
-      status: request.status,
-    });
 
     // Проверяем права доступа
     const userId = req.user.id;
@@ -281,23 +227,13 @@ router.get("/request/:requestId", auth, async (req, res) => {
     const requestUserIdStr = request.userId._id.toString();
     const requestProviderIdStr = request.providerId._id.toString();
 
-    console.log("Checking access rights:", {
-      userId: userIdStr,
-      requestUserId: requestUserIdStr,
-      requestProviderId: requestProviderIdStr,
-    });
-
     if (userIdStr !== requestUserIdStr && userIdStr !== requestProviderIdStr) {
-      console.error("Access denied for user:", userIdStr);
       return res.status(403).json({ error: "Access denied" });
     }
 
-    console.log("Access granted. Fetching messages...");
     const messages = await Message.find({ requestId })
       .sort({ createdAt: 1 })
       .lean();
-
-    console.log(`Found ${messages.length} messages for request ${requestId}`);
 
     // Добавляем имена отправителей
     const messagesWithNames = await Promise.all(
@@ -311,12 +247,6 @@ router.get("/request/:requestId", auth, async (req, res) => {
         };
       })
     );
-
-    console.log(`Added sender names to ${messagesWithNames.length} messages`);
-
-    const endTime = Date.now();
-    console.log(`Request completed in ${endTime - startTime}ms`);
-    console.log("=== END GET MESSAGES BY REQUEST ID ===");
 
     res.json(messagesWithNames);
   } catch (error) {

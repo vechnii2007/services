@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -19,14 +19,15 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Chat from "./Chat";
 import { useAuth } from "../hooks/useAuth";
-import { useSocket } from "../hooks/useSocket";
+import { SocketContext } from "../context/SocketContext";
 import ChatService from "../services/ChatService";
 
 const ChatTester = () => {
   const { requestId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { socket, isConnected, lastError, sendTestMessage } = useSocket();
+  const { socket, isConnected, lastError, sendTestMessage } =
+    useContext(SocketContext);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

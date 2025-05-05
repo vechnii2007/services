@@ -104,6 +104,12 @@ export const AdminService = {
     const response = await api.delete(`/admin/categories/${categoryId}`);
     return response.data;
   },
+
+  // Очистка кэша у всех пользователей
+  clearCache: async () => {
+    const response = await api.post("/admin/clear-cache");
+    return response.data;
+  },
 };
 
 export default AdminService;

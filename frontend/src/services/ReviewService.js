@@ -11,9 +11,7 @@ class ReviewService extends BaseService {
    */
   async getReviewsByOffer(offerId) {
     try {
-      console.log(`[ReviewService] Getting reviews for offer: ${offerId}`);
       const response = await this.get(`/offer/${offerId}`);
-      console.log(`[ReviewService] Got reviews:`, response);
       return response;
     } catch (error) {
       console.error("[ReviewService] Error getting reviews by offer:", error);

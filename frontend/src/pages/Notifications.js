@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import NotificationService from "../services/NotificationService";
 import {
@@ -26,6 +26,7 @@ import { useSocket } from "../hooks/useSocket";
 import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { SocketContext } from "../context/SocketContext";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const { t } = useTranslation();
@@ -118,7 +119,7 @@ const Notifications = () => {
   const [setCurrentTab] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const { socket } = useSocket();
+  const { socket } = useContext(SocketContext);
   const navigate = useNavigate();
 
   useEffect(() => {

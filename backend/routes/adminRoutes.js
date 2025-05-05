@@ -10,6 +10,7 @@ const { isAdmin } = require("../middleware/authMiddleware");
 const { upload } = require("../config/cloudinaryConfig");
 const path = require("path");
 const categoryController = require("../controllers/categoryController");
+const { emitClearCache } = require("../socket");
 
 // Получение списка пользователей с фильтрацией и пагинацией
 router.get("/users", auth, isAdmin, async (req, res) => {
@@ -226,8 +227,6 @@ router.delete("/requests/:id", auth, isAdmin, async (req, res) => {
 // Тестовый маршрут без авторизации (только для отладки)
 router.get("/test-offers", async (req, res) => {
   try {
-    console.log("Starting /admin/test-offers request processing");
-
     const { status, page = 1, limit = 10 } = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
@@ -237,32 +236,15 @@ router.get("/test-offers", async (req, res) => {
     const query = {};
     if (status) query.status = status;
 
-    console.log(
-      "DEBUG: Filter query:",
-      JSON.stringify(query),
-      "Skip:",
-      skip,
-      "Limit:",
-      limitNumber
-    );
-
     // Получаем данные только из коллекции Offer
-    console.log("Fetching data from Offer collection only");
     const [offers, offersCount] = await Promise.all([
       Offer.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNumber),
       Offer.countDocuments(query),
     ]);
 
-    console.log(`DEBUG: Offers count: ${offersCount}`);
-    console.log(`DEBUG: Number of offers returned: ${offers.length}`);
-
     // Подготавливаем ответ
     const total = offersCount;
     const pages = Math.ceil(total / limitNumber);
-
-    console.log(
-      `Response prepared: total=${total}, pages=${pages}, page=${pageNumber}`
-    );
 
     res.json({
       offers: offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
@@ -271,7 +253,6 @@ router.get("/test-offers", async (req, res) => {
       pages,
     });
   } catch (error) {
-    console.error("Error fetching offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -279,8 +260,6 @@ router.get("/test-offers", async (req, res) => {
 // Получение списка предложений с фильтрацией и пагинацией
 router.get("/offers", auth, isAdmin, async (req, res) => {
   try {
-    console.log("Starting /admin/offers request processing");
-
     // Добавляем заголовки для предотвращения кеширования
     res.setHeader(
       "Cache-Control",
@@ -299,17 +278,7 @@ router.get("/offers", auth, isAdmin, async (req, res) => {
     const query = {};
     if (status) query.status = status;
 
-    console.log(
-      "DEBUG: Filter query:",
-      JSON.stringify(query),
-      "Skip:",
-      skip,
-      "Limit:",
-      limitNumber
-    );
-
     // Получаем данные только из коллекции Offer
-    console.log("Fetching data from Offer collection only");
     const [offers, offersCount] = await Promise.all([
       Offer.find(query)
         .sort({ createdAt: -1 })
@@ -319,16 +288,9 @@ router.get("/offers", auth, isAdmin, async (req, res) => {
       Offer.countDocuments(query),
     ]);
 
-    console.log(`DEBUG: Offers count: ${offersCount}`);
-    console.log(`DEBUG: Number of offers returned: ${offers.length}`);
-
     // Подготавливаем ответ
     const total = offersCount;
     const pages = Math.ceil(total / limitNumber);
-
-    console.log(
-      `Response prepared: total=${total}, pages=${pages}, page=${pageNumber}`
-    );
 
     res.json({
       offers: offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
@@ -337,7 +299,6 @@ router.get("/offers", auth, isAdmin, async (req, res) => {
       pages,
     });
   } catch (error) {
-    console.error("Error fetching offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -383,7 +344,6 @@ router.get("/offers/:id", auth, isAdmin, async (req, res) => {
     // Если ничего не найдено, возвращаем 404
     return res.status(404).json({ error: "Item not found" });
   } catch (error) {
-    console.error("Error fetching offer:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -469,7 +429,6 @@ router.patch(
       await offer.save();
       res.json(offer);
     } catch (error) {
-      console.error("Error updating offer:", error);
       res.status(500).json({ error: "Server error" });
     }
   }
@@ -564,5 +523,11 @@ router.delete(
   isAdmin,
   categoryController.deleteCategory
 );
+
+// Очистка кэша у всех пользователей через сокеты
+router.post("/clear-cache", auth, isAdmin, (req, res) => {
+  emitClearCache();
+  res.json({ success: true });
+});
 
 module.exports = router;

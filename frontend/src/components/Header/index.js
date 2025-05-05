@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   AppBar,
   Toolbar,
@@ -43,6 +43,7 @@ import Drawer from "@mui/material/Drawer";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../assets/images/logo.svg";
 import { useChatModal } from "../../context/ChatModalContext";
+import { SocketContext } from "../../context/SocketContext";
 
 const NotificationItem = ({
   notification,
@@ -160,7 +161,7 @@ const Header = ({ onDrawerToggle }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { socket, isConnected } = useSocket();
+  const { socket, isConnected } = useContext(SocketContext);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { openChat } = useChatModal();

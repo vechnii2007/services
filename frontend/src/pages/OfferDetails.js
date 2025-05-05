@@ -1,5 +1,5 @@
 // src/pages/OfferDetails.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -56,6 +56,7 @@ import api from "../middleware/api";
 import { useSocket } from "../hooks/useSocket";
 import Reviews from "../components/Reviews";
 import { useChatModal } from "../context/ChatModalContext";
+import { SocketContext } from "../context/SocketContext";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -75,7 +76,7 @@ const OfferDetails = () => {
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [shareAnchorEl, setShareAnchorEl] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const { socket } = useSocket();
+  const { socket } = useContext(SocketContext);
   const { openChat } = useChatModal();
 
   useEffect(() => {
@@ -124,7 +125,6 @@ const OfferDetails = () => {
     // Используем ID предложения вместо ID пользователя для комнаты
     // Это будет совместимо с логикой сервера
     const roomId = offer._id;
-    console.log(`[Socket] Joining room for offer ${roomId}`);
     socket.emit("joinRoom", roomId);
 
     const handleNewMessage = (data) => {
@@ -217,16 +217,8 @@ const OfferDetails = () => {
     let response = null;
 
     try {
-      console.log("[OfferDetails] handleContactProvider START");
-      console.log("[OfferDetails] openChat function:", openChat);
-
       const providerId = offer.providerId._id;
       const offerId = offer._id;
-
-      console.log("[OfferDetails] Checking existing chat request:", {
-        providerId,
-        offerId,
-      });
 
       // Сначала проверяем, существует ли уже запрос для этого предложения
       const existingRequests = await api.get("/services/requests", {
@@ -236,24 +228,14 @@ const OfferDetails = () => {
         },
       });
 
-      console.log("[OfferDetails] Existing requests:", existingRequests.data);
-
       let requestId;
 
       if (existingRequests.data && existingRequests.data.length > 0) {
         // Используем существующий запрос
         requestId = existingRequests.data[0]._id;
-        console.log("[OfferDetails] Using existing request:", requestId);
       } else {
         // Создаем новый запрос
-        console.log("[OfferDetails] Creating new chat request:", {
-          providerId,
-          serviceType: offer.serviceType,
-          description: `Запрос по предложению: ${offer.title}`,
-          offerId,
-        });
-
-        const response = await api.post("/services/requests", {
+        response = await api.post("/services/requests", {
           providerId,
           serviceType: offer.serviceType,
           description: `Запрос по предложению: ${offer.title}`,
@@ -261,11 +243,9 @@ const OfferDetails = () => {
         });
 
         requestId = response.data._id;
-        console.log("[OfferDetails] Created new request:", requestId);
       }
 
       // Переходим в чат - вызываем с небольшой задержкой для предотвращения конфликта событий
-      console.log("[OfferDetails] Calling openChat with requestId:", requestId);
       setTimeout(() => {
         openChat({
           requestId,
@@ -276,13 +256,11 @@ const OfferDetails = () => {
               ? existingRequests.data[0]
               : response?.data || null,
         });
-        console.log("[OfferDetails] openChat called");
       }, 100);
 
       // Сбрасываем счетчик непрочитанных сообщений
       setUnreadMessages(0);
     } catch (error) {
-      console.error("[OfferDetails] Error handling chat request:", error);
       setError(error.response?.data?.error || t("error_creating_chat"));
     }
   };

@@ -26,10 +26,6 @@ class NotificationService {
 
   static async sendNotification(userId, notification) {
     try {
-      console.log("[NotificationService] sendNotification called:", {
-        userId,
-        notification,
-      });
       const newNotification = await Notification.create({
         userId,
         message: notification.message,
@@ -38,30 +34,14 @@ class NotificationService {
         requestId: notification.requestId || null,
         refModel: this._getRefModel(notification.type, notification.relatedId),
       });
-      console.log(
-        "[NotificationService] Notification created:",
-        newNotification
-      );
 
       // Отправляем через WebSocket
       try {
         const io = getIO();
         if (io) {
           io.to(userId).emit("notification", newNotification.toObject());
-          console.log(
-            `[NotificationService] WebSocket notification sent to userId: ${userId}`
-          );
-        } else {
-          console.warn(
-            "[NotificationService] getIO() returned null, WebSocket notification not sent"
-          );
         }
-      } catch (socketError) {
-        console.error(
-          "[NotificationService] Error sending socket notification:",
-          socketError
-        );
-      }
+      } catch (socketError) {}
 
       // Если есть push-подписка, отправляем push-уведомление
       try {
@@ -78,24 +58,11 @@ class NotificationService {
               },
             })
           );
-          console.log(
-            `[NotificationService] Push notification sent to userId: ${userId}`
-          );
-        } else {
-          console.log(
-            `[NotificationService] No pushSubscription for userId: ${userId}`
-          );
         }
-      } catch (pushError) {
-        console.error(
-          "[NotificationService] Error sending push notification:",
-          pushError
-        );
-      }
+      } catch (pushError) {}
 
       return newNotification;
     } catch (error) {
-      console.error("[NotificationService] Error sending notification:", error);
       throw error;
     }
   }

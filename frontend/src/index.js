@@ -5,13 +5,16 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import "./i18n"; // Импортируем конфигурацию i18next
 import { AuthProvider } from "./context/AuthContext";
+import { SocketProvider } from "./context/SocketContext";
 
 const container = document.getElementById("root");
 const root = createRoot(container);
 
 root.render(
   <AuthProvider>
-    <App />
+    <SocketProvider>
+      <App />
+    </SocketProvider>
   </AuthProvider>
 );
 

@@ -188,6 +188,16 @@ export const useSocket = () => {
       }
     });
 
+    // Подписка на событие очистки кэша
+    newSocket.on("clear_cache", () => {
+      if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: "CLEAR_CACHE" });
+        console.log(
+          "[Socket] Получено событие clear_cache: кэш очищен через service worker"
+        );
+      }
+    });
+
     setSocket(newSocket);
 
     // Очистка при размонтировании компонента
@@ -202,6 +212,7 @@ export const useSocket = () => {
         newSocket.off("auth_error", handleAuthError);
         newSocket.off("private_message");
         newSocket.off("notification");
+        newSocket.off("clear_cache");
         newSocket.disconnect();
       }
     };

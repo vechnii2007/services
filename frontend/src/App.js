@@ -13,14 +13,6 @@ const ChatModalRoot = () => {
   const [modalKey, setModalKey] = useState(0); // Ключ для принудительного перерендера
 
   useEffect(() => {
-    console.log("[ChatModalRoot] Values from useChatModal:", {
-      isOpen,
-      requestId,
-      userId,
-      providerId,
-      request,
-    });
-
     // Когда isOpen меняется на true, увеличиваем ключ для принудительного пересоздания компонента
     if (isOpen) {
       setModalKey((prev) => prev + 1);
@@ -32,7 +24,6 @@ const ChatModalRoot = () => {
       key={modalKey} // Добавляем ключ для принудительного пересоздания при изменении
       open={isOpen}
       onClose={(event, reason) => {
-        console.log("[ChatModalRoot] onClose called with reason:", reason);
         closeChat();
       }}
       requestId={requestId || ""}

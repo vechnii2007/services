@@ -28,7 +28,6 @@ router.use((req, res, next) => {
   if (req.url.startsWith("/reviews")) {
     return next("route");
   }
-  console.log("[SERVICE ROUTES] CATCH-ALL:", req.method, req.originalUrl);
   next();
 });
 
@@ -45,7 +44,6 @@ router.get("/locations", async (req, res) => {
       .sort();
     res.json(allLocations);
   } catch (error) {
-    console.error("Error fetching locations:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -70,8 +68,6 @@ router.put(
 
 // Получение всех предложений с фильтрацией по категории и поиском по тексту
 router.get("/offers", async (req, res) => {
-  console.log("[serviceRoutes] GET /offers request received");
-
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -108,8 +104,6 @@ router.get("/offers", async (req, res) => {
   filter.status = "active";
 
   try {
-    console.log("[serviceRoutes] Fetching offers with filter:", filter);
-
     // Получаем предложения с учетом фильтрации, пагинации и сортировки
     const offers = await Offer.find(filter)
       .populate("providerId", "name email phone address status")
@@ -120,26 +114,6 @@ router.get("/offers", async (req, res) => {
     // Получаем общее количество предложений для пагинации
     const totalOffers = await Offer.countDocuments(filter);
     const totalPages = Math.ceil(totalOffers / limit);
-
-    console.log(
-      `[serviceRoutes] Found ${offers.length} offers out of ${totalOffers} total`
-    );
-
-    // Логируем несколько предложений для отладки
-    offers.slice(0, 5).forEach((offer, index) => {
-      console.log(
-        `[serviceRoutes] Offer ${index + 1}/${Math.min(5, offers.length)}:`,
-        {
-          id: offer._id,
-          category: offer.serviceType,
-          location: offer.location,
-          price: offer.price,
-          provider: offer.providerId
-            ? offer.providerId.name || "Unknown"
-            : "Unknown",
-        }
-      );
-    });
 
     // Для каждого предложения получаем рейтинг и количество отзывов по предложению
     const formattedOffers = await Promise.all(
@@ -191,7 +165,6 @@ router.get("/offers", async (req, res) => {
       page: page,
     });
   } catch (error) {
-    console.error("[serviceRoutes] Error fetching offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -199,14 +172,6 @@ router.get("/offers", async (req, res) => {
 // Получение списка поднятых объявлений
 router.get("/offers/promoted", async (req, res) => {
   const requestId = Math.random().toString(36).substring(7);
-  console.log(
-    `[${requestId}][Promotion] GET /offers/promoted request received:`,
-    {
-      query: req.query,
-      userAgent: req.headers["user-agent"],
-      referer: req.headers["referer"],
-    }
-  );
 
   try {
     // Извлекаем и валидируем параметры запроса
@@ -214,18 +179,7 @@ router.get("/offers/promoted", async (req, res) => {
       req.query.limit !== undefined ? parseInt(req.query.limit) : 10;
     const skip = req.query.skip !== undefined ? parseInt(req.query.skip) : 0;
 
-    console.log(`[${requestId}][Promotion] Parsed query parameters:`, {
-      limit,
-      skip,
-    });
-
     if (isNaN(limit) || isNaN(skip) || limit < 1 || skip < 0) {
-      console.warn(`[${requestId}][Promotion] Invalid query parameters:`, {
-        rawLimit: req.query.limit,
-        rawSkip: req.query.skip,
-        parsedLimit: limit,
-        parsedSkip: skip,
-      });
       return res.status(400).json({
         error:
           "Invalid parameters. Limit must be at least 1, skip must be at least 0.",
@@ -241,18 +195,8 @@ router.get("/offers/promoted", async (req, res) => {
     );
     const queryTime = Date.now() - startTime;
 
-    console.log(`[${requestId}][Promotion] Query executed in ${queryTime}ms:`, {
-      offersFound: promotedOffers.offers.length,
-      totalPromoted: promotedOffers.total,
-    });
-
     res.json(promotedOffers);
   } catch (error) {
-    console.error(`[${requestId}][Promotion] Error getting promoted offers:`, {
-      error: error.message,
-      stack: error.stack,
-      query: req.query,
-    });
     res.status(500).json({
       error: "Failed to retrieve promoted offers",
       message: error.message,
@@ -322,7 +266,6 @@ router.get("/offers/:id", async (req, res) => {
 
     res.status(404).json({ error: "Offer not found" });
   } catch (error) {
-    console.error("Error fetching offer by ID:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -336,81 +279,18 @@ router.get("/my-offers", auth, async (req, res) => {
         .json({ error: "Access denied. Providers and admins only." });
     }
 
-    console.log("[serviceRoutes] GET /my-offers request received");
-    console.log("[serviceRoutes] User details:", {
-      userId: req.user.id,
-      userIdUnderscored: req.user._id,
-      userRole: req.user.role,
-      userHeaders: {
-        authorization: req.headers.authorization ? "Bearer [REDACTED]" : "none",
-      },
-    });
-
-    // Проверка внутренней структуры req.user
-    console.log(
-      "[serviceRoutes] req.user structure:",
-      JSON.stringify({
-        id: req.user.id,
-        _id: req.user._id,
-        role: req.user.role,
-        keys: Object.keys(req.user),
-      })
-    );
-
     // Используем ID пользователя, учитывая оба возможных формата
     const userId = req.user._id || req.user.id;
-
-    // Для отладки - покажем как выглядит запрос к базе данных
-    console.log("[serviceRoutes] Querying MongoDB with:", {
-      providerId: userId,
-    });
 
     // Ищем предложения с любым из возможных идентификаторов пользователя
     const offers = await Offer.find({
       $or: [{ providerId: userId }, { providerId: userId.toString() }],
     }).populate("providerId", "name email phone address status");
 
-    console.log(
-      `[serviceRoutes] Found ${offers.length} offers for user ${userId}`
-    );
-
     // Если предложений не найдено, проверим, есть ли вообще какие-то предложения в базе
     if (offers.length === 0) {
       const allOffers = await Offer.find({}).limit(5);
-      console.log(
-        "[serviceRoutes] No offers found for user. Total offers in DB:",
-        allOffers.length
-      );
-
-      if (allOffers.length > 0) {
-        allOffers.forEach((offer, index) => {
-          console.log(`[serviceRoutes] DB Offer ${index + 1}:`, {
-            _id: offer._id,
-            providerId: offer.providerId ? offer.providerId.toString() : "null",
-            title: offer.title || "untitled",
-            matches:
-              offer.providerId &&
-              (offer.providerId.toString() === userId.toString() ||
-                offer.providerId.toString() === req.user.id)
-                ? "YES"
-                : "NO",
-          });
-        });
-      }
     }
-
-    // Логируем каждое предложение
-    offers.forEach((offer, index) => {
-      console.log(`[serviceRoutes] Offer ${index + 1}/${offers.length}:`, {
-        _id: offer._id,
-        providerId: offer.providerId
-          ? (offer.providerId._id || offer.providerId).toString()
-          : "null",
-        title: offer.title,
-        category: offer.category || offer.serviceType,
-        price: offer.price,
-      });
-    });
 
     const formattedOffers = offers.map((offer) => {
       const offerData = {
@@ -443,13 +323,8 @@ router.get("/my-offers", auth, async (req, res) => {
       return offerData;
     });
 
-    console.log(
-      "[serviceRoutes] Returning formatted offers:",
-      formattedOffers.length
-    );
     res.json(formattedOffers);
   } catch (error) {
-    console.error("[serviceRoutes] Error fetching my offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -462,8 +337,6 @@ router.post(
   upload.array("images", 10),
   async (req, res) => {
     try {
-      console.log("Creating new offer:", req.body);
-
       const {
         title,
         category,
@@ -524,7 +397,6 @@ router.post(
       await offer.save();
       res.status(201).json(offer);
     } catch (error) {
-      console.error("Error creating offer:", error);
       res.status(500).json({ error: "Server error" });
     }
   }
@@ -538,13 +410,11 @@ router.put(
   upload.array("images", 5),
   async (req, res) => {
     try {
-      console.log("[serviceRoutes] PUT /offers/:id request received");
       const { title, description, price, location, category, existingImages } =
         req.body;
 
       const offer = await Offer.findById(req.params.id);
       if (!offer) {
-        console.log("[serviceRoutes] Offer not found:", req.params.id);
         return res.status(404).json({ message: "Предложение не найдено" });
       }
 
@@ -580,10 +450,6 @@ router.put(
 
       // Добавляем новые изображения из Cloudinary
       if (req.files && req.files.length > 0) {
-        console.log(
-          "[serviceRoutes] Adding new images:",
-          req.files.map((f) => f.path)
-        );
         const newImages = req.files.map((file) => file.path);
         updatedImages = [...updatedImages, ...newImages];
       }
@@ -594,10 +460,8 @@ router.put(
       }
 
       await offer.save();
-      console.log("[serviceRoutes] Offer updated successfully:", offer._id);
       res.json(offer);
     } catch (error) {
-      console.error("[serviceRoutes] Error updating offer:", error);
       res.status(500).json({ message: error.message });
     }
   }
@@ -634,7 +498,6 @@ router.delete("/offers/:id", auth, async (req, res) => {
 
     res.json({ message: "Offer deleted" });
   } catch (error) {
-    console.error("Error deleting offer:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -689,7 +552,6 @@ router.post(
 
       res.status(201).json(offer);
     } catch (error) {
-      console.error("Error creating ServiceOffer:", error);
       res.status(500).json({ error: "Server error" });
     }
   }
@@ -712,7 +574,6 @@ router.get("/provider-offers", auth, async (req, res) => {
       .filter((request) => request !== null);
     res.json(requests);
   } catch (error) {
-    console.error("Error fetching provider offers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -721,16 +582,12 @@ router.get("/provider-offers", auth, async (req, res) => {
 router.post("/requests", auth, async (req, res) => {
   try {
     const io = require("../socket").getIO();
-    console.log("[POST /requests] Incoming body:", JSON.stringify(req.body));
     const { providerId, offerId, serviceType, message } = req.body;
 
     // Проверка обязательных полей
     if (!serviceType) {
       return res.status(400).json({ error: "Service type is required" });
     }
-    // if (!message) {
-    //   return res.status(400).json({ error: "Description is required" });
-    // }
 
     // Создание запроса
     const newRequest = new ServiceRequest({
@@ -743,10 +600,6 @@ router.post("/requests", auth, async (req, res) => {
     });
 
     await newRequest.save();
-    console.log(
-      "[POST /requests] Saved ServiceRequest:",
-      newRequest.toObject()
-    );
 
     // Получаем имя пользователя для уведомления
     let userName = req.user.name;
@@ -762,25 +615,12 @@ router.post("/requests", auth, async (req, res) => {
         message: `Новый запрос от ${userName}`,
         relatedId: newRequest._id,
       };
-      console.log("[POST /requests] About to send notification:", {
-        providerId,
-        notificationPayload,
-      });
       try {
-        const notificationResult = await NotificationService.sendNotification(
+        await NotificationService.sendNotification(
           providerId,
           notificationPayload
         );
-        console.log(
-          "[POST /requests] NotificationService result:",
-          notificationResult
-        );
-      } catch (notifErr) {
-        console.error(
-          "[POST /requests] Error in NotificationService:",
-          notifErr
-        );
-      }
+      } catch (notifErr) {}
     } else {
       // Общий запрос — отправить всем провайдерам уведомление и событие по сокету
       const providers = await User.find({ role: "provider" }, "_id");
@@ -796,12 +636,7 @@ router.post("/requests", auth, async (req, res) => {
             provider._id.toString(),
             notificationPayload
           );
-        } catch (notifErr) {
-          console.error(
-            `[POST /requests] Error sending notification to provider ${provider._id}:`,
-            notifErr
-          );
-        }
+        } catch (notifErr) {}
       }
     }
 
@@ -815,7 +650,6 @@ router.post("/requests", auth, async (req, res) => {
 
     res.status(201).json(newRequest);
   } catch (error) {
-    console.error("[POST /requests] Error creating service request:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -852,8 +686,6 @@ router.get("/requests", auth, async (req, res) => {
       query.offerId = offerId;
     }
 
-    console.log("Fetching requests with query:", query);
-
     const requests = await ServiceRequest.find(query)
       .populate("userId", "name email")
       .populate("providerId", "name email")
@@ -861,7 +693,6 @@ router.get("/requests", auth, async (req, res) => {
 
     res.json(requests);
   } catch (error) {
-    console.error("Error fetching service requests:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -874,7 +705,6 @@ router.get("/my-requests", auth, async (req, res) => {
     }).populate("userId", "name email phone address status");
     res.json(requests);
   } catch (error) {
-    console.error("Error fetching my requests:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -882,28 +712,10 @@ router.get("/my-requests", auth, async (req, res) => {
 // Получение сообщений
 router.get("/messages/:requestId", auth, async (req, res) => {
   const startTime = Date.now();
-  console.log("=== GET MESSAGES REQUEST ===");
-  console.log(`Time: ${new Date().toISOString()}`);
-  console.log(`User: ${req.user.id} (${req.user.name}, ${req.user.role})`);
-  console.log(`RequestId: ${req.params.requestId}`);
-  console.log(
-    `Headers: ${JSON.stringify({
-      authorization: req.headers.authorization ? "Bearer [REDACTED]" : "None",
-      "content-type": req.headers["content-type"],
-      "user-agent": req.headers["user-agent"],
-    })}`
-  );
 
   try {
-    console.log("Fetching messages for request:", {
-      requestId: req.params.requestId,
-      userId: req.user.id,
-      userRole: req.user.role,
-    });
-
     // Проверяем валидность ID запроса
     if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
-      console.error("Invalid request ID format:", req.params.requestId);
       return res.status(400).json({ error: "Invalid request ID format" });
     }
 
@@ -916,48 +728,8 @@ router.get("/messages/:requestId", auth, async (req, res) => {
         select: "title serviceType",
       });
 
-    console.log(
-      `[GET /requests/${req.params.requestId}] raw request:`,
-      request
-    );
-    if (request) {
-      console.log(
-        `[GET /requests/${req.params.requestId}] userId:`,
-        request.userId
-      );
-      console.log(
-        `[GET /requests/${req.params.requestId}] providerId:`,
-        request.providerId
-      );
-    }
-
     if (!request) {
-      console.log(`[GET /requests/${req.params.requestId}] Request not found`);
       return res.status(404).json({ error: "Request not found" });
-    }
-
-    // Безопасно логируем найденный запрос
-    console.log(`[GET /requests/${req.params.requestId}] Found request:`, {
-      id: request._id,
-      userId:
-        request.userId && request.userId._id
-          ? request.userId._id.toString()
-          : null,
-      providerId:
-        request.providerId && request.providerId._id
-          ? request.providerId._id.toString()
-          : null,
-      status: request.status,
-    });
-
-    // Проверяем наличие userId и providerId в запросе
-    if (!request.userId) {
-      console.error("Request missing userId:", {
-        requestId: request._id,
-        hasUserId: !!request.userId,
-        hasProviderId: !!request.providerId,
-      });
-      return res.status(400).json({ error: "Request data is incomplete" });
     }
 
     // Безопасно получаем userId и providerId
@@ -972,57 +744,24 @@ router.get("/messages/:requestId", auth, async (req, res) => {
     const userIdStr = req.user.id.toString();
 
     // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером, если он есть)
-    console.log("Checking access rights for request details (patched):", {
-      userIdStr,
-      userIdObj,
-      providerIdObj,
-      role: req.user.role,
-    });
     if (
       userIdStr !== userIdObj &&
       providerIdObj &&
       userIdStr !== providerIdObj
     ) {
-      console.log(
-        `[GET /requests/${req.params.requestId}] Access denied for user: ${userIdStr}`
-      );
       return res.status(403).json({ error: "Access denied" });
     }
     if (req.user.role === "provider" && !providerIdObj) {
       // Общий запрос — разрешаем доступ любому провайдеру
-      console.log(
-        `[GET /requests/${req.params.requestId}] Access granted for provider to general request: ${userIdStr}`
-      );
     }
 
     // Получаем сообщения
-    console.log(
-      `Searching for messages with requestId: ${req.params.requestId}`
-    );
     const messages = await Message.find({
       $or: [
         { requestId: req.params.requestId },
         { offerId: req.params.requestId },
       ],
     }).populate("senderId", "name status");
-
-    console.log(
-      `Found ${messages.length} messages for request. First few messages:`
-    );
-    messages.slice(0, 3).forEach((msg, i) => {
-      console.log(`Message ${i + 1}:`, {
-        id: msg._id,
-        senderId: msg.senderId
-          ? (msg.senderId._id || msg.senderId).toString()
-          : "null",
-        recipientId: msg.recipientId ? msg.recipientId.toString() : "null",
-        message:
-          msg.message &&
-          msg.message.substring(0, 30) + (msg.message.length > 30 ? "..." : ""),
-        timestamp: msg.timestamp,
-        requestId: msg.requestId ? msg.requestId.toString() : "null",
-      });
-    });
 
     // Проверка структуры сообщений перед отправкой
     const safeMessages = messages.map((msg) => {
@@ -1044,13 +783,8 @@ router.get("/messages/:requestId", auth, async (req, res) => {
     });
 
     const endTime = Date.now();
-    console.log(`Request completed in ${endTime - startTime}ms`);
-    console.log("=== END MESSAGES REQUEST ===");
-
     res.json(safeMessages);
   } catch (error) {
-    console.error("Error fetching messages:", error);
-    console.error("Stack trace:", error.stack);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 });
@@ -1058,27 +792,11 @@ router.get("/messages/:requestId", auth, async (req, res) => {
 // Отправка сообщения в чате запроса
 router.post("/messages/:requestId", auth, async (req, res) => {
   const startTime = Date.now();
-  console.log("=== POST MESSAGE REQUEST ===");
-  console.log(`Time: ${new Date().toISOString()}`);
-  console.log(`User: ${req.user.id} (${req.user.name}, ${req.user.role})`);
-  console.log(`RequestId: ${req.params.requestId}`);
-  console.log(`Request Body:`, {
-    messageLength: req.body.message ? req.body.message.length : 0,
-    messageSample: req.body.message
-      ? req.body.message.substring(0, 30) +
-        (req.body.message.length > 30 ? "..." : "")
-      : null,
-    recipientId: req.body.recipientId,
-  });
 
   try {
     const { message, recipientId } = req.body;
 
     if (!message || !recipientId) {
-      console.error("Missing required fields:", {
-        message: !!message,
-        recipientId: !!recipientId,
-      });
       return res
         .status(400)
         .json({ error: "Message and recipientId are required" });
@@ -1086,7 +804,6 @@ router.post("/messages/:requestId", auth, async (req, res) => {
 
     // Проверяем валидность ObjectId запроса
     if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
-      console.error("Invalid request ID format:", req.params.requestId);
       return res.status(400).json({ error: "Invalid request ID format" });
     }
 
@@ -1096,12 +813,9 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       if (recipientId._id) {
         normalizedRecipientId = recipientId._id.toString();
       } else {
-        console.error("Invalid recipientId format:", recipientId);
         return res.status(400).json({ error: "Invalid recipientId format" });
       }
     }
-
-    console.log("Normalized recipientId:", normalizedRecipientId);
 
     // Проверяем существование запроса или оффера
     let requestOrOffer = null;
@@ -1112,26 +826,13 @@ router.post("/messages/:requestId", auth, async (req, res) => {
     if (request) {
       requestOrOffer = request;
       entityType = "request";
-      console.log("Found request:", {
-        id: request._id,
-        userId: request.userId,
-        providerId: request.providerId,
-        status: request.status,
-      });
     } else {
       // Если запрос не найден, пробуем найти оффер
       const offer = await Offer.findById(req.params.requestId);
       if (offer) {
         requestOrOffer = offer;
         entityType = "offer";
-        console.log("Found offer:", {
-          id: offer._id,
-          userId: offer.userId,
-          providerId: offer.providerId,
-          title: offer.title,
-        });
       } else {
-        console.error("Neither request nor offer found:", req.params.requestId);
         return res.status(404).json({ error: "Request or offer not found" });
       }
     }
@@ -1142,22 +843,11 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       ? requestOrOffer.providerId.toString()
       : null;
     const currentUserIdStr = req.user.id.toString();
-    console.log("Checking access rights (patched):", {
-      userIdStr,
-      providerIdStr,
-      currentUserIdStr,
-      userRole: req.user.role,
-    });
     if (
       req.user.role === "user" &&
       userIdStr !== currentUserIdStr &&
       providerIdStr !== currentUserIdStr
     ) {
-      console.warn("Access denied for user:", {
-        userId: currentUserIdStr,
-        entityUserId: userIdStr,
-        entityProviderId: providerIdStr,
-      });
       return res.status(403).json({ error: "Access denied" });
     }
     if (
@@ -1166,22 +856,10 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       providerIdStr !== currentUserIdStr &&
       userIdStr !== currentUserIdStr
     ) {
-      console.warn("Access denied for provider (personal request):", {
-        providerId: currentUserIdStr,
-        entityUserId: userIdStr,
-        entityProviderId: providerIdStr,
-      });
       return res.status(403).json({ error: "Access denied" });
     }
     if (req.user.role === "provider" && !providerIdStr) {
       // Общий запрос — разрешаем доступ любому провайдеру
-      console.log(
-        "Access granted for provider to general request (send message):",
-        {
-          providerId: currentUserIdStr,
-          requestId: requestOrOffer._id,
-        }
-      );
     }
 
     // Создаем новое сообщение с полем requestId
@@ -1194,34 +872,11 @@ router.post("/messages/:requestId", auth, async (req, res) => {
     // Логируем recipientId и userId автора запроса для диагностики
     if (entityType === "request") {
       messageData.requestId = req.params.requestId;
-      console.log("[DIAG] POST /messages/:requestId: entityType=request", {
-        recipientId: normalizedRecipientId,
-        requestUserId:
-          requestOrOffer.userId?.toString?.() || requestOrOffer.userId,
-        senderId: req.user.id,
-        requestId: req.params.requestId,
-      });
     } else {
       messageData.offerId = req.params.requestId;
     }
 
-    console.log("Creating message with data:", {
-      ...messageData,
-      message:
-        messageData.message.substring(0, 30) +
-        (messageData.message.length > 30 ? "..." : ""),
-    });
-
     const newMessage = await Message.create(messageData);
-
-    console.log("Created new message:", {
-      id: newMessage._id,
-      senderId: newMessage.senderId,
-      recipientId: newMessage.recipientId,
-      requestId: newMessage.requestId,
-      offerId: newMessage.offerId,
-      messageLength: newMessage.message.length,
-    });
 
     // Отправляем через WebSocket
     const io = require("../socket").getIO();
@@ -1229,10 +884,6 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       ...newMessage.toObject(),
       senderName: req.user.name,
     });
-
-    console.log(
-      `WebSocket: Emitted 'private_message' to ${normalizedRecipientId}`
-    );
 
     // Отправляем уведомление о новом сообщении
     const notifPayload = {
@@ -1243,24 +894,13 @@ router.post("/messages/:requestId", auth, async (req, res) => {
       requestId: messageData.requestId || null,
       offerId: messageData.offerId || null,
     };
-    console.log("[DIAG] NotificationService.sendNotification call", {
-      recipientId: normalizedRecipientId,
-      notifPayload,
-    });
     await NotificationService.sendNotification(
       normalizedRecipientId,
       notifPayload
     );
-    console.log(`[DIAG] NotificationService: sent to ${normalizedRecipientId}`);
-
-    const endTime = Date.now();
-    console.log(`Request completed in ${endTime - startTime}ms`);
-    console.log("=== END POST MESSAGE REQUEST ===");
 
     res.status(201).json(newMessage);
   } catch (error) {
-    console.error("Error sending message:", error);
-    console.error("Stack trace:", error.stack);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 });
@@ -1269,11 +909,6 @@ router.post("/messages/:requestId", auth, async (req, res) => {
 router.post("/favorites", auth, async (req, res) => {
   try {
     const { offerId, offerType } = req.body;
-    console.log("Received toggle favorite request:", {
-      offerId,
-      offerType,
-      userId: req.user.id,
-    });
 
     // Проверяем входные данные
     if (!offerId || !offerType) {
@@ -1299,15 +934,9 @@ router.post("/favorites", auth, async (req, res) => {
     });
 
     if (existingFavorite) {
-      console.log("Removing from favorites:", {
-        offerId,
-        offerType,
-        favoriteId: existingFavorite._id,
-      });
       await Favorite.deleteOne({ _id: existingFavorite._id });
       res.json({ message: "Removed from favorites", isFavorite: false });
     } else {
-      console.log("Adding to favorites:", { offerId, offerType });
       const favorite = new Favorite({
         userId: req.user.id,
         offerId,
@@ -1317,10 +946,6 @@ router.post("/favorites", auth, async (req, res) => {
       res.json({ message: "Added to favorites", isFavorite: true });
     }
   } catch (error) {
-    console.error("Error toggling favorite:", {
-      message: error.message,
-      stack: error.stack,
-    });
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1344,7 +969,6 @@ router.get("/favorites", auth, async (req, res) => {
 
     res.json(favoriteOffers);
   } catch (error) {
-    console.error("Error fetching favorites:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1353,10 +977,6 @@ router.get("/favorites", auth, async (req, res) => {
 router.delete("/favorites/:id", auth, async (req, res) => {
   try {
     const offerId = req.params.id;
-    console.log("Removing from favorites by ID:", {
-      offerId,
-      userId: req.user.id,
-    });
 
     // Проверяем, существует ли запись в избранном с этим ID предложения
     const existingFavorite = await Favorite.findOne({
@@ -1371,10 +991,6 @@ router.delete("/favorites/:id", auth, async (req, res) => {
     await Favorite.deleteOne({ _id: existingFavorite._id });
     res.json({ message: "Removed from favorites", isFavorite: false });
   } catch (error) {
-    console.error("Error removing from favorites:", {
-      message: error.message,
-      stack: error.stack,
-    });
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1387,7 +1003,6 @@ router.get("/notifications", auth, async (req, res) => {
       .limit(50);
     res.json(notifications);
   } catch (error) {
-    console.error("Error fetching notifications:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1406,7 +1021,6 @@ router.put("/notifications/:id/read", auth, async (req, res) => {
     await notification.save();
     res.json(notification);
   } catch (error) {
-    console.error("Error marking notification as read:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1423,7 +1037,6 @@ router.get("/providers", auth, async (req, res) => {
     );
     res.json(providers);
   } catch (error) {
-    console.error("Error fetching providers:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1431,13 +1044,10 @@ router.get("/providers", auth, async (req, res) => {
 // Получение списка чатов пользователя
 router.get("/my-chats", auth, async (req, res) => {
   try {
-    console.log("[my-chats] Fetching chats for user:", req.user.id);
-
     // Получаем все сообщения пользователя (где он отправитель или получатель)
     const userMessages = await Message.find({
       $or: [{ senderId: req.user.id }, { recipientId: req.user.id }],
     });
-    console.log("[my-chats] Found user messages:", userMessages.length);
 
     // Группируем по (requestId, providerId)
     const chatMap = new Map();
@@ -1486,10 +1096,8 @@ router.get("/my-chats", auth, async (req, res) => {
           : null,
       });
     }
-    console.log("[my-chats] Final chat list:", chatList.length);
     res.json(chatList);
   } catch (error) {
-    console.error("[my-chats] Error fetching user chats:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1497,13 +1105,6 @@ router.get("/my-chats", auth, async (req, res) => {
 // Получение списка чатов провайдера
 router.get("/provider-chats", auth, async (req, res) => {
   try {
-    console.log(
-      "[provider-chats] Fetching provider chats for user:",
-      req.user.id,
-      "role:",
-      req.user.role
-    );
-
     if (!["provider", "admin"].includes(req.user.role)) {
       return res
         .status(403)
@@ -1514,10 +1115,6 @@ router.get("/provider-chats", auth, async (req, res) => {
     const providerMessages = await Message.find({
       $or: [{ senderId: req.user.id }, { recipientId: req.user.id }],
     });
-    console.log(
-      "[provider-chats] Found provider messages:",
-      providerMessages.length
-    );
 
     // Группируем по (requestId, userId)
     const chatMap = new Map();
@@ -1564,10 +1161,8 @@ router.get("/provider-chats", auth, async (req, res) => {
           : null,
       });
     }
-    console.log("[provider-chats] Final chat list:", chatList.length);
     res.json(chatList);
   } catch (error) {
-    console.error("[provider-chats] Error fetching provider chats:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1592,16 +1187,8 @@ router.post("/offers/:id/promote", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid offer ID format" });
     }
 
-    console.log("[Promotion] Received promotion request:", {
-      offerId,
-      userId: req.user.id,
-      promotionType,
-      body: req.body,
-    });
-
     // Валидация типа поднятия
     if (!promotionType || !["DAY", "WEEK"].includes(promotionType)) {
-      console.log("[Promotion] Invalid promotion type:", promotionType);
       return res
         .status(400)
         .json({ error: "Invalid promotion type. Must be 'DAY' or 'WEEK'" });
@@ -1627,15 +1214,8 @@ router.post("/offers/:id/promote", auth, async (req, res) => {
       req.user.id
     );
 
-    console.log("[Promotion] Promotion successful:", result);
     res.json(result);
   } catch (error) {
-    console.error("[Promotion] Error promoting offer:", {
-      error: error.message,
-      stack: error.stack,
-      name: error.name,
-    });
-
     // Если это ошибка валидации, возвращаем детали
     if (error.name === "ValidationError") {
       return res.status(400).json({
@@ -1660,12 +1240,10 @@ router.post("/offers/:id/promote", auth, async (req, res) => {
 // Проверка статуса поднятия
 router.get("/offers/:id/promotion-status", async (req, res) => {
   const id = req.params.id;
-  console.log(`[Promotion] Checking status for offer: ${id}`);
 
   try {
     // Проверяем валидность ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.warn(`[Promotion] Invalid offer ID format: ${id}`);
       return res.status(400).json({
         error: "Invalid offer ID format",
         isPromoted: false,
@@ -1673,14 +1251,8 @@ router.get("/offers/:id/promotion-status", async (req, res) => {
     }
 
     const status = await promotionService.checkPromotionStatus(id);
-    console.log(`[Promotion] Status for offer ${id}:`, status);
     res.json(status);
   } catch (error) {
-    console.error(`[Promotion] Error checking promotion status for ${id}:`, {
-      error: error.message,
-      stack: error.stack,
-    });
-
     // Отправляем корректный статус ошибки и объект с сообщением об ошибке
     const statusCode = error.message.includes("not found") ? 404 : 500;
     res.status(statusCode).json({
@@ -1705,7 +1277,6 @@ router.get("/check-images", (req, res) => {
       baseUrl: BASE_URL,
     });
   } catch (error) {
-    console.error("Error checking images:", error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -1754,7 +1325,6 @@ router.put("/offers/:id/status", auth, async (req, res) => {
 
     res.json({ message: "Status updated successfully", offer });
   } catch (error) {
-    console.error("Error updating offer status:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -1764,10 +1334,6 @@ router.get("/requests/:id", auth, async (req, res) => {
   try {
     const requestId = req.params.id;
     const userId = req.user.id;
-
-    console.log(
-      `[GET /requests/${requestId}] Request info requested by user: ${userId}`
-    );
 
     // Проверка валидности ID
     if (!mongoose.Types.ObjectId.isValid(requestId)) {
@@ -1783,32 +1349,9 @@ router.get("/requests/:id", auth, async (req, res) => {
         select: "title serviceType",
       });
 
-    console.log(`[GET /requests/${requestId}] raw request:`, request);
-    if (request) {
-      console.log(`[GET /requests/${requestId}] userId:`, request.userId);
-      console.log(
-        `[GET /requests/${requestId}] providerId:`,
-        request.providerId
-      );
-    }
-
     if (!request) {
-      console.log(`[GET /requests/${requestId}] Request not found`);
       return res.status(404).json({ error: "Request not found" });
     }
-
-    console.log(`[GET /requests/${requestId}] Found request:`, {
-      id: request._id,
-      userId:
-        request.userId && request.userId._id
-          ? request.userId._id.toString()
-          : null,
-      providerId:
-        request.providerId && request.providerId._id
-          ? request.providerId._id.toString()
-          : null,
-      status: request.status,
-    });
 
     // Безопасно получаем userId и providerId
     const userIdObj =
@@ -1822,34 +1365,18 @@ router.get("/requests/:id", auth, async (req, res) => {
     const userIdStr = userId.toString();
 
     // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером, если он есть)
-    console.log("Checking access rights for request details (patched):", {
-      userIdStr,
-      userIdObj,
-      providerIdObj,
-      role: req.user.role,
-    });
     if (
       userIdStr !== userIdObj &&
       providerIdObj &&
       userIdStr !== providerIdObj
     ) {
-      console.log(
-        `[GET /requests/${requestId}] Access denied for user: ${userIdStr}`
-      );
       return res.status(403).json({ error: "Access denied" });
     }
     if (req.user.role === "provider" && !providerIdObj) {
       // Общий запрос — разрешаем доступ любому провайдеру
-      console.log(
-        `[GET /requests/${requestId}] Access granted for provider to general request: ${userIdStr}`
-      );
     }
 
     // Если дошли сюда, значит доступ разрешен
-    console.log(
-      `[GET /requests/${requestId}] Access granted to user: ${userIdStr}`
-    );
-
     // Формируем объект с информацией о запросе, который будет совместим с ChatRequest
     const chatRequestData = {
       _id: request._id,
@@ -1874,7 +1401,6 @@ router.get("/requests/:id", auth, async (req, res) => {
 
     res.json(chatRequestData);
   } catch (error) {
-    console.error(`[GET /requests/${req.params.id}] Error:`, error);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 });
@@ -1882,20 +1408,9 @@ router.get("/requests/:id", auth, async (req, res) => {
 // Тестовый маршрут для загрузки изображений
 router.post("/test-upload", upload.single("image"), (req, res) => {
   try {
-    console.log("Received upload request");
-
     if (!req.file) {
-      console.log("No file received");
       return res.status(400).json({ error: "No file uploaded" });
     }
-
-    console.log("File uploaded successfully:", {
-      path: req.file.path,
-      filename: req.file.filename,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      cloudinaryData: req.file.cloudinaryData,
-    });
 
     res.json({
       success: true,
@@ -1908,7 +1423,6 @@ router.post("/test-upload", upload.single("image"), (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in test-upload route:", error);
     res.status(500).json({
       error: "Failed to upload file",
       details: error.message,

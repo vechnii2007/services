@@ -17,10 +17,6 @@ const MyOffers = () => {
 
   const fetchMyOffers = useCallback(async () => {
     if (!isAuthenticated || !user?._id) {
-      console.log("Cannot fetch offers - not authenticated or no user ID", {
-        isAuthenticated,
-        userId: user?._id,
-      });
       return;
     }
 
@@ -30,7 +26,6 @@ const MyOffers = () => {
       setOffers(response);
       setMessage(t("offers_loaded"));
     } catch (error) {
-      console.error("Error fetching offers:", error);
       setMessage(
         "Error: " + (error.response?.data?.error || t("something_went_wrong"))
       );
@@ -48,11 +43,6 @@ const MyOffers = () => {
   }, [fetchMyOffers, isAuthenticated, user?._id]);
 
   const handleOfferUpdate = useCallback((updatedOffer) => {
-    console.log("Updating offer:", {
-      id: updatedOffer._id,
-      providerId: updatedOffer.providerId,
-      title: updatedOffer.title,
-    });
     setOffers((prevOffers) =>
       prevOffers.map((offer) =>
         offer._id === updatedOffer._id ? updatedOffer : offer
@@ -61,28 +51,18 @@ const MyOffers = () => {
   }, []);
 
   const handleOfferDelete = useCallback((offerId) => {
-    console.log("Deleting offer:", { offerId });
     setOffers((prevOffers) =>
       prevOffers.filter((offer) => offer._id !== offerId)
     );
   }, []);
 
   if (!isAuthenticated) {
-    console.log("Not authenticated, showing login message");
     return <Typography>{t("please_login")}</Typography>;
   }
 
   if (loading) {
-    console.log("Loading offers...");
     return <Typography>{t("loading")}</Typography>;
   }
-
-  console.log("MyOffers render:", {
-    userRole: user?.role,
-    userId: user?._id,
-    offersCount: offers.length,
-    isAuthenticated,
-  });
 
   return (
     <Box sx={{ paddingY: 4 }}>
@@ -103,24 +83,7 @@ const MyOffers = () => {
       {offers.length > 0 ? (
         <Grid container spacing={3}>
           {offers.map((offer) => {
-            console.log("Checking offer ownership:", {
-              offerId: offer._id,
-              providerId: offer.providerId,
-              userId: user?._id,
-              userRole: user?.role,
-            });
-
             const isOwner = offer.providerId === user?._id;
-
-            console.log("Rendering offer:", {
-              offerId: offer._id,
-              providerId: offer.providerId,
-              userId: user?._id,
-              isOwner,
-              userRole: user?.role,
-              canPromote: isOwner && user?.role === "provider",
-              title: offer.title,
-            });
 
             return (
               <Grid item xs={12} sm={6} md={4} key={offer._id}>
