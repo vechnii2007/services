@@ -124,6 +124,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
   },
   { timestamps: true }
 );

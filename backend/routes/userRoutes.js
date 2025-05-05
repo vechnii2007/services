@@ -4,6 +4,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
+const passport = require("../config/passport");
+require("dotenv").config();
 
 // Регистрация пользователя
 router.post("/register", async (req, res) => {
@@ -206,7 +208,7 @@ router.get("/provider/:id/stats", async (req, res) => {
 });
 
 // Получение информации о пользователе по ID (для публичного доступа)
-router.get("/:id", async (req, res) => {
+router.get(":id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select(
       "-password -email -phone -__v"
@@ -239,6 +241,50 @@ router.get("/:id", async (req, res) => {
     res.json(safeUserInfo);
   } catch (error) {
     console.error("Error fetching user:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Google OAuth2: старт (оба пути)
+router.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+// Google OAuth2: callback (оба пути)
+router.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false, failureRedirect: "/" }),
+  (req, res) => {
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    res.redirect(
+      `${
+        process.env.FRONTEND_URL || "http://localhost:3000"
+      }/oauth-success?token=${token}`
+    );
+  }
+);
+
+// Обновление профиля пользователя (роль, телефон, адрес и т.д.)
+router.put("/profile", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    // Разрешаем менять только name, phone, address, role (но не admin)
+    const { name, phone, address, role } = req.body;
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (address) user.address = address;
+    if (role && ["user", "provider"].includes(role)) {
+      user.role = role;
+    }
+    await user.save();
+    res.json({ success: true, user });
+  } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });

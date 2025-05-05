@@ -23,6 +23,7 @@ const AdminPanel = lazy(() =>
 const Notifications = lazy(() => import("../pages/Notifications"));
 const RequestDetails = lazy(() => import("../pages/RequestDetails"));
 const ProfileById = lazy(() => import("../pages/ProfileById"));
+const OauthSuccess = lazy(() => import("../pages/OauthSuccess"));
 
 // Компонент загрузки для Suspense
 const Loading = () => (
@@ -144,6 +145,11 @@ export const routesConfig = [
   {
     path: "/requests/:id",
     element: withSuspense(RequestDetails),
+    requiredRole: null,
+  },
+  {
+    path: "/oauth-success",
+    element: withSuspense(OauthSuccess),
     requiredRole: null,
   },
 ];

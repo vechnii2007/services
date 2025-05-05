@@ -184,6 +184,18 @@ const Profile = () => {
                   <MenuItem value="offline">{t("offline")}</MenuItem>
                 </Select>
               </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Роль</InputLabel>
+                <Select
+                  name="role"
+                  value={formData.role || user.role || "user"}
+                  onChange={handleChange}
+                  disabled={user.role === "admin"}
+                >
+                  <MenuItem value="user">Пользователь</MenuItem>
+                  <MenuItem value="provider">Провайдер</MenuItem>
+                </Select>
+              </FormControl>
               <Button
                 type="submit"
                 variant="contained"

@@ -17,6 +17,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const searchRoutes = require("./routes/search");
 const reviewRoutes = require("./routes/reviewRoutes");
 const { UPLOADS_DIR, UPLOADS_PATH } = require("./config/uploadConfig");
+const passport = require("./config/passport");
 
 // Логирование для проверки JWT_SECRET
 console.log("JWT_SECRET:", process.env.JWT_SECRET);
@@ -162,3 +163,5 @@ mongoose
 mongoose.connection.on("error", (err) => {
   console.error("MongoDB connection error:", err);
 });
+
+app.use(passport.initialize());

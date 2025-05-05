@@ -98,6 +98,19 @@ const Login = () => {
             >
               {t("login")}
             </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="primary"
+              sx={{ mb: 2 }}
+              onClick={() => {
+                window.location.href =
+                  process.env.REACT_APP_API_URL + "/users/auth/google" ||
+                  "http://localhost:5001/api/users/auth/google";
+              }}
+            >
+              Войти через Google
+            </Button>
           </Box>
         </CardContent>
       </Card>
