@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
   if (!token) {
     return res.status(401).json({ error: "Access denied. No token provided." });
@@ -16,7 +17,19 @@ module.exports = (req, res, next) => {
       decoded.id = decoded._id;
     }
 
-    req.user = decoded;
+    // Актуализируем пользователя из базы
+    const userFromDb = await User.findById(decoded.id);
+    if (!userFromDb) {
+      return res.status(401).json({ error: "User not found." });
+    }
+    req.user = {
+      ...decoded,
+      role: userFromDb.role,
+      status: userFromDb.status,
+      email: userFromDb.email,
+      name: userFromDb.name,
+      // можно добавить другие поля по необходимости
+    };
 
     next();
   } catch (error) {

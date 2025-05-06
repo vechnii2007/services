@@ -275,14 +275,23 @@ router.put("/profile", auth, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
     // Разрешаем менять только name, phone, address, role (но не admin)
-    const { name, phone, address, role } = req.body;
+    const { name, phone, address, role, socialLogin } = req.body;
+    console.log("[PUT /users/profile] req.body:", req.body);
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (address) user.address = address;
     if (role && ["user", "provider"].includes(role)) {
       user.role = role;
     }
+    if (socialLogin === false) {
+      user.socialLogin = false;
+      console.log("[PUT /users/profile] user.socialLogin set to false");
+    }
     await user.save();
+    console.log(
+      "[PUT /users/profile] saved user.socialLogin:",
+      user.socialLogin
+    );
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ error: "Server error" });

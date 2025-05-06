@@ -20,6 +20,7 @@ passport.use(
           user = await User.findOne({ email });
           if (user) {
             user.googleId = profile.id;
+            user.socialLogin = true;
             await user.save();
           } else {
             user = await User.create({
@@ -27,6 +28,7 @@ passport.use(
               name: profile.displayName || "Google User",
               email: email,
               password: Math.random().toString(36).slice(-8), // временный пароль
+              socialLogin: true,
             });
           }
         }

@@ -10,3 +10,8 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Google Places Autocomplete: всегда поверх попапов */
+.pac-container {
+  z-index: 20000 !important;
+}

@@ -7,7 +7,9 @@ export const UserService = {
   },
 
   updateProfile: async (profileData) => {
+    console.log("[UserService] updateProfile called with:", profileData);
     const response = await api.put("/users/profile", profileData);
+    console.log("[UserService] updateProfile response:", response);
     return response.data;
   },
 

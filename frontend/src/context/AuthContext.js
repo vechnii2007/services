@@ -14,7 +14,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const { user, loading: userLoading, error, updateUser } = useUser();
+  const { user, loading: userLoading, error, updateUser, refetch } = useUser();
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   useEffect(() => {
@@ -75,6 +75,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile: updateUser,
     isAuthenticated,
+    refetch,
   };
 
   return (

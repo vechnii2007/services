@@ -129,6 +129,10 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    socialLogin: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
