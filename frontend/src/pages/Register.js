@@ -19,11 +19,13 @@ import {
   Switch,
   Grid,
 } from "@mui/material";
+import { useForm } from "../hooks/useForm";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 
 const Register = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const { values, handleChange, setValues } = useForm({
     name: "",
     email: "",
     password: "",
@@ -46,24 +48,8 @@ const Register = () => {
   const [newSpecialization, setNewSpecialization] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name.startsWith("providerInfo.")) {
-      const field = name.split(".")[1];
-      setFormData((prev) => ({
-        ...prev,
-        providerInfo: {
-          ...prev.providerInfo,
-          [field]: value,
-        },
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
   const handleContactPreferenceChange = (preference) => {
-    setFormData((prev) => ({
+    setValues((prev) => ({
       ...prev,
       providerInfo: {
         ...prev.providerInfo,
@@ -77,7 +63,7 @@ const Register = () => {
 
   const handleAddSpecialization = (e) => {
     if (e.key === "Enter" && newSpecialization.trim()) {
-      setFormData((prev) => ({
+      setValues((prev) => ({
         ...prev,
         providerInfo: {
           ...prev.providerInfo,
@@ -93,7 +79,7 @@ const Register = () => {
 
   const handleAddLanguage = (e) => {
     if (e.key === "Enter" && newLanguage.trim()) {
-      setFormData((prev) => ({
+      setValues((prev) => ({
         ...prev,
         providerInfo: {
           ...prev.providerInfo,
@@ -105,7 +91,7 @@ const Register = () => {
   };
 
   const handleDeleteSpecialization = (specializationToDelete) => {
-    setFormData((prev) => ({
+    setValues((prev) => ({
       ...prev,
       providerInfo: {
         ...prev.providerInfo,
@@ -117,7 +103,7 @@ const Register = () => {
   };
 
   const handleDeleteLanguage = (languageToDelete) => {
-    setFormData((prev) => ({
+    setValues((prev) => ({
       ...prev,
       providerInfo: {
         ...prev.providerInfo,
@@ -131,7 +117,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post("/users/register", formData);
+      const res = await api.post("/users/register", values);
       setMessage(res.data.message);
       setTimeout(() => navigate("/login"), 2000);
     } catch (error) {
@@ -180,7 +166,7 @@ const Register = () => {
                   <TextField
                     label={t("name")}
                     name="name"
-                    value={formData.name}
+                    value={values.name}
                     onChange={handleChange}
                     fullWidth
                     required
@@ -191,7 +177,7 @@ const Register = () => {
                     label={t("email")}
                     name="email"
                     type="email"
-                    value={formData.email}
+                    value={values.email}
                     onChange={handleChange}
                     fullWidth
                     required
@@ -202,7 +188,7 @@ const Register = () => {
                     label={t("password")}
                     name="password"
                     type="password"
-                    value={formData.password}
+                    value={values.password}
                     onChange={handleChange}
                     fullWidth
                     required
@@ -213,7 +199,7 @@ const Register = () => {
                     <InputLabel>{t("role")}</InputLabel>
                     <Select
                       name="role"
-                      value={formData.role}
+                      value={values.role}
                       onChange={handleChange}
                       label={t("role")}
                     >
@@ -224,7 +210,7 @@ const Register = () => {
                 </Grid>
               </Grid>
 
-              <Collapse in={formData.role === "provider"}>
+              <Collapse in={values.role === "provider"}>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="h6" gutterBottom>
                     {t("provider_details")}
@@ -234,17 +220,18 @@ const Register = () => {
                       <TextField
                         label={t("phone")}
                         name="phone"
-                        value={formData.phone}
+                        value={values.phone}
                         onChange={handleChange}
                         fullWidth
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField
-                        label={t("address")}
-                        name="address"
-                        value={formData.address}
+                      <AddressAutocomplete
+                        value={values.address}
                         onChange={handleChange}
+                        name="address"
+                        label={t("address")}
+                        required
                         fullWidth
                       />
                     </Grid>
@@ -252,7 +239,7 @@ const Register = () => {
                       <TextField
                         label={t("description")}
                         name="providerInfo.description"
-                        value={formData.providerInfo.description}
+                        value={values.providerInfo.description}
                         onChange={handleChange}
                         multiline
                         rows={3}
@@ -263,7 +250,7 @@ const Register = () => {
                       <TextField
                         label={t("working_hours")}
                         name="providerInfo.workingHours"
-                        value={formData.providerInfo.workingHours}
+                        value={values.providerInfo.workingHours}
                         onChange={handleChange}
                         fullWidth
                         placeholder="Пн-Пт: 9:00-18:00"
@@ -286,7 +273,7 @@ const Register = () => {
                           gap: 1,
                         }}
                       >
-                        {formData.providerInfo.specialization.map((spec) => (
+                        {values.providerInfo.specialization.map((spec) => (
                           <Chip
                             key={spec}
                             label={spec}
@@ -312,7 +299,7 @@ const Register = () => {
                           gap: 1,
                         }}
                       >
-                        {formData.providerInfo.languages.map((lang) => (
+                        {values.providerInfo.languages.map((lang) => (
                           <Chip
                             key={lang}
                             label={lang}
@@ -330,7 +317,7 @@ const Register = () => {
                           control={
                             <Switch
                               checked={
-                                formData.providerInfo.contactPreferences.email
+                                values.providerInfo.contactPreferences.email
                               }
                               onChange={() =>
                                 handleContactPreferenceChange("email")
@@ -343,7 +330,7 @@ const Register = () => {
                           control={
                             <Switch
                               checked={
-                                formData.providerInfo.contactPreferences.phone
+                                values.providerInfo.contactPreferences.phone
                               }
                               onChange={() =>
                                 handleContactPreferenceChange("phone")
@@ -356,7 +343,7 @@ const Register = () => {
                           control={
                             <Switch
                               checked={
-                                formData.providerInfo.contactPreferences.chat
+                                values.providerInfo.contactPreferences.chat
                               }
                               onChange={() =>
                                 handleContactPreferenceChange("chat")

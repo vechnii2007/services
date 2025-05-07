@@ -19,6 +19,7 @@ import {
 } from "@react-google-maps/api";
 import { useNavigate } from "react-router-dom";
 import MuiAutocomplete from "@mui/material/Autocomplete";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 
 const containerStyle = {
   width: "100%",
@@ -181,43 +182,35 @@ const ServiceRequestForm = () => {
               </Select>
 
               <Typography variant="body1">{t("location")}</Typography>
-              <LoadScript
-                googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-                libraries={["places"]} // Добавляем библиотеку places для автодополнения
+              <AddressAutocomplete
+                value={formData.location}
+                onChange={(e) =>
+                  setFormData({ ...formData, location: e.target.value })
+                }
+                name="location"
+                label={t("location")}
+                required
+                fullWidth
+              />
+
+              <Button
+                variant="outlined"
+                onClick={() => setShowMap(!showMap)}
+                sx={{ marginTop: 1 }}
               >
-                <GoogleMapsAutocomplete
-                  onLoad={onLoad}
-                  onPlaceChanged={onPlaceChanged}
-                >
-                  <TextField
-                    label={t("location")}
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    fullWidth
-                    required
-                  />
-                </GoogleMapsAutocomplete>
+                {showMap ? t("hide_map") : t("show_map")}
+              </Button>
 
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowMap(!showMap)}
-                  sx={{ marginTop: 1 }}
+              {showMap && (
+                <GoogleMap
+                  mapContainerStyle={containerStyle}
+                  center={formData.coordinates}
+                  zoom={10}
+                  onClick={handleMapClick}
                 >
-                  {showMap ? t("hide_map") : t("show_map")}
-                </Button>
-
-                {showMap && (
-                  <GoogleMap
-                    mapContainerStyle={containerStyle}
-                    center={formData.coordinates}
-                    zoom={10}
-                    onClick={handleMapClick}
-                  >
-                    <Marker position={formData.coordinates} />
-                  </GoogleMap>
-                )}
-              </LoadScript>
+                  <Marker position={formData.coordinates} />
+                </GoogleMap>
+              )}
 
               <MuiAutocomplete
                 options={providers}

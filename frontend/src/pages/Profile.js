@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useUser } from "../hooks/useUser";
+import { useForm } from "../hooks/useForm";
 import {
   Box,
   Typography,
@@ -15,6 +16,7 @@ import {
   Tab,
 } from "@mui/material";
 import NotificationSettings from "../components/Header/NotificationSettings";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 
 const TabPanel = (props) => {
   const { children, value, index, ...other } = props;
@@ -34,51 +36,34 @@ const TabPanel = (props) => {
 
 const Profile = () => {
   const { t } = useTranslation();
-  const { user, loading, error, updateUser, updateStatus } = useUser();
-  const [formData, setFormData] = useState({
+  const { user, loading, error, updateUser } = useUser();
+  const { values, handleChange, setValues } = useForm({
     name: "",
     email: "",
     phone: "",
     address: "",
+    role: "user",
   });
-  const [status, setStatus] = useState("offline");
   const [message, setMessage] = useState("");
   const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
     if (user) {
-      setFormData({
+      setValues({
         name: user.name,
         email: user.email,
         phone: user.phone || "",
         address: user.address || "",
+        role: user.role || "user",
       });
-      setStatus(user.status);
       setMessage(t("profile_loaded"));
     }
-  }, [user, t]);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleStatusChange = async (e) => {
-    const newStatus = e.target.value;
-    setStatus(newStatus);
-    try {
-      await updateStatus(newStatus);
-      setMessage(t("status_updated"));
-    } catch (error) {
-      setMessage(
-        "Error: " + (error.response?.data?.error || t("something_went_wrong"))
-      );
-    }
-  };
+  }, [user, t, setValues]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await updateUser(formData);
+      await updateUser(values);
       setMessage(t("profile_updated"));
     } catch (error) {
       setMessage(
@@ -148,7 +133,7 @@ const Profile = () => {
               <TextField
                 label={t("name")}
                 name="name"
-                value={formData.name}
+                value={values.name}
                 onChange={handleChange}
                 fullWidth
                 margin="normal"
@@ -156,7 +141,7 @@ const Profile = () => {
               <TextField
                 label={t("email")}
                 name="email"
-                value={formData.email}
+                value={values.email}
                 onChange={handleChange}
                 fullWidth
                 margin="normal"
@@ -164,34 +149,22 @@ const Profile = () => {
               <TextField
                 label={t("phone")}
                 name="phone"
-                value={formData.phone}
+                value={values.phone}
                 onChange={handleChange}
                 fullWidth
                 margin="normal"
               />
-              <TextField
-                label={t("address")}
+              <AddressAutocomplete
+                value={values.address}
+                onChange={handleChange}
                 name="address"
-                value={formData.address}
-                onChange={handleChange}
+                label={t("address")}
                 fullWidth
                 margin="normal"
               />
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("status")}</InputLabel>
-                <Select value={status} onChange={handleStatusChange}>
-                  <MenuItem value="online">{t("online")}</MenuItem>
-                  <MenuItem value="offline">{t("offline")}</MenuItem>
-                </Select>
-              </FormControl>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Роль</InputLabel>
-                <Select
-                  name="role"
-                  value={formData.role || user.role || "user"}
-                  onChange={handleChange}
-                  disabled={user.role === "admin"}
-                >
+                <Select name="role" value={values.role} onChange={handleChange}>
                   <MenuItem value="user">Пользователь</MenuItem>
                   <MenuItem value="provider">Провайдер</MenuItem>
                 </Select>

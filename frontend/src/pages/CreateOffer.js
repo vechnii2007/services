@@ -27,6 +27,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { useDropzone } from "react-dropzone";
 import OfferService from "../services/OfferService";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -407,31 +408,15 @@ const CreateOffer = () => {
         </Select>
       </FormControl>
 
-      <StyledPaper elevation={0}>
-        <Typography
-          variant="h6"
-          gutterBottom
-          sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
-        >
-          <LocationOnIcon color="primary" />
-          {t("location")}
-        </Typography>
-        <LoadScript
-          googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-          libraries={["places"]}
-        >
-          <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-            <TextField
-              label={t("location")}
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              fullWidth
-              required
-            />
-          </Autocomplete>
-        </LoadScript>
-      </StyledPaper>
+      <AddressAutocomplete
+        value={formData.location}
+        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+        name="location"
+        label={t("address")}
+        required
+        fullWidth
+        margin="normal"
+      />
 
       <StyledPaper elevation={0}>
         <Typography

@@ -12,10 +12,8 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import {
-  LoadScript,
-  Autocomplete as GoogleMapsAutocomplete,
-} from "@react-google-maps/api";
+import { useForm } from "../hooks/useForm";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 
 const ROLE_OPTIONS = [
   { value: "user", label: "Пользователь" },
@@ -28,7 +26,11 @@ const OauthSuccess = () => {
   const { refetch, user, updateProfile } = useContext(AuthContext);
   console.log("[OauthSuccess] updateProfile:", updateProfile);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [form, setForm] = useState({ role: "user", phone: "", address: "" });
+  const { values, handleChange, setValues } = useForm({
+    role: "user",
+    phone: "",
+    address: "",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [profileCompleted, setProfileCompleted] = useState(false);
@@ -68,7 +70,7 @@ const OauthSuccess = () => {
     );
     if (user && user.socialLogin === true) {
       setShowProfileDialog(true);
-      setForm({
+      setValues({
         role: user.role || "user",
         phone: user.phone || "",
         address: user.address || "",
@@ -83,16 +85,12 @@ const OauthSuccess = () => {
     }
   }, [user, showProfileDialog, navigate]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
   const onLoad = (autoC) => setAutocomplete(autoC);
   const onPlaceChanged = () => {
     if (autocomplete !== null && window.google) {
       const place = autocomplete.getPlace();
       if (place.formatted_address) {
-        setForm((prev) => ({ ...prev, address: place.formatted_address }));
+        setValues((prev) => ({ ...prev, address: place.formatted_address }));
       }
     }
   };
@@ -101,7 +99,7 @@ const OauthSuccess = () => {
     setLoading(true);
     setError("");
     try {
-      const payload = { ...form, socialLogin: false };
+      const payload = { ...values, socialLogin: false };
       const updatedUser = await updateProfile(payload);
       if (typeof refetch === "function") {
         await refetch();
@@ -128,7 +126,7 @@ const OauthSuccess = () => {
               select
               label="Роль"
               name="role"
-              value={form.role}
+              value={values.role}
               onChange={handleChange}
               fullWidth
             >
@@ -141,27 +139,18 @@ const OauthSuccess = () => {
             <TextField
               label="Телефон"
               name="phone"
-              value={form.phone}
+              value={values.phone}
               onChange={handleChange}
               fullWidth
             />
-            <LoadScript
-              googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
-              libraries={["places"]}
-            >
-              <GoogleMapsAutocomplete
-                onLoad={onLoad}
-                onPlaceChanged={onPlaceChanged}
-              >
-                <TextField
-                  label="Адрес"
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  fullWidth
-                />
-              </GoogleMapsAutocomplete>
-            </LoadScript>
+            <AddressAutocomplete
+              value={values.address}
+              onChange={handleChange}
+              name="address"
+              label="Адрес"
+              required
+              fullWidth
+            />
             {error && (
               <Typography color="error" variant="body2">
                 {error}
