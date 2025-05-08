@@ -173,7 +173,7 @@ const Footer = () => {
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            &copy; {currentYear} Service Portal. {t("landing.footer.rights")}
+            &copy; {currentYear} UniServ. {t("landing.footer.rights")}
           </Typography>
           <Box
             sx={{

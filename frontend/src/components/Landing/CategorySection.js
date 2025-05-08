@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -25,6 +25,7 @@ import LegalIcon from "@mui/icons-material/Gavel";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { alpha } from "@mui/material/styles";
+import { getCategoryPhoto } from "../../services/unsplashService";
 
 // Анимированные компоненты
 const MotionBox = styled(motion.div)({});
@@ -170,6 +171,7 @@ const ServiceChip = styled(Chip)(({ theme }) => ({
 const CategorySection = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [categoryImages, setCategoryImages] = useState({});
 
   // Вариации для анимации
   const containerVariants = {
@@ -207,7 +209,6 @@ const CategorySection = () => {
       name: t("landing.categories.healthcare"),
       icon: <HealthcareIcon fontSize="large" />,
       color: "primary.main",
-      image: "https://source.unsplash.com/random/400x300/?medicine",
       servicesCount: 245,
       popularity: 85,
       examples: ["Терапевт", "Стоматолог", "Массаж"],
@@ -217,7 +218,6 @@ const CategorySection = () => {
       name: t("landing.categories.education"),
       icon: <EducationIcon fontSize="large" />,
       color: "info.main",
-      image: "https://source.unsplash.com/random/400x300/?education",
       servicesCount: 189,
       popularity: 75,
       examples: ["Репетитор", "Языковые курсы", "Программирование"],
@@ -227,7 +227,6 @@ const CategorySection = () => {
       name: t("landing.categories.finance"),
       icon: <FinanceIcon fontSize="large" />,
       color: "success.main",
-      image: "https://source.unsplash.com/random/400x300/?finance",
       servicesCount: 156,
       popularity: 70,
       examples: ["Бухгалтер", "Финансовый консультант", "Аудитор"],
@@ -237,7 +236,6 @@ const CategorySection = () => {
       name: t("landing.categories.household"),
       icon: <HouseholdIcon fontSize="large" />,
       color: "warning.main",
-      image: "https://source.unsplash.com/random/400x300/?home",
       servicesCount: 312,
       popularity: 90,
       examples: ["Уборка", "Ремонт", "Сантехник"],
@@ -247,7 +245,6 @@ const CategorySection = () => {
       name: t("landing.categories.transport"),
       icon: <TransportIcon fontSize="large" />,
       color: "error.main",
-      image: "https://source.unsplash.com/random/400x300/?transport",
       servicesCount: 134,
       popularity: 65,
       examples: ["Такси", "Грузоперевозки", "Эвакуатор"],
@@ -257,12 +254,26 @@ const CategorySection = () => {
       name: t("landing.categories.legal"),
       icon: <LegalIcon fontSize="large" />,
       color: "secondary.main",
-      image: "https://source.unsplash.com/random/400x300/?legal",
       servicesCount: 167,
       popularity: 60,
       examples: ["Юрист", "Нотариус", "Адвокат"],
     },
   ];
+
+  useEffect(() => {
+    const loadCategoryImages = async () => {
+      const images = {};
+      for (const category of categories) {
+        const imageUrl = await getCategoryPhoto(category.id);
+        if (imageUrl) {
+          images[category.id] = imageUrl;
+        }
+      }
+      setCategoryImages(images);
+    };
+
+    loadCategoryImages();
+  }, []);
 
   const handleCategoryClick = (category) => {
     navigate(`/offers?category=${category.id}`);
@@ -323,7 +334,10 @@ const CategorySection = () => {
                   <CardMedia
                     component="img"
                     className="category-image"
-                    image={category.image}
+                    image={
+                      categoryImages[category.id] ||
+                      `https://source.unsplash.com/random/400x300/?${category.id}`
+                    }
                     alt={category.name}
                   />
                   <Box className="category-overlay" />
