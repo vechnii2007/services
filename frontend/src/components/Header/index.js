@@ -443,8 +443,11 @@ const Header = ({ onDrawerToggle }) => {
           <MenuItem onClick={() => handleLanguageChange("ru")}>
             Русский
           </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange("en")}>
-            English
+          <MenuItem onClick={() => handleLanguageChange("ua")}>
+            Українська
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageChange("es")}>
+            Español
           </MenuItem>
         </Menu>
         <ListItem button onClick={() => navigate("/notifications")}>
@@ -561,8 +564,11 @@ const Header = ({ onDrawerToggle }) => {
                 <MenuItem onClick={() => handleLanguageChange("ru")}>
                   Русский
                 </MenuItem>
-                <MenuItem onClick={() => handleLanguageChange("en")}>
-                  English
+                <MenuItem onClick={() => handleLanguageChange("es")}>
+                  Español
+                </MenuItem>
+                <MenuItem onClick={() => handleLanguageChange("ua")}>
+                  Українська
                 </MenuItem>
               </Menu>
               <IconButton color="inherit" onClick={handleNotificationsClick}>

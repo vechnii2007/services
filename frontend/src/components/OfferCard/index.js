@@ -320,7 +320,7 @@ const OfferCard = memo(
                 color="primary"
                 onClick={handleViewClick}
               >
-                {t("view")}
+                {t("view_offer")}
               </Button>
               <IconButton onClick={handleFavoriteClick} size="small">
                 {isFavorite ? (

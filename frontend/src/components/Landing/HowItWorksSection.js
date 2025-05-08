@@ -13,10 +13,10 @@ const MotionBox = styled(motion.div)({});
 
 // Стили
 const SectionContainer = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(10, 2),
+  padding: theme.spacing(4, 0),
   background: `linear-gradient(45deg, ${theme.palette.background.default} 0%, ${theme.palette.grey[50]} 100%)`,
   [theme.breakpoints.up("md")]: {
-    padding: theme.spacing(12, 4),
+    padding: theme.spacing(6, 0),
   },
 }));
 
@@ -126,7 +126,7 @@ const HowItWorksSection = () => {
 
   return (
     <SectionContainer component="section">
-      <Container maxWidth="lg">
+      <Container maxWidth="xl">
         <MotionBox
           sx={{ textAlign: "center", mb: 8 }}
           variants={titleVariants}
@@ -164,44 +164,43 @@ const HowItWorksSection = () => {
           </Typography>
         </MotionBox>
 
-        <MotionBox
-          component={Grid}
-          container
-          spacing={4}
-          variants={containerVariants}
+        <div
+          // variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.1 }}
         >
-          {steps.map((step) => (
-            <Grid item xs={12} sm={6} md={3} key={step.number}>
-              <MotionBox variants={itemVariants}>
-                <StepCard>
-                  <Box sx={{ textAlign: "center" }}>
-                    <StepNumber>{step.number}</StepNumber>
-                    <StepIcon color={step.color}>{step.icon}</StepIcon>
-                    <Typography
-                      variant="h5"
-                      component="h3"
-                      gutterBottom
-                      fontWeight={600}
-                      sx={{ mb: 2 }}
-                    >
-                      {t(step.title)}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      color="text.secondary"
-                      sx={{ lineHeight: 1.7 }}
-                    >
-                      {t(step.description)}
-                    </Typography>
-                  </Box>
-                </StepCard>
-              </MotionBox>
-            </Grid>
-          ))}
-        </MotionBox>
+          <Grid container spacing={4} justifyContent="center">
+            {steps.map((step) => (
+              <Grid item size={{ xs: 12, sm: 6, md: 6 }} key={step.number}>
+                <MotionBox variants={itemVariants}>
+                  <StepCard sx={{ height: "100%" }}>
+                    <Box sx={{ textAlign: "center" }}>
+                      <StepNumber>{step.number}</StepNumber>
+                      <StepIcon color={step.color}>{step.icon}</StepIcon>
+                      <Typography
+                        variant="h5"
+                        component="h3"
+                        gutterBottom
+                        fontWeight={600}
+                        sx={{ mb: 2 }}
+                      >
+                        {t(step.title)}
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        color="text.secondary"
+                        sx={{ lineHeight: 1.7 }}
+                      >
+                        {t(step.description)}
+                      </Typography>
+                    </Box>
+                  </StepCard>
+                </MotionBox>
+              </Grid>
+            ))}
+          </Grid>
+        </div>
       </Container>
     </SectionContainer>
   );

@@ -281,7 +281,7 @@ const CategorySection = () => {
 
   return (
     <CategoryContainer component="section">
-      <Container maxWidth="lg">
+      <Container maxWidth="xl">
         <MotionBox
           sx={{ textAlign: "center", mb: 8 }}
           variants={titleVariants}
@@ -315,169 +315,169 @@ const CategorySection = () => {
         </MotionBox>
 
         <MotionBox
-          component={Grid}
-          container
-          spacing={4}
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.1 }}
         >
-          {categories.map((category) => (
-            <Grid item xs={12} sm={6} md={4} key={category.id}>
-              <MotionCard
-                component={CategoryCard}
-                variants={itemVariants}
-                onClick={() => handleCategoryClick(category)}
-              >
-                <CardImageWrapper color={category.color}>
-                  <CardMedia
-                    component="img"
-                    className="category-image"
-                    image={
-                      categoryImages[category.id] ||
-                      `https://source.unsplash.com/random/400x300/?${category.id}`
-                    }
-                    alt={category.name}
-                  />
-                  <Box className="category-overlay" />
-                </CardImageWrapper>
-                <CardContent
-                  sx={{
-                    textAlign: "center",
-                    p: 3,
-                    position: "relative",
-                    "&:last-child": { pb: 5 },
-                  }}
+          <Grid container spacing={4} justifyContent="center">
+            {categories.map((category) => (
+              <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={category.id}>
+                <MotionCard
+                  component={CategoryCard}
+                  variants={itemVariants}
+                  onClick={() => handleCategoryClick(category)}
+                  style={{ display: "flex", flexDirection: "column", flex: 1 }}
                 >
-                  <IconBox color={category.color}>{category.icon}</IconBox>
-                  <Typography
-                    variant="h5"
-                    component="h3"
-                    gutterBottom
-                    fontWeight={600}
+                  <CardImageWrapper color={category.color}>
+                    <CardMedia
+                      component="img"
+                      className="category-image"
+                      image={
+                        categoryImages[category.id] ||
+                        `https://source.unsplash.com/random/400x300/?${category.id}`
+                      }
+                      alt={category.name}
+                    />
+                    <Box className="category-overlay" />
+                  </CardImageWrapper>
+                  <CardContent
                     sx={{
-                      mb: 1,
-                      color: "text.primary",
-                      transition: "color 0.3s ease",
+                      textAlign: "center",
+                      p: 3,
+                      position: "relative",
+                      "&:last-child": { pb: 5 },
                     }}
                   >
-                    {category.name}
-                  </Typography>
-
-                  <StatsBox>
-                    <Tooltip
-                      title={t("landing.categories.services_count", {
-                        count: category.servicesCount,
-                      })}
-                      arrow
-                    >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <LocalOfferIcon fontSize="small" color="action" />
-                        <Typography variant="body2" color="text.secondary">
-                          {t("landing.categories.services_count", {
-                            count: category.servicesCount,
-                          })}
-                        </Typography>
-                      </Box>
-                    </Tooltip>
-
-                    <Tooltip
-                      title={`${t("landing.categories.popularity")}: ${
-                        category.popularity
-                      }%`}
-                      arrow
-                    >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          ml: 2,
-                        }}
-                      >
-                        <TrendingUpIcon fontSize="small" color="primary" />
-                        <PopularityBar
-                          variant="determinate"
-                          value={category.popularity}
-                          sx={{ width: 60 }}
-                        />
-                      </Box>
-                    </Tooltip>
-                  </StatsBox>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      mb: 2,
-                      opacity: 0.8,
-                      transition: "opacity 0.3s ease",
-                    }}
-                  >
-                    {t("landing.categories.service_examples", {
-                      examples: category.examples.join(", "),
-                    })}
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      justifyContent: "center",
-                      gap: 0.5,
-                      mb: 3,
-                    }}
-                  >
-                    {category.examples.map((example, index) => (
-                      <ServiceChip
-                        key={index}
-                        label={example}
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(
-                            `/offers?category=${category.id}&query=${example}`
-                          );
-                        }}
-                      />
-                    ))}
-                  </Box>
-
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      bottom: 16,
-                      left: 0,
-                      right: 0,
-                      display: "flex",
-                      justifyContent: "center",
-                      transform: "translateY(0)",
-                      transition: "transform 0.3s ease",
-                      "&:hover": {
-                        transform: "translateY(-2px)",
-                      },
-                    }}
-                  >
-                    <StyledButton
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      startIcon={category.icon}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCategoryClick(category);
+                    <IconBox color={category.color}>{category.icon}</IconBox>
+                    <Typography
+                      variant="h5"
+                      component="h3"
+                      gutterBottom
+                      fontWeight={600}
+                      sx={{
+                        mb: 1,
+                        color: "text.primary",
+                        transition: "color 0.3s ease",
                       }}
                     >
-                      {t("landing.categories.explore_category")}
-                    </StyledButton>
-                  </Box>
-                </CardContent>
-              </MotionCard>
-            </Grid>
-          ))}
+                      {category.name}
+                    </Typography>
+
+                    <StatsBox>
+                      <Tooltip
+                        title={t("landing.categories.services_count", {
+                          count: category.servicesCount,
+                        })}
+                        arrow
+                      >
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <LocalOfferIcon fontSize="small" color="action" />
+                          <Typography variant="body2" color="text.secondary">
+                            {t("landing.categories.services_count", {
+                              count: category.servicesCount,
+                            })}
+                          </Typography>
+                        </Box>
+                      </Tooltip>
+
+                      <Tooltip
+                        title={`${t("landing.categories.popularity")}: ${
+                          category.popularity
+                        }%`}
+                        arrow
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            ml: 2,
+                          }}
+                        >
+                          <TrendingUpIcon fontSize="small" color="primary" />
+                          <PopularityBar
+                            variant="determinate"
+                            value={category.popularity}
+                            sx={{ width: 60 }}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </StatsBox>
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mb: 2,
+                        opacity: 0.8,
+                        transition: "opacity 0.3s ease",
+                      }}
+                    >
+                      {t("landing.categories.service_examples", {
+                        examples: category.examples.join(", "),
+                      })}
+                    </Typography>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        justifyContent: "center",
+                        gap: 0.5,
+                        mb: 3,
+                      }}
+                    >
+                      {category.examples.map((example, index) => (
+                        <ServiceChip
+                          key={index}
+                          label={example}
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(
+                              `/offers?category=${category.id}&query=${example}`
+                            );
+                          }}
+                        />
+                      ))}
+                    </Box>
+
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        bottom: 16,
+                        left: 0,
+                        right: 0,
+                        display: "flex",
+                        justifyContent: "center",
+                        transform: "translateY(0)",
+                        transition: "transform 0.3s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                        },
+                      }}
+                    >
+                      <StyledButton
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                        startIcon={category.icon}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCategoryClick(category);
+                        }}
+                      >
+                        {t("landing.categories.explore_category")}
+                      </StyledButton>
+                    </Box>
+                  </CardContent>
+                </MotionCard>
+              </Grid>
+            ))}
+          </Grid>
         </MotionBox>
       </Container>
     </CategoryContainer>

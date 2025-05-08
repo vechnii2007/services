@@ -35,7 +35,7 @@ const languages = [
   },
 ];
 
-const LanguageSwitcher = () => {
+const LanguageSwitcher = ({ colorMode = "dark" }) => {
   const { i18n } = useTranslation();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -57,6 +57,31 @@ const LanguageSwitcher = () => {
     handleClose();
   };
 
+  // Стили для кнопки и меню в зависимости от colorMode
+  const isLight = colorMode === "light";
+  const buttonSx = isLight
+    ? {
+        borderRadius: 2,
+        color: "text.primary",
+        borderColor: "rgba(0,0,0,0.2)",
+        backgroundColor: "background.paper",
+        "&:hover": {
+          borderColor: "text.primary",
+          backgroundColor: "rgba(0,0,0,0.04)",
+        },
+        boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
+      }
+    : {
+        borderRadius: 2,
+        color: "common.white",
+        borderColor: "rgba(255,255,255,0.3)",
+        "&:hover": {
+          borderColor: "common.white",
+          backgroundColor: "rgba(255,255,255,0.1)",
+        },
+        backdropFilter: "blur(8px)",
+      };
+
   return (
     <>
       <Button
@@ -64,16 +89,7 @@ const LanguageSwitcher = () => {
         startIcon={<TranslateIcon />}
         endIcon={<ExpandMoreIcon />}
         variant="outlined"
-        sx={{
-          borderRadius: 2,
-          color: "common.white",
-          borderColor: "rgba(255,255,255,0.3)",
-          "&:hover": {
-            borderColor: "common.white",
-            backgroundColor: "rgba(255,255,255,0.1)",
-          },
-          backdropFilter: "blur(8px)",
-        }}
+        sx={buttonSx}
       >
         <Box sx={{ display: "flex", alignItems: "center" }}>
           {currentLanguage.flag && (
@@ -109,6 +125,8 @@ const LanguageSwitcher = () => {
             mt: 1,
             borderRadius: 2,
             minWidth: 150,
+            backgroundColor: isLight ? "background.paper" : undefined,
+            color: isLight ? "text.primary" : undefined,
           },
         }}
       >

@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 import SearchIcon from "@mui/icons-material/Search";
 import HandymanIcon from "@mui/icons-material/Handyman";
 import SpainIcon from "@mui/icons-material/LocationOn";
+import i18n from "../../i18n";
 
 // Анимированные компоненты
 const MotionBox = styled(motion.div)({});
@@ -56,7 +57,7 @@ const FloatingCard = styled(Paper)(({ theme }) => ({
   gap: theme.spacing(2),
   maxWidth: "100%",
   [theme.breakpoints.up("md")]: {
-    maxWidth: 500,
+    maxWidth: 550,
   },
 }));
 
@@ -87,12 +88,28 @@ const CircleDecoration = styled(Box)(
   })
 );
 
+const LANGUAGES = [
+  { code: "es", label: "Español" },
+  { code: "uk", label: "Українська" },
+  { code: "ru", label: "Русский" },
+];
+
 const HeroSection = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Состояние для количества пользователей
+  const [usersCount, setUsersCount] = React.useState(null);
+
+  React.useEffect(() => {
+    // Мок загрузки количества пользователей (замени на fetch при необходимости)
+    setTimeout(() => {
+      setUsersCount(12000); // Здесь можно сделать реальный fetch
+    }, 800);
+  }, []);
 
   // Анимации
   const titleVariants = {
@@ -363,16 +380,20 @@ const HeroSection = () => {
                     mb: 2,
                   }}
                 >
-                  {["Español", "Українська", "Русский"].map((language) => (
+                  {LANGUAGES.map((lang) => (
                     <Chip
-                      key={language}
-                      label={language}
+                      key={lang.code}
+                      label={lang.label}
                       size="small"
-                      color={language === "Español" ? "primary" : "default"}
+                      color={
+                        i18n.language === lang.code ? "primary" : "default"
+                      }
                       sx={{
                         borderRadius: "50px",
                         fontWeight: 500,
+                        cursor: "pointer",
                       }}
+                      onClick={() => i18n.changeLanguage(lang.code)}
                     />
                   ))}
                 </Box>
@@ -405,7 +426,7 @@ const HeroSection = () => {
                       opacity: 0.7,
                     }}
                   >
-                    {t("landing.hero.card.users_count")}
+                    12000 {t("landing.hero.card.users_count")}
                   </Typography>
                 </Box>
               </FloatingCard>

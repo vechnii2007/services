@@ -157,7 +157,7 @@ const Footer = () => {
             >
               {t("landing.footer.language.description")}
             </Typography>
-            <LanguageSwitcher />
+            <LanguageSwitcher colorMode="light" />
           </Grid>
         </Grid>
 

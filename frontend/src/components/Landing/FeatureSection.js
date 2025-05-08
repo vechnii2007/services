@@ -135,7 +135,7 @@ const FeatureSection = () => {
 
   return (
     <FeatureContainer component="section">
-      <Container maxWidth="lg">
+      <Container maxWidth="xl">
         <MotionBox
           sx={{ textAlign: "center", mb: 8 }}
           variants={titleVariants}
@@ -174,41 +174,40 @@ const FeatureSection = () => {
         </MotionBox>
 
         <MotionBox
-          component={Grid}
-          container
-          spacing={4}
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.1 }}
         >
-          {features.map((feature, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <MotionCard component={FeatureCard} variants={itemVariants}>
-                <CardContent sx={{ p: 0 }}>
-                  <FeatureIcon color={feature.color}>
-                    {feature.icon}
-                  </FeatureIcon>
-                  <Typography
-                    variant="h5"
-                    component="h3"
-                    gutterBottom
-                    fontWeight={600}
-                    sx={{ mb: 1.5 }}
-                  >
-                    {t(feature.title)}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    color="text.secondary"
-                    sx={{ lineHeight: 1.7 }}
-                  >
-                    {t(feature.description)}
-                  </Typography>
-                </CardContent>
-              </MotionCard>
-            </Grid>
-          ))}
+          <Grid container spacing={4} justifyContent="center">
+            {features.map((feature, index) => (
+              <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={index}>
+                <MotionCard component={FeatureCard} variants={itemVariants}>
+                  <CardContent sx={{ p: 0 }}>
+                    <FeatureIcon color={feature.color}>
+                      {feature.icon}
+                    </FeatureIcon>
+                    <Typography
+                      variant="h5"
+                      component="h3"
+                      gutterBottom
+                      fontWeight={600}
+                      sx={{ mb: 1.5 }}
+                    >
+                      {t(feature.title)}
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      color="text.secondary"
+                      sx={{ lineHeight: 1.7 }}
+                    >
+                      {t(feature.description)}
+                    </Typography>
+                  </CardContent>
+                </MotionCard>
+              </Grid>
+            ))}
+          </Grid>
         </MotionBox>
       </Container>
     </FeatureContainer>
