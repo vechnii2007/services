@@ -84,7 +84,7 @@ const OfferList = forwardRef(
         <OfferListContainer>
           <EmptyStateContainer>
             <Typography variant="h6" color="textSecondary">
-              {searchQuery ? t("no_results_found") : t("no_offers_available")}
+              {searchQuery ? t("no_results_found") : t("no_more_offers")}
             </Typography>
           </EmptyStateContainer>
         </OfferListContainer>

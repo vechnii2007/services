@@ -160,59 +160,108 @@ const ChatList = () => {
       <Card
         key={chat._id || `${chat.requestId}_${chat.providerId || chat.userId}`}
         sx={{
-          mb: 2,
+          mb: { xs: 1, sm: 2 },
           transition: "all 0.2s ease",
           borderLeft:
             unreadCount > 0
               ? `5px solid ${theme.palette.primary.main}`
               : undefined,
-          boxShadow: unreadCount > 0 ? theme.shadows[4] : theme.shadows[1],
+          boxShadow: unreadCount > 0 ? theme.shadows[3] : theme.shadows[1],
           background: unreadCount > 0 ? theme.palette.action.hover : undefined,
+          borderRadius: { xs: 1, sm: 2 },
+          cursor: "pointer",
           "&:hover": {
-            transform: "translateY(-2px)",
-            boxShadow: theme.shadows[6],
+            transform: "translateY(-1px)",
+            boxShadow: theme.shadows[4],
+            background: theme.palette.action.selected,
+          },
+          "&:active": {
+            background: theme.palette.action.focus,
           },
         }}
+        onClick={() => {
+          openChat({
+            requestId: chat.requestId || chat._id,
+            providerId: chat.providerId,
+            userId: chat.userId,
+          });
+        }}
       >
-        <CardContent sx={{ p: 2 }}>
+        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
           <Box
             display="flex"
             alignItems="center"
             justifyContent="space-between"
+            sx={{ gap: { xs: 1, sm: 2 } }}
           >
-            <Box display="flex" alignItems="center">
-              <ListItemAvatar>
+            <Box
+              display="flex"
+              alignItems="center"
+              sx={{ gap: { xs: 1, sm: 2 } }}
+            >
+              <ListItemAvatar sx={{ minWidth: 40 }}>
                 <Avatar
                   alt={otherParty?.name || "User"}
-                  sx={{ bgcolor: theme.palette.primary.main }}
+                  sx={{
+                    bgcolor: theme.palette.primary.main,
+                    width: { xs: 36, sm: 44 },
+                    height: { xs: 36, sm: 44 },
+                    fontSize: { xs: 18, sm: 22 },
+                  }}
                 >
                   {otherParty?.name ? (
                     otherParty.name.charAt(0).toUpperCase()
                   ) : (
-                    <PersonIcon />
+                    <PersonIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
                   )}
                 </Avatar>
               </ListItemAvatar>
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <Typography
-                    variant="subtitle1"
+                    variant="subtitle2"
                     noWrap
                     fontWeight={unreadCount > 0 ? "bold" : "normal"}
                     component={Link}
                     to={profileLink}
-                    sx={{ textDecoration: "none", color: "inherit" }}
+                    sx={{
+                      textDecoration: "none",
+                      color: "inherit",
+                      fontSize: { xs: "1rem", sm: "1.1rem" },
+                      maxWidth: { xs: 120, sm: 180 },
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {otherParty?.name || t("chat")}
                   </Typography>
                   {unreadCount > 0 && (
-                    <Badge color="error" badgeContent={"NEW"} sx={{ ml: 1 }} />
+                    <Badge
+                      color="error"
+                      badgeContent={"NEW"}
+                      sx={{
+                        ml: 0.5,
+                        "& .MuiBadge-badge": {
+                          fontSize: "0.7rem",
+                          height: 16,
+                          minWidth: 16,
+                        },
+                      }}
+                    />
                   )}
                   {unreadCount > 0 && (
                     <Badge
                       color="primary"
                       badgeContent={unreadCount}
-                      sx={{ ml: 1 }}
+                      sx={{
+                        ml: 0.5,
+                        "& .MuiBadge-badge": {
+                          fontSize: "0.7rem",
+                          height: 16,
+                          minWidth: 16,
+                        },
+                      }}
                     />
                   )}
                 </Box>
@@ -220,10 +269,11 @@ const ChatList = () => {
                   variant="body2"
                   color="text.secondary"
                   sx={{
-                    maxWidth: "100%",
+                    maxWidth: { xs: 170, sm: 250 },
                     textOverflow: "ellipsis",
                     overflow: "hidden",
                     whiteSpace: "nowrap",
+                    fontSize: { xs: "0.92rem", sm: "1rem" },
                   }}
                 >
                   {lastMsg?.message
@@ -234,11 +284,23 @@ const ChatList = () => {
                       }${lastMsg.message}`
                     : chat.description || t("no_description")}
                 </Typography>
-                <Box display="flex" alignItems="center" mt={0.5} gap={1}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  mt={0.5}
+                  gap={0.5}
+                  flexWrap="wrap"
+                >
                   <Chip
                     label={chat.serviceType || t("no_service_type")}
                     size="small"
-                    sx={{ maxWidth: 120, fontSize: "0.7rem" }}
+                    sx={{
+                      maxWidth: 90,
+                      fontSize: "0.7rem",
+                      height: 22,
+                      px: 0.5,
+                      mb: 0.5,
+                    }}
                   />
                   <Chip
                     label={chat.status || t("no_status")}
@@ -250,9 +312,19 @@ const ChatList = () => {
                         ? "success"
                         : "default"
                     }
-                    sx={{ maxWidth: 120, fontSize: "0.7rem" }}
+                    sx={{
+                      maxWidth: 90,
+                      fontSize: "0.7rem",
+                      height: 22,
+                      px: 0.5,
+                      mb: 0.5,
+                    }}
                   />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontSize: "0.75rem", ml: 0.5, minWidth: 50 }}
+                  >
                     {timeAgo}
                   </Typography>
                 </Box>
@@ -261,16 +333,10 @@ const ChatList = () => {
             <IconButton
               color="primary"
               size="small"
-              sx={{ ml: 1 }}
-              onClick={() => {
-                openChat({
-                  requestId: chat.requestId || chat._id,
-                  providerId: chat.providerId,
-                  userId: chat.userId,
-                });
-              }}
+              sx={{ ml: 0.5, p: 0.5, fontSize: { xs: 18, sm: 22 } }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <ArrowIcon />
+              <ArrowIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
             </IconButton>
           </Box>
         </CardContent>
@@ -297,44 +363,70 @@ const ChatList = () => {
   );
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", p: { xs: 2, md: 4 } }}>
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: { xs: "100%", md: 800 },
+        mx: { xs: 0, md: "auto" },
+        p: { xs: 1, sm: 2, md: 4 },
+        boxSizing: "border-box",
+      }}
+    >
       <Box
         display="flex"
         alignItems="center"
-        mb={3}
+        mb={2}
         justifyContent="space-between"
+        sx={{ px: { xs: 1, sm: 2, md: 0 } }}
       >
-        <Typography variant="h5" fontWeight="bold">
+        <Typography
+          variant="h6"
+          fontWeight="bold"
+          sx={{ fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" } }}
+        >
           {t("chat_list")}
         </Typography>
-
         <Badge badgeContent={totalUnread} color="error">
-          <ChatIcon color="primary" />
+          <ChatIcon color="primary" sx={{ fontSize: { xs: 22, sm: 26 } }} />
         </Badge>
       </Box>
 
       {message && (
         <Paper
           sx={{
-            p: 2,
-            mb: 3,
+            p: { xs: 1, sm: 2 },
+            mb: 2,
             backgroundColor: theme.palette.background.default,
             borderLeft: `4px solid ${theme.palette.primary.main}`,
+            borderRadius: { xs: 1, sm: 2 },
+            boxShadow: { xs: 0, sm: 1 },
           }}
         >
-          <Typography variant="body2" color="textSecondary">
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+          >
             {message}
           </Typography>
         </Paper>
       )}
 
-      <Paper sx={{ mb: 4, overflow: "hidden" }}>
+      <Paper
+        sx={{
+          mb: 2,
+          overflow: "hidden",
+          borderRadius: { xs: 1, sm: 2 },
+          boxShadow: { xs: 0, sm: 1 },
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           variant="fullWidth"
           indicatorColor="primary"
           textColor="primary"
+          sx={{ minHeight: { xs: 36, sm: 48 } }}
         >
           <Tab
             label={
@@ -344,11 +436,20 @@ const ChatList = () => {
                   0
                 )}
                 color="error"
-                sx={{ "& .MuiBadge-badge": { right: -15 } }}
+                sx={{
+                  "& .MuiBadge-badge": {
+                    right: -10,
+                    top: 6,
+                    fontSize: "0.7rem",
+                  },
+                }}
               >
-                <Box>{t("my_requests")}</Box>
+                <Box sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                  {t("my_requests")}
+                </Box>
               </Badge>
             }
+            sx={{ minHeight: { xs: 36, sm: 48 }, px: { xs: 1, sm: 2 } }}
           />
           {user && (user.role === "provider" || user.role === "admin") && (
             <Tab
@@ -359,18 +460,25 @@ const ChatList = () => {
                     0
                   )}
                   color="error"
-                  sx={{ "& .MuiBadge-badge": { right: -15 } }}
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      right: -10,
+                      top: 6,
+                      fontSize: "0.7rem",
+                    },
+                  }}
                 >
-                  <Box>{t("available_requests")}</Box>
+                  <Box sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                    {t("available_requests")}
+                  </Box>
                 </Badge>
               }
+              sx={{ minHeight: { xs: 36, sm: 48 }, px: { xs: 1, sm: 2 } }}
             />
           )}
         </Tabs>
-
         <Divider />
-
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
           {tabValue === 0 && (
             <>
               {getSortedChats(userRequests).length > 0 ? (
@@ -378,15 +486,18 @@ const ChatList = () => {
                   renderChatItem(chat, false)
                 )
               ) : (
-                <Box textAlign="center" py={4}>
-                  <Typography variant="body1" color="text.secondary">
+                <Box textAlign="center" py={3}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.95rem", sm: "1.05rem" } }}
+                  >
                     {t("no_requests")}
                   </Typography>
                 </Box>
               )}
             </>
           )}
-
           {tabValue === 1 &&
             user &&
             (user.role === "provider" || user.role === "admin") && (
@@ -396,8 +507,12 @@ const ChatList = () => {
                     renderChatItem(chat, true)
                   )
                 ) : (
-                  <Box textAlign="center" py={4}>
-                    <Typography variant="body1" color="text.secondary">
+                  <Box textAlign="center" py={3}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: "0.95rem", sm: "1.05rem" } }}
+                    >
                       {t("no_requests")}
                     </Typography>
                   </Box>
