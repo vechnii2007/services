@@ -57,6 +57,8 @@ import { useSocket } from "../hooks/useSocket";
 import Reviews from "../components/Reviews";
 import { useChatModal } from "../context/ChatModalContext";
 import { SocketContext } from "../context/SocketContext";
+import AuthRequiredModal from "../components/AuthRequiredModal";
+import { useAuth } from "../hooks/useAuth";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -78,6 +80,9 @@ const OfferDetails = () => {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const { socket } = useContext(SocketContext);
   const { openChat } = useChatModal();
+  const { user, isAuthenticated } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // 'chat' | 'favorite' | 'profile'
 
   useEffect(() => {
     let isMounted = true;
@@ -142,6 +147,11 @@ const OfferDetails = () => {
   }, [socket, offer?.providerId?._id, offer?._id]);
 
   const handleFavoriteToggle = async () => {
+    if (!isAuthenticated) {
+      setPendingAction("favorite");
+      setAuthModalOpen(true);
+      return;
+    }
     try {
       if (isFavorite) {
         await api.delete(`/services/favorites/${id}`);
@@ -209,6 +219,11 @@ const OfferDetails = () => {
   };
 
   const handleContactProvider = async (e) => {
+    if (!isAuthenticated) {
+      setPendingAction("chat");
+      setAuthModalOpen(true);
+      return;
+    }
     // Останавливаем всплытие события, чтобы предотвратить конфликты
     if (e && typeof e.stopPropagation === "function") {
       e.stopPropagation();
@@ -262,6 +277,19 @@ const OfferDetails = () => {
       setUnreadMessages(0);
     } catch (error) {
       setError(error.response?.data?.error || t("error_creating_chat"));
+    }
+  };
+
+  // Для перехода в профиль провайдера
+  const handleProviderProfileClick = (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      setPendingAction("profile");
+      setAuthModalOpen(true);
+      return;
+    }
+    if (safeProvider._id) {
+      navigate(`/profile/${safeProvider._id}`);
     }
   };
 
@@ -650,7 +678,7 @@ const OfferDetails = () => {
                             <Button
                               size="small"
                               variant="text"
-                              href={`/profile/${safeProvider._id}`}
+                              onClick={handleProviderProfileClick}
                               sx={{
                                 textTransform: "none",
                                 fontSize: 13,
@@ -927,6 +955,19 @@ const OfferDetails = () => {
           <ShareIcon sx={{ mr: 1 }} /> {t("copy_link")}
         </MenuItem>
       </Menu>
+
+      <AuthRequiredModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onLogin={() => {
+          setAuthModalOpen(false);
+          navigate("/login");
+        }}
+        onRegister={() => {
+          setAuthModalOpen(false);
+          navigate("/register");
+        }}
+      />
     </MotionContainer>
   );
 };

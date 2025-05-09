@@ -4,7 +4,6 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  memo,
 } from "react";
 import {
   Routes,
@@ -24,11 +23,6 @@ import { useChatModal } from "../context/ChatModalContext";
 import toast, { Toaster } from "react-hot-toast";
 import { SocketContext } from "../context/SocketContext";
 import useNotification from "../composables/useNotification";
-
-// Мемоизированные компоненты для предотвращения ререндеров
-const MemoHeader = memo(Header);
-const MemoSideMenu = memo(SideMenu);
-const MemoToaster = memo(Toaster);
 
 // Избегаем частых ререндеров за счет мемоизации компонента
 const AppContent = () => {
@@ -158,21 +152,12 @@ const AppContent = () => {
   }, [loading, t]);
 
   // Мемоизируем рендеринг шапки и бокового меню
-  const header = useMemo(() => {
-    return !isLandingPage && <MemoHeader onDrawerToggle={toggleDrawer(true)} />;
-  }, [isLandingPage, toggleDrawer]);
-
-  const sideMenu = useMemo(() => {
-    return (
-      !isLandingPage && (
-        <MemoSideMenu
-          open={drawerOpen}
-          onClose={toggleDrawer(false)}
-          user={user}
-        />
-      )
-    );
-  }, [isLandingPage, drawerOpen, toggleDrawer, user]);
+  const header = !isLandingPage && (
+    <Header onDrawerToggle={toggleDrawer(true)} />
+  );
+  const sideMenu = !isLandingPage && (
+    <SideMenu open={drawerOpen} onClose={toggleDrawer(false)} />
+  );
 
   // Мемоизируем основные стили для контейнера контента
   const contentStyles = useMemo(
@@ -201,7 +186,7 @@ const AppContent = () => {
         {sideMenu}
 
         <Box component="main" sx={contentStyles}>
-          <MemoToaster />
+          <Toaster />
           <Routes>{routes}</Routes>
         </Box>
       </Box>
@@ -209,4 +194,4 @@ const AppContent = () => {
   );
 };
 
-export default memo(AppContent);
+export default AppContent;

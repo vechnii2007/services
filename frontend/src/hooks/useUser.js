@@ -16,32 +16,43 @@ const notifySubscribers = () => {
   cache.subscribers.forEach((callback) => callback(cache.user));
 };
 
-export const useUser = () => {
+export const useUser = (tokenArg) => {
   const [user, setUser] = useState(cache.user);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchUser = async () => {
+    console.log(
+      "[useUser] fetchUser called, token:",
+      typeof tokenArg !== "undefined" ? tokenArg : localStorage.getItem("token")
+    );
     // Если данные уже загружаются, ждем
     if (cache.loading) {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token =
+      typeof tokenArg !== "undefined"
+        ? tokenArg
+        : localStorage.getItem("token");
     if (!token) {
       cache.user = null;
       cache.timestamp = null;
       setUser(null);
+      console.log("[useUser] No token, setUser(null)");
       return;
     }
 
     try {
       setLoading(true);
       cache.loading = true;
+      console.log("[useUser] Fetching user from server...");
       const userData = await UserService.getCurrentUser();
+      console.log("[useUser] Server returned user:", userData);
       cache.user = userData;
       cache.timestamp = Date.now();
       setUser(userData);
+      console.log("[useUser] setUser(userData)");
       notifySubscribers();
     } catch (err) {
       setError(err);
@@ -51,6 +62,7 @@ export const useUser = () => {
         cache.user = null;
         cache.timestamp = null;
         setUser(null);
+        console.log("[useUser] 401 error, setUser(null)");
       }
     } finally {
       setLoading(false);
@@ -86,7 +98,7 @@ export const useUser = () => {
       window.removeEventListener("storage", handleStorageChange);
       cache.subscribers.delete(handleUpdate);
     };
-  }, []);
+  }, [tokenArg]);
 
   const updateUser = async (userData) => {
     try {
@@ -120,4 +132,10 @@ export const useUser = () => {
     updateStatus,
     refetch: fetchUser,
   };
+};
+
+export const resetUser = () => {
+  cache.user = null;
+  cache.timestamp = null;
+  notifySubscribers();
 };

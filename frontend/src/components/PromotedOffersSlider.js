@@ -160,15 +160,6 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
         return response;
       };
 
-      // Проверяем, был ли уже запрос за последние 5 минут
-      const cacheKey = "promoted_offers_data";
-      const topCategoriesKey = "top_categories_data";
-      const lastLoadTime = sessionStorage.getItem(cacheKey);
-      const currentTime = Date.now();
-
-      // Кеш действителен 5 минут
-      const CACHE_DURATION = 5 * 60 * 1000;
-
       // Если данные есть в window, используем их
       if (window.promotedOffersData) {
         setPromoted(window.promotedOffersData);
@@ -178,40 +169,6 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
         if (window.topCategoriesData) {
           setTopCategories(window.topCategoriesData);
           return;
-        }
-      }
-
-      // Если данные были загружены недавно, используем кеш
-      if (
-        lastLoadTime &&
-        currentTime - parseInt(lastLoadTime) < CACHE_DURATION
-      ) {
-        try {
-          const cachedOffers = JSON.parse(
-            sessionStorage.getItem("promoted_offers_cache")
-          );
-          const cachedCategories = JSON.parse(
-            sessionStorage.getItem("top_categories_cache")
-          );
-
-          if (cachedOffers && cachedOffers.length > 0) {
-            setPromoted(cachedOffers);
-            window.promotedOffersData = cachedOffers;
-          }
-
-          if (cachedCategories && cachedCategories.length > 0) {
-            setTopCategories(cachedCategories);
-            window.topCategoriesData = cachedCategories;
-          }
-
-          setLoading(false);
-
-          // Если оба кеша действительны, выходим
-          if (cachedOffers && cachedCategories) {
-            return;
-          }
-        } catch (e) {
-          console.error("[PromotedOffersSlider] Error parsing cache:", e);
         }
       }
 
@@ -227,13 +184,6 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
           setPromoted(offers);
           window.promotedOffersData = offers;
           window.promotedOffersLoaded = true;
-
-          // Сохраняем в sessionStorage
-          sessionStorage.setItem(
-            "promoted_offers_cache",
-            JSON.stringify(offers)
-          );
-          sessionStorage.setItem(cacheKey, currentTime.toString());
         }
 
         // Если нет топ-категорий, загружаем их
@@ -243,13 +193,6 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
           const categories = categoriesResponse.categories || [];
           setTopCategories(categories);
           window.topCategoriesData = categories;
-
-          // Сохраняем в sessionStorage
-          sessionStorage.setItem(
-            "top_categories_cache",
-            JSON.stringify(categories)
-          );
-          sessionStorage.setItem(topCategoriesKey, currentTime.toString());
         }
       } catch (error) {
         console.error("[PromotedOffersSlider] Error fetching data:", error);

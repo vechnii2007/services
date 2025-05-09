@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import api from "../middleware/api";
-import { useUser } from "../hooks/useUser";
+import { useUser, resetUser } from "../hooks/useUser";
 
 export const AuthContext = createContext(null);
 
@@ -14,8 +14,14 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const { user, loading: userLoading, error, updateUser, refetch } = useUser();
   const [token, setToken] = useState(localStorage.getItem("token"));
+  const {
+    user,
+    loading: userLoading,
+    error,
+    updateUser,
+    refetch,
+  } = useUser(token);
 
   useEffect(() => {
     if (token) {
@@ -60,6 +66,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setToken(null);
+    resetUser();
     // updateUser(null); // удалено, чтобы не было бесконечного цикла
   };
 

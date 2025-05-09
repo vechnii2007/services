@@ -26,6 +26,8 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { useTranslation } from "react-i18next";
 import OfferService from "../../services/OfferService";
 import PromoteOfferModal from "../PromoteOfferModal";
+import AuthRequiredModal from "../AuthRequiredModal";
+import { useAuth } from "../../hooks/useAuth";
 
 // Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
@@ -120,8 +122,10 @@ const OfferCard = memo(
   }) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const auth = useAuth();
     const [promoteModalOpen, setPromoteModalOpen] = useState(false);
     const [promotionStatus, setPromotionStatus] = useState(null);
+    const [authModalOpen, setAuthModalOpen] = useState(false);
 
     // Безопасный доступ к свойствам
     const safeOfferId = offer?._id || "";
@@ -171,7 +175,10 @@ const OfferCard = memo(
       e.preventDefault();
       e.stopPropagation();
       if (!safeOfferId) return;
-
+      if (!auth.isAuthenticated) {
+        setAuthModalOpen(true);
+        return;
+      }
       try {
         if (typeof onFavoriteClick === "function") {
           onFavoriteClick();
@@ -338,6 +345,19 @@ const OfferCard = memo(
           onClose={() => setPromoteModalOpen(false)}
           offerId={safeOfferId}
           onSuccess={handlePromoteSuccess}
+        />
+
+        <AuthRequiredModal
+          open={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          onLogin={() => {
+            setAuthModalOpen(false);
+            navigate("/login");
+          }}
+          onRegister={() => {
+            setAuthModalOpen(false);
+            navigate("/register");
+          }}
         />
       </>
     );

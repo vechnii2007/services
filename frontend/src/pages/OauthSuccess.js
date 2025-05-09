@@ -47,10 +47,11 @@ const OauthSuccess = () => {
     const token = params.get("token");
     if (token) {
       localStorage.setItem("token", token);
-      if (typeof refetch === "function" && !user) {
-        refetch();
-      }
+      console.log("[OauthSuccess] token set in localStorage", token);
+      window.location.href = "/oauth-success";
+      return;
     } else {
+      console.log("[OauthSuccess] No token in query, redirect to /login");
       navigate("/login", { replace: true });
     }
     // eslint-disable-next-line
@@ -75,12 +76,16 @@ const OauthSuccess = () => {
         phone: user.phone || "",
         address: user.address || "",
       });
+      console.log("[OauthSuccess] showProfileDialog set to true");
     }
     // Убираем автоматический navigate и setShowProfileDialog — теперь это в handleSubmit
   }, [user]);
 
   useEffect(() => {
     if (user && user.socialLogin === false && !showProfileDialog) {
+      console.log(
+        "[OauthSuccess] user.socialLogin === false, redirect to /offers"
+      );
       navigate("/offers", { replace: true });
     }
   }, [user, showProfileDialog, navigate]);

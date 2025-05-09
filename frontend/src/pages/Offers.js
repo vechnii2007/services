@@ -78,6 +78,7 @@ const Offers = () => {
     selectedCategory,
     counts,
     favorites,
+    favoritesLoading,
     searchQuery,
     minPrice,
     maxPrice,
@@ -187,6 +188,16 @@ const Offers = () => {
   }, []);
 
   if (loading && categories.length === 0) {
+    return (
+      <LoadingContainer>
+        <Typography variant="h3" color="textSecondary">
+          {t("loading")}
+        </Typography>
+      </LoadingContainer>
+    );
+  }
+
+  if (favoritesLoading) {
     return (
       <LoadingContainer>
         <Typography variant="h3" color="textSecondary">
