@@ -45,6 +45,9 @@ import logo from "../../assets/images/logo.svg";
 import { useChatModal } from "../../context/ChatModalContext";
 import { SocketContext } from "../../context/SocketContext";
 import { menuItems } from "../menuConfig";
+import SpainFlag from "../../assets/flags/es.svg";
+import UkraineFlag from "../../assets/flags/ua.svg";
+import RussiaFlag from "../../assets/flags/ru.svg";
 
 const NotificationItem = ({
   notification,
@@ -156,6 +159,27 @@ const NotificationItem = ({
     </ListItem>
   );
 };
+
+const languages = [
+  {
+    code: "es",
+    name: "Español",
+    flag: SpainFlag,
+    nativeName: "Español",
+  },
+  {
+    code: "uk",
+    name: "Українська",
+    flag: UkraineFlag,
+    nativeName: "Українська",
+  },
+  {
+    code: "ru",
+    name: "Русский",
+    flag: RussiaFlag,
+    nativeName: "Русский",
+  },
+];
 
 const Header = ({ onDrawerToggle }) => {
   const theme = useTheme();
@@ -382,17 +406,16 @@ const Header = ({ onDrawerToggle }) => {
       setDrawerOpen(false);
       return;
     }
-    if (item.isLanguage) {
-      handleLangMenu({ currentTarget: null });
-      setDrawerOpen(false);
-      return;
-    }
     if (item.path) {
       navigate(item.path);
       setDrawerOpen(false);
       return;
     }
   };
+
+  // Находим текущий язык
+  const currentLanguage =
+    languages.find((lang) => lang.code === i18n.language) || languages[0];
 
   const drawerContent = (
     <Box
@@ -432,11 +455,26 @@ const Header = ({ onDrawerToggle }) => {
         open={Boolean(langAnchorEl)}
         onClose={handleLangClose}
       >
-        <MenuItem onClick={() => handleLanguageChange("ru")}>Русский</MenuItem>
-        <MenuItem onClick={() => handleLanguageChange("ua")}>
-          Українська
-        </MenuItem>
-        <MenuItem onClick={() => handleLanguageChange("es")}>Español</MenuItem>
+        {languages.map((lang) => (
+          <MenuItem
+            key={lang.code}
+            onClick={() => handleLanguageChange(lang.code)}
+            selected={i18n.language === lang.code}
+            sx={{ py: 1, display: "flex", alignItems: "center" }}
+          >
+            <img
+              src={lang.flag}
+              alt={lang.name}
+              style={{
+                width: 24,
+                height: 18,
+                marginRight: 12,
+                boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+              }}
+            />
+            <Typography variant="body2">{lang.nativeName}</Typography>
+          </MenuItem>
+        ))}
       </Menu>
     </Box>
   );
@@ -482,11 +520,22 @@ const Header = ({ onDrawerToggle }) => {
             </Drawer>
             {/* Краткие иконки справа */}
             <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
+              <IconButton color="inherit" onClick={handleLangMenu}>
+                <img
+                  src={currentLanguage.flag}
+                  alt={currentLanguage.code}
+                  style={{
+                    width: 24,
+                    height: 18,
+                    borderRadius: 2,
+                    boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+                  }}
+                />
+              </IconButton>
               <IconButton color="inherit" onClick={handleNotificationsClick}>
-                {" "}
                 <Badge badgeContent={unreadCount} color="error">
                   <NotificationsIcon />
-                </Badge>{" "}
+                </Badge>
               </IconButton>
             </Box>
           </>
@@ -517,22 +566,42 @@ const Header = ({ onDrawerToggle }) => {
             <Box sx={{ flexGrow: 1 }} />
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <IconButton color="inherit" onClick={handleLangMenu}>
-                <LanguageIcon />
+                <img
+                  src={currentLanguage.flag}
+                  alt={currentLanguage.code}
+                  style={{
+                    width: 24,
+                    height: 18,
+                    borderRadius: 2,
+                    boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+                  }}
+                />
               </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
                 open={Boolean(langAnchorEl)}
                 onClose={handleLangClose}
               >
-                <MenuItem onClick={() => handleLanguageChange("ru")}>
-                  Русский
-                </MenuItem>
-                <MenuItem onClick={() => handleLanguageChange("es")}>
-                  Español
-                </MenuItem>
-                <MenuItem onClick={() => handleLanguageChange("ua")}>
-                  Українська
-                </MenuItem>
+                {languages.map((lang) => (
+                  <MenuItem
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    selected={i18n.language === lang.code}
+                    sx={{ py: 1, display: "flex", alignItems: "center" }}
+                  >
+                    <img
+                      src={lang.flag}
+                      alt={lang.name}
+                      style={{
+                        width: 24,
+                        height: 18,
+                        marginRight: 12,
+                        boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+                      }}
+                    />
+                    <Typography variant="body2">{lang.nativeName}</Typography>
+                  </MenuItem>
+                ))}
               </Menu>
               <IconButton color="inherit" onClick={handleNotificationsClick}>
                 <Badge badgeContent={unreadCount} color="error">

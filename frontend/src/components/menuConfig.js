@@ -6,7 +6,6 @@ import {
   AddBox as AddBoxIcon,
   ListAlt as ListAltIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
-  Language as LanguageIcon,
   Notifications as NotificationsIcon,
 } from "@mui/icons-material";
 
@@ -59,13 +58,6 @@ export const menuItems = [
     path: "/admin",
     icon: <AdminPanelSettingsIcon />,
     show: (user) => user && user.role === "admin",
-  },
-  {
-    key: "language",
-    label: "language",
-    icon: <LanguageIcon />,
-    isLanguage: true,
-    show: () => true,
   },
   {
     key: "notifications",
