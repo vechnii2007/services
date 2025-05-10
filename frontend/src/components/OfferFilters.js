@@ -122,6 +122,11 @@ const OfferFilters = ({
     }
   };
 
+  const handlePopularSearchClick = (value) => {
+    setSearchQuery(value);
+    setTimeout(() => handleSearch(), 0);
+  };
+
   return (
     <MotionPaper
       elevation={3}
@@ -243,7 +248,7 @@ const OfferFilters = ({
                       key={search.value}
                       icon={<span>{search.icon}</span>}
                       label={search.label}
-                      onClick={() => handleSearch()}
+                      onClick={() => handlePopularSearchClick(search.value)}
                       sx={{
                         "&:hover": {
                           bgcolor: "primary.light",

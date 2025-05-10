@@ -21,10 +21,6 @@ const SliderContainer = styled(Box)(({ theme, isMobile }) => ({
   marginRight: "-50vw",
   boxSizing: "border-box",
   marginBottom: theme.spacing(4),
-  ...(isMobile && {
-    paddingLeft: theme.spacing(2.5),
-    paddingRight: theme.spacing(2.5),
-  }),
   "& .swiper": {
     width: "100%",
     height: "100%",
@@ -87,9 +83,9 @@ const SliderContainer = styled(Box)(({ theme, isMobile }) => ({
   },
   // Стилизация пагинации для мобильных устройств
   "& .swiper-pagination": {
-    [theme.breakpoints.down("sm")]: {
+    [theme.breakpoints.down("md")]: {
       display: "block",
-      bottom: -5,
+      bottom: "-10px !important",
     },
     display: "none",
   },
@@ -128,7 +124,6 @@ const CategorySlider = ({
           600: { slidesPerView: "auto", spaceBetween: 12 },
           900: { slidesPerView: "auto", spaceBetween: 16 },
         }}
-        navigation={!isMobile}
         pagination={{ clickable: true, dynamicBullets: true }}
         mousewheel={true}
         keyboard={{

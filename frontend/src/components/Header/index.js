@@ -44,6 +44,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../assets/images/logo.svg";
 import { useChatModal } from "../../context/ChatModalContext";
 import { SocketContext } from "../../context/SocketContext";
+import { menuItems } from "../menuConfig";
 
 const NotificationItem = ({
   notification,
@@ -375,6 +376,24 @@ const Header = ({ onDrawerToggle }) => {
   };
 
   // Drawer-меню для мобильных
+  const handleDrawerItemClick = (item) => {
+    if (item.isLogout) {
+      handleLogout();
+      setDrawerOpen(false);
+      return;
+    }
+    if (item.isLanguage) {
+      handleLangMenu({ currentTarget: null });
+      setDrawerOpen(false);
+      return;
+    }
+    if (item.path) {
+      navigate(item.path);
+      setDrawerOpen(false);
+      return;
+    }
+  };
+
   const drawerContent = (
     <Box
       sx={{ width: 260, p: 2, pt: { xs: 7, sm: 8 } }}
@@ -394,87 +413,31 @@ const Header = ({ onDrawerToggle }) => {
       </Box>
       <Divider sx={{ mb: 1 }} />
       <List>
-        <ListItem button onClick={() => navigate("/")}>
-          {" "}
-          <ListItemIcon>
-            <OfferIcon />
-          </ListItemIcon>{" "}
-          <ListItemText primary={t("offers")} />{" "}
-        </ListItem>
-        {user && (
-          <ListItem button onClick={() => navigate("/profile")}>
-            {" "}
-            <ListItemIcon>
-              <AccountCircle />
-            </ListItemIcon>{" "}
-            <ListItemText primary={t("profile")} />{" "}
-          </ListItem>
-        )}
-        {user && (
-          <ListItem button onClick={() => navigate("/favorites")}>
-            {" "}
-            <ListItemIcon>
-              <FavoriteBorderIcon />
-            </ListItemIcon>{" "}
-            <ListItemText primary={t("favorites")} />{" "}
-          </ListItem>
-        )}
-        {user && (
-          <ListItem button onClick={() => navigate("/chat-list")}>
-            {" "}
-            <ListItemIcon>
-              <MessageIcon />
-            </ListItemIcon>{" "}
-            <ListItemText primary={t("chat")} />{" "}
-          </ListItem>
-        )}
-        <ListItem button onClick={handleLangMenu}>
-          {" "}
-          <ListItemIcon>
-            <LanguageIcon />
-          </ListItemIcon>{" "}
-          <ListItemText primary={t("language")} />{" "}
-        </ListItem>
-        <Menu
-          anchorEl={langAnchorEl}
-          open={Boolean(langAnchorEl)}
-          onClose={handleLangClose}
-        >
-          <MenuItem onClick={() => handleLanguageChange("ru")}>
-            Русский
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange("ua")}>
-            Українська
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange("es")}>
-            Español
-          </MenuItem>
-        </Menu>
-        <ListItem button onClick={() => navigate("/notifications")}>
-          {" "}
-          <ListItemIcon>
-            <NotificationsIcon />
-          </ListItemIcon>{" "}
-          <ListItemText primary={t("notifications")} />{" "}
-        </ListItem>
-        {user ? (
-          <ListItem button onClick={handleLogout}>
-            {" "}
-            <ListItemIcon>
-              <AccountCircle />
-            </ListItemIcon>{" "}
-            <ListItemText primary={t("logout")} />{" "}
-          </ListItem>
-        ) : (
-          <ListItem button onClick={() => navigate("/login")}>
-            {" "}
-            <ListItemIcon>
-              <AccountCircle />
-            </ListItemIcon>{" "}
-            <ListItemText primary={t("login")} />{" "}
-          </ListItem>
-        )}
+        {menuItems
+          .filter((item) => item.show(user))
+          .map((item) => (
+            <ListItem
+              button
+              key={item.key}
+              onClick={() => handleDrawerItemClick(item)}
+            >
+              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+              <ListItemText primary={t(item.label)} />
+            </ListItem>
+          ))}
       </List>
+      {/* Языковое меню для Drawer */}
+      <Menu
+        anchorEl={langAnchorEl}
+        open={Boolean(langAnchorEl)}
+        onClose={handleLangClose}
+      >
+        <MenuItem onClick={() => handleLanguageChange("ru")}>Русский</MenuItem>
+        <MenuItem onClick={() => handleLanguageChange("ua")}>
+          Українська
+        </MenuItem>
+        <MenuItem onClick={() => handleLanguageChange("es")}>Español</MenuItem>
+      </Menu>
     </Box>
   );
 
@@ -572,10 +535,9 @@ const Header = ({ onDrawerToggle }) => {
                 </MenuItem>
               </Menu>
               <IconButton color="inherit" onClick={handleNotificationsClick}>
-                {" "}
                 <Badge badgeContent={unreadCount} color="error">
                   <NotificationsIcon />
-                </Badge>{" "}
+                </Badge>
               </IconButton>
               <Popover
                 open={Boolean(notificationsAnchor)}
@@ -673,39 +635,18 @@ const Header = ({ onDrawerToggle }) => {
               </Popover>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 {user ? (
-                  <>
-                    <IconButton
-                      onClick={handleMenu}
-                      color="inherit"
-                      sx={{ padding: 0.5 }}
-                    >
-                      {user.avatar ? (
-                        <Avatar src={user.avatar} alt={user.name} />
-                      ) : (
-                        <AccountCircle />
-                      )}
-                    </IconButton>
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleClose}
-                    >
-                      <MenuItem
-                        onClick={() => {
-                          navigate("/profile");
-                          handleClose();
-                        }}
-                      >
-                        {t("profile")}
-                      </MenuItem>
-                      <MenuItem onClick={handleLogout}>{t("logout")}</MenuItem>
-                    </Menu>
-                  </>
-                ) : (
-                  <Button color="inherit" onClick={() => navigate("/login")}>
-                    {t("login")}
-                  </Button>
-                )}
+                  <IconButton
+                    onClick={handleMenu}
+                    color="inherit"
+                    sx={{ padding: 0.5 }}
+                  >
+                    {user.avatar ? (
+                      <Avatar src={user.avatar} alt={user.name} />
+                    ) : (
+                      <AccountCircle />
+                    )}
+                  </IconButton>
+                ) : null}
               </Box>
             </Box>
           </>

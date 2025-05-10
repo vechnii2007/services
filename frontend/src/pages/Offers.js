@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, memo } from "react";
+import React, { useMemo, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Typography, Box, Alert, Drawer, Button } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -31,13 +31,9 @@ const PageTitle = styled(Typography)(({ theme }) => ({
 
 const CategoriesSection = styled(Box)(({ theme }) => ({
   width: "100%",
-  marginBottom: theme.spacing(6),
+  marginBottom: theme.spacing(2),
   position: "relative",
-  backgroundColor: theme.palette.background.default,
   padding: theme.spacing(2, 0),
-  "& .swiper-button-prev, & .swiper-button-next": {
-    color: theme.palette.primary.main,
-  },
 }));
 
 const ContentContainer = styled(Box)(({ theme }) => ({
@@ -70,7 +66,6 @@ const MemoizedPromotedOffersSlider = memo(PromotedOffersSlider);
 const MemoizedOfferFilters = memo(OfferFilters);
 
 const Offers = () => {
-  console.log("[Offers] RENDER", Math.random());
   const { t } = useTranslation();
   const {
     // Состояние
@@ -80,6 +75,7 @@ const Offers = () => {
     favorites,
     favoritesLoading,
     searchQuery,
+    setSearchQuery,
     minPrice,
     maxPrice,
     locationFilter,
@@ -93,11 +89,9 @@ const Offers = () => {
     filtersOpen,
     locations,
     popularSearches,
-    offers,
     filteredOffers,
 
     // Методы
-    setSearchQuery,
     handleSearchQueryChange,
     setMinPrice,
     setMaxPrice,
@@ -126,7 +120,7 @@ const Offers = () => {
   const filterProps = useMemo(
     () => ({
       searchQuery,
-      setSearchQuery: handleSearchQueryChange,
+      setSearchQuery,
       minPrice,
       setMinPrice,
       maxPrice,
@@ -143,6 +137,7 @@ const Offers = () => {
     }),
     [
       searchQuery,
+      setSearchQuery,
       minPrice,
       maxPrice,
       locationFilter,
@@ -180,12 +175,6 @@ const Offers = () => {
       handleLoadMore,
     ]
   );
-
-  useEffect(() => {
-    return () => {
-      console.log("[Offers] UNMOUNT", new Date().toISOString());
-    };
-  }, []);
 
   if (loading && categories.length === 0) {
     return (
@@ -280,7 +269,6 @@ const Offers = () => {
           sx={{
             mb: 1,
             fontWeight: "medium",
-            paddingLeft: 4,
             color: "text.primary",
           }}
         >

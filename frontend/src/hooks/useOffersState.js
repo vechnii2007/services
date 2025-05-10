@@ -18,6 +18,20 @@ import { filterOffers } from "../utils/filterOffers";
 
 const WINDOW_SIZE = PAGINATION.OFFERS_PER_PAGE;
 
+// --- Debounce хук ---
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 const useOffersState = () => {
   const { t } = useTranslation();
   const { isAuthenticated } = useContext(AuthContext);
@@ -50,6 +64,14 @@ const useOffersState = () => {
   const [totalResults, setTotalResults] = useState(0);
   const listRef = useRef();
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // --- Дебаунсим фильтры ---
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
+  const debouncedMinPrice = useDebounce(minPrice, 400);
+  const debouncedMaxPrice = useDebounce(maxPrice, 400);
+  const debouncedLocationFilter = useDebounce(locationFilter, 400);
+  const debouncedSelectedCategory = useDebounce(selectedCategory, 400);
+  const debouncedProviderId = useDebounce(providerId, 400);
 
   // --- Загрузка данных ---
   // Категории и счётчики
@@ -132,15 +154,23 @@ const useOffersState = () => {
         const params = {
           page,
           limit: WINDOW_SIZE,
-          minPrice: minPrice || undefined,
-          maxPrice: maxPrice || undefined,
-          location: locationFilter || undefined,
-          category: selectedCategory || undefined,
-          providerId: providerId || undefined,
+          minPrice: debouncedMinPrice || undefined,
+          maxPrice: debouncedMaxPrice || undefined,
+          location:
+            typeof debouncedLocationFilter === "object" &&
+            debouncedLocationFilter !== null
+              ? debouncedLocationFilter.label
+              : debouncedLocationFilter || undefined,
+          category: debouncedSelectedCategory || undefined,
+          providerId: debouncedProviderId || undefined,
         };
+        console.log("[OFFERS] fetchOffers params (debounced):", params);
         let response;
-        if (searchQuery?.trim()) {
-          response = await searchService.searchOffers(searchQuery, params);
+        if (debouncedSearchQuery?.trim()) {
+          response = await searchService.searchOffers(
+            debouncedSearchQuery,
+            params
+          );
         } else {
           response = await OfferService.getAll(params);
         }
@@ -167,19 +197,22 @@ const useOffersState = () => {
     };
   }, [
     page,
-    searchQuery,
-    minPrice,
-    maxPrice,
-    locationFilter,
-    selectedCategory,
-    providerId,
+    debouncedSearchQuery,
+    debouncedMinPrice,
+    debouncedMaxPrice,
+    debouncedLocationFilter,
+    debouncedSelectedCategory,
+    debouncedProviderId,
   ]);
 
   // --- Фильтры и обработчики ---
   const handleCategoryClick = useCallback(
-    (category) => {
-      const newCategory =
-        category.name === selectedCategory ? null : category.name;
+    (categoryId) => {
+      console.log("[OFFERS] handleCategoryClick", {
+        categoryId,
+        selectedCategory,
+      });
+      const newCategory = categoryId === selectedCategory ? null : categoryId;
       setSelectedCategory(newCategory);
       setPage(1);
       setOffers([]);
@@ -257,6 +290,28 @@ const useOffersState = () => {
       return 1;
     });
   }, [offers, searchQuery]);
+
+  // --- Синхронизация selectedCategory с query-параметром ---
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const categoryFromQuery = params.get("category");
+    console.log("[OFFERS] useEffect sync query", {
+      categoryFromQuery,
+      selectedCategory,
+    });
+    if (categoryFromQuery && categoryFromQuery !== selectedCategory) {
+      console.log("[OFFERS] setSelectedCategory from query", categoryFromQuery);
+      setSelectedCategory(categoryFromQuery);
+      setPage(1);
+      setOffers([]);
+    }
+    if (!categoryFromQuery && selectedCategory) {
+      console.log("[OFFERS] clear selectedCategory");
+      setSelectedCategory(null);
+      setPage(1);
+      setOffers([]);
+    }
+  }, [location.search]);
 
   return {
     offers,

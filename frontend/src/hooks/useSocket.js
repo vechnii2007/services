@@ -15,21 +15,11 @@ export const useSocket = () => {
   const { user } = useAuth();
 
   // Функция для отображения структуры событий
-  const debugEvent = useCallback((eventName, data) => {
-    console.log(`[Socket Debug] Received ${eventName} event:`, data);
+  const debugEvent = useCallback((data) => {
     try {
       // Анализ структуры объекта события
       if (data && typeof data === "object") {
-        const structure = {
-          type: typeof data,
-          keys: Object.keys(data),
-          hasId: !!data._id,
-          hasMessage: !!data.message || !!data.text,
-          hasSenderId: !!data.senderId,
-          hasRecipientId: !!data.recipientId,
-          hasRequestId: !!data.requestId,
-        };
-        console.log(`[Socket Debug] ${eventName} structure:`, structure);
+        console.log(data);
       }
     } catch (e) {
       console.error(`[Socket Debug] Error analyzing event:`, e);
@@ -41,11 +31,9 @@ export const useSocket = () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      console.log("[Socket] No token found, skipping socket connection");
       return null;
     }
 
-    console.log("[Socket] Connecting to socket server:", SOCKET_URL);
     const newSocket = io(SOCKET_URL, {
       query: { token },
       transports: ["websocket"],
@@ -63,7 +51,6 @@ export const useSocket = () => {
     const token = localStorage.getItem("token");
 
     if (!token || !user) {
-      console.log("[Socket] Missing token or user, not connecting");
       return;
     }
 
@@ -72,10 +59,6 @@ export const useSocket = () => {
 
     // Обработчик успешного подключения
     const handleConnect = () => {
-      console.log("[Socket] Connected successfully", {
-        id: newSocket.id,
-        connected: newSocket.connected,
-      });
       setIsConnected(true);
       setLastError(null);
       reconnectAttemptsRef.current = 0;
@@ -83,7 +66,6 @@ export const useSocket = () => {
 
     // Обработчик ошибки подключения
     const handleConnectError = (error) => {
-      console.error("[Socket] Connection error:", error);
       setIsConnected(false);
       setLastError({
         type: "connect_error",
@@ -114,7 +96,6 @@ export const useSocket = () => {
 
     // Обработчик отключения
     const handleDisconnect = (reason) => {
-      console.log("[Socket] Disconnected:", reason);
       setIsConnected(false);
       setLastError({
         type: "disconnect",
@@ -129,13 +110,11 @@ export const useSocket = () => {
         reason !== "transport close" &&
         reconnectAttemptsRef.current < RECONNECT_ATTEMPTS
       ) {
-        console.log("[Socket] Attempting to reconnect...");
       }
     };
 
     // Обработчик переподключения
     const handleReconnect = (attemptNumber) => {
-      console.log(`[Socket] Reconnected after ${attemptNumber} attempts`);
       setIsConnected(true);
       setLastError(null);
       reconnectAttemptsRef.current = 0;
@@ -172,27 +151,10 @@ export const useSocket = () => {
       debugEvent("notification", data);
     });
 
-    // Добавляем отладочную информацию для других событий
-    newSocket.onAny((eventName, ...args) => {
-      if (
-        eventName !== "connect" &&
-        eventName !== "disconnect" &&
-        eventName !== "connect_error" &&
-        eventName !== "error" &&
-        eventName !== "reconnect" &&
-        eventName !== "auth_error" &&
-        eventName !== "private_message" &&
-        eventName !== "notification"
-      ) {
-        console.log(`[Socket] Event '${eventName}' received:`, args);
-      }
-    });
-
     setSocket(newSocket);
 
     // Очистка при размонтировании компонента
     return () => {
-      console.log("[Socket] Cleaning up socket connection");
       if (newSocket) {
         newSocket.off("connect", handleConnect);
         newSocket.off("connect_error", handleConnectError);
@@ -210,7 +172,6 @@ export const useSocket = () => {
   // Функция для переподключения сокета
   const reconnect = useCallback(() => {
     if (socket) {
-      console.log("[Socket] Manually reconnecting...");
       socket.disconnect();
 
       // Небольшая задержка перед переподключением
@@ -241,7 +202,6 @@ export const useSocket = () => {
           timestamp: new Date().toISOString(),
         };
 
-        console.log("[Socket] Sending test message:", testMessage);
         socket.emit("private_message", testMessage);
         return true;
       } catch (error) {

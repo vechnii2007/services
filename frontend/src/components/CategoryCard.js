@@ -1,8 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Typography, Box, Tooltip, Chip, Avatar } from "@mui/material";
+import { Card, Typography, Box, Tooltip } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { motion } from "framer-motion";
 import PropTypes from "prop-types";
 import CategoryIcon from "@mui/icons-material/Category";
 import HealthcareIcon from "@mui/icons-material/HealthAndSafety";
@@ -13,7 +12,6 @@ import TransportIcon from "@mui/icons-material/DirectionsCar";
 import LegalIcon from "@mui/icons-material/Gavel";
 import WorkIcon from "@mui/icons-material/Work";
 import DevicesIcon from "@mui/icons-material/Devices";
-import { alpha } from "@mui/material/styles";
 
 // Карточка категории для десктопа
 const CategoryCardWrapper = styled(Card)(({ theme, selected }) => ({
@@ -24,9 +22,8 @@ const CategoryCardWrapper = styled(Card)(({ theme, selected }) => ({
   overflow: "hidden",
   cursor: "pointer",
   transition: "transform 0.3s ease, box-shadow 0.3s ease",
-  boxShadow: selected
-    ? `0 0 0 2px ${theme.palette.primary.main}, 0 4px 10px rgba(0,0,0,0.15)`
-    : "0 1px 4px rgba(0,0,0,0.1)",
+  boxShadow: selected ? `0 2px 8px rgba(0,0,0,1)` : "0 1px 3px rgba(0,0,0,0.1)",
+  top: selected ? -5 : 0,
   "&:hover": {
     transform: "translateY(-4px)",
     boxShadow: "0 6px 14px rgba(0,0,0,0.15)",
@@ -62,12 +59,10 @@ const MobileCategoryCard = styled(Card)(({ theme, selected }) => ({
   borderRadius: theme.shape.borderRadius,
   cursor: "pointer",
   transition: "transform 0.2s ease, box-shadow 0.2s ease",
-  boxShadow: selected
-    ? `0 0 0 2px ${theme.palette.primary.main}, 0 2px 8px rgba(0,0,0,0.15)`
-    : "0 1px 3px rgba(0,0,0,0.1)",
+  boxShadow: selected ? `0 2px 8px rgba(0,0,0,1)` : "0 1px 3px rgba(0,0,0,0.1)",
   overflow: "hidden",
   position: "relative",
-  border: selected ? `2px solid ${theme.palette.primary.main}` : "none",
+  top: selected ? -5 : 0,
   "&:hover": {
     transform: "translateY(-2px)",
     boxShadow: "0 3px 10px rgba(0,0,0,0.15)",
@@ -81,7 +76,7 @@ const MobileCategoryCard = styled(Card)(({ theme, selected }) => ({
 
 const MobileImageWrapper = styled(Box)(({ theme }) => ({
   width: "100%",
-  height: 50,
+  height: "100%",
   overflow: "hidden",
   position: "relative",
   backgroundColor: theme.palette.grey[100],
@@ -90,7 +85,7 @@ const MobileImageWrapper = styled(Box)(({ theme }) => ({
 const MobileImage = styled("img")({
   width: "100%",
   height: "100%",
-  objectFit: "cover",
+  objectFit: "contain",
 });
 
 const MobileTitle = styled(Typography)({
@@ -127,7 +122,7 @@ const MobileCountBadge = styled(Box)(({ theme }) => ({
 const CategoryImage = styled("img")({
   width: "100%",
   height: "100%",
-  objectFit: "cover",
+  objectFit: "contain",
 });
 
 const CategoryCountBadge = styled(Box)(({ theme }) => ({
@@ -153,16 +148,17 @@ const CategoryTitleBar = styled(Box)(({ theme }) => ({
   left: 0,
   right: 0,
   bottom: 0,
-  background: "rgba(0,0,0,0.78)",
+  background: "rgba(0,0,0,0.68)",
   padding: theme.spacing(1, 1.5),
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   borderBottomLeftRadius: theme.shape.borderRadius,
   borderBottomRightRadius: theme.shape.borderRadius,
+  backdropFilter: "blur(5px)",
 }));
 
-const CategoryTitle = styled(Typography)({
+const CategoryTitle = styled(Typography)(({ theme }) => ({
   fontWeight: 700,
   fontSize: 17,
   color: "#fff",
@@ -172,8 +168,10 @@ const CategoryTitle = styled(Typography)({
   width: "100%",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-});
+  [theme.breakpoints.down("sm")]: {
+    fontSize: 10,
+  },
+}));
 
 // Функция для получения иконки категории
 const getCategoryIcon = (categoryName) => {
@@ -204,9 +202,7 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
     category.image && category.image.startsWith("http")
       ? category.image
       : category.image && category.image.startsWith("/")
-      ? `${process.env.REACT_APP_API_URL || "http://localhost:5001"}${
-          category.image
-        }`
+      ? `${process.env.REACT_APP_API_URL}${category.image}`
       : getFallbackImageUrl(category.name);
 
   return (
@@ -243,7 +239,11 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
             />
             <MobileCountBadge>{count}</MobileCountBadge>
           </MobileImageWrapper>
-          <MobileTitle>{t(category.label || category.name)}</MobileTitle>
+          <CategoryTitleBar>
+            <CategoryTitle variant="subtitle1">
+              {t(category.label || category.name)}
+            </CategoryTitle>
+          </CategoryTitleBar>{" "}
         </MobileCategoryCard>
       </>
     </Tooltip>

@@ -56,15 +56,9 @@ const OfferList = forwardRef(
     ref
   ) => {
     const { t } = useTranslation();
-    const [windowEnd, setWindowEnd] = useState(WINDOW_SIZE);
-
-    useEffect(() => {
-      setWindowEnd(WINDOW_SIZE);
-    }, [offers]);
 
     const handleLoadMore = useCallback(() => {
       if (onLoadMore) {
-        setWindowEnd((prev) => prev + WINDOW_SIZE);
         onLoadMore();
       }
     }, [onLoadMore]);

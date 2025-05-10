@@ -1,122 +1,52 @@
 import React from "react";
-import { Drawer, List, ListItem, ListItemText, Divider } from "@mui/material";
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  ListItemIcon,
+} from "@mui/material";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
+import { menuItems } from "./menuConfig";
 
-const SideMenu = ({ open, onClose }) => {
+const SideMenu = ({ open, onClose, onLanguage, onLogout }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  const handleItemClick = (item) => {
+    if (item.isLogout) {
+      (onLogout || logout)();
+      onClose();
+      return;
+    }
+    if (item.isLanguage && onLanguage) {
+      onLanguage();
+      onClose();
+      return;
+    }
+    onClose();
+  };
 
   return (
     <Drawer anchor="left" open={open} onClose={onClose}>
-      <List sx={{ width: 250 }}>
-        <ListItem button component={Link} to="/" onClick={onClose}>
-          <ListItemText primary={t("home")} />
-        </ListItem>
-        {user && (
-          <>
-            <ListItem button component={Link} to="/profile" onClick={onClose}>
-              <ListItemText primary={t("profile")} />
+      <List sx={{ width: 250, marginTop: 8 }}>
+        {menuItems
+          .filter((item) => item.show(user))
+          .map((item) => (
+            <ListItem
+              button
+              key={item.key}
+              component={item.path ? Link : undefined}
+              to={item.path || undefined}
+              onClick={() => handleItemClick(item)}
+            >
+              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+              <ListItemText primary={t(item.label)} />
             </ListItem>
-            <ListItem button component={Link} to="/offers" onClick={onClose}>
-              <ListItemText primary={t("offers")} />
-            </ListItem>
-            {(user.role === "user" || user.role === "provider") && (
-              <>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/chat-list"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("chat_list")} />
-                </ListItem>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/favorites"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("favorites")} />
-                </ListItem>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/payment-dashboard"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("payment_dashboard")} />
-                </ListItem>
-              </>
-            )}
-            {user.role === "user" && (
-              <>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/create-request"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("create_request")} />
-                </ListItem>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/my-requests"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("my_requests")} />
-                </ListItem>
-              </>
-            )}
-            {(user.role === "provider" || user.role === "admin") && (
-              <>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/create-offer"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("create_offer")} />
-                </ListItem>
-                <ListItem
-                  button
-                  component={Link}
-                  to="/my-offers"
-                  onClick={onClose}
-                >
-                  <ListItemText primary={t("my_offers")} />
-                </ListItem>
-              </>
-            )}
-            {user.role === "provider" && (
-              <ListItem
-                button
-                component={Link}
-                to="/provider-requests"
-                onClick={onClose}
-              >
-                <ListItemText primary={t("provider_requests")} />
-              </ListItem>
-            )}
-            {user.role === "admin" && (
-              <ListItem button component={Link} to="/admin" onClick={onClose}>
-                <ListItemText primary={t("admin_panel")} />
-              </ListItem>
-            )}
-          </>
-        )}
-        {!user && (
-          <>
-            <ListItem button component={Link} to="/login" onClick={onClose}>
-              <ListItemText primary={t("login")} />
-            </ListItem>
-            <ListItem button component={Link} to="/register" onClick={onClose}>
-              <ListItemText primary={t("register")} />
-            </ListItem>
-          </>
-        )}
+          ))}
       </List>
       <Divider />
     </Drawer>

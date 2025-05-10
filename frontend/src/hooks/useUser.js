@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import UserService from "../services/UserService";
 
 // Создаем объект для хранения кэшированных данных
@@ -21,11 +21,7 @@ export const useUser = (tokenArg) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchUser = async () => {
-    console.log(
-      "[useUser] fetchUser called, token:",
-      typeof tokenArg !== "undefined" ? tokenArg : localStorage.getItem("token")
-    );
+  const fetchUser = useCallback(async () => {
     // Если данные уже загружаются, ждем
     if (cache.loading) {
       return;
@@ -39,36 +35,30 @@ export const useUser = (tokenArg) => {
       cache.user = null;
       cache.timestamp = null;
       setUser(null);
-      console.log("[useUser] No token, setUser(null)");
       return;
     }
 
     try {
       setLoading(true);
       cache.loading = true;
-      console.log("[useUser] Fetching user from server...");
       const userData = await UserService.getCurrentUser();
-      console.log("[useUser] Server returned user:", userData);
       cache.user = userData;
       cache.timestamp = Date.now();
       setUser(userData);
-      console.log("[useUser] setUser(userData)");
       notifySubscribers();
     } catch (err) {
       setError(err);
-      console.error("Error fetching user:", err);
       if (err.response?.status === 401) {
         localStorage.removeItem("token");
         cache.user = null;
         cache.timestamp = null;
         setUser(null);
-        console.log("[useUser] 401 error, setUser(null)");
       }
     } finally {
       setLoading(false);
       cache.loading = false;
     }
-  };
+  }, [tokenArg]);
 
   useEffect(() => {
     // Проверяем актуальность кэша
@@ -98,7 +88,7 @@ export const useUser = (tokenArg) => {
       window.removeEventListener("storage", handleStorageChange);
       cache.subscribers.delete(handleUpdate);
     };
-  }, [tokenArg]);
+  }, [tokenArg, fetchUser]);
 
   const updateUser = async (userData) => {
     try {
