@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import UserService from "../services/UserService";
 
 // Создаем объект для хранения кэшированных данных
@@ -20,6 +20,10 @@ export const useUser = (tokenArg) => {
   const [user, setUser] = useState(cache.user);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [token, setToken] = useState(() =>
+    typeof tokenArg !== "undefined" ? tokenArg : localStorage.getItem("token")
+  );
+  const prevTokenRef = useRef(token);
 
   const fetchUser = useCallback(async () => {
     // Если данные уже загружаются, ждем
@@ -27,7 +31,7 @@ export const useUser = (tokenArg) => {
       return;
     }
 
-    const token =
+    const currentToken =
       typeof tokenArg !== "undefined"
         ? tokenArg
         : localStorage.getItem("token");
@@ -63,20 +67,33 @@ export const useUser = (tokenArg) => {
   useEffect(() => {
     // Проверяем актуальность кэша
     const now = Date.now();
+    // Если токен изменился — всегда делаем fetchUser
+    if (token !== prevTokenRef.current) {
+      prevTokenRef.current = token;
+      fetchUser();
+      return;
+    }
     if (cache.user && cache.timestamp && now - cache.timestamp < CACHE_TTL) {
       setUser(cache.user);
       return;
     }
-
     fetchUser();
 
     // Подписываемся на изменения токена
     const handleStorageChange = (e) => {
       if (e.key === "token") {
-        fetchUser();
+        setToken(localStorage.getItem("token"));
       }
     };
     window.addEventListener("storage", handleStorageChange);
+    // Monkey-patch setItem для реакции на setItem в этом окне
+    const origSetItem = localStorage.setItem;
+    localStorage.setItem = function (key, value) {
+      origSetItem.apply(this, arguments);
+      if (key === "token") {
+        setToken(value);
+      }
+    };
 
     // Подписываемся на обновления кэша
     const handleUpdate = (newUser) => {
@@ -87,8 +104,9 @@ export const useUser = (tokenArg) => {
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       cache.subscribers.delete(handleUpdate);
+      localStorage.setItem = origSetItem;
     };
-  }, [tokenArg, fetchUser]);
+  }, [tokenArg, fetchUser, token]);
 
   const updateUser = async (userData) => {
     try {

@@ -3,6 +3,7 @@ import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import {
   MessagesList as StyledMessagesList,
   MessageGroup,
@@ -10,6 +11,8 @@ import {
   Message,
 } from "./ChatModal.styled";
 import { getRelativeTime } from "../../utils/dateUtils";
+
+const isImageUrl = (url = "") => /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(url);
 
 const MessagesList = ({
   groupedMessages,
@@ -59,7 +62,39 @@ const MessagesList = ({
                   wordBreak: "break-word",
                 }}
               >
-                {msg.text || msg.message || ""}
+                {msg.type === "file" || isImageUrl(msg.message) ? (
+                  isImageUrl(msg.message) ? (
+                    <a
+                      href={msg.message}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={msg.message}
+                        alt={msg.fileName || "file"}
+                        style={{
+                          maxWidth: 220,
+                          maxHeight: 180,
+                          borderRadius: 8,
+                          margin: "4px 0",
+                          display: "block",
+                        }}
+                      />
+                    </a>
+                  ) : (
+                    <a
+                      href={msg.message}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <InsertDriveFileIcon sx={{ fontSize: 22, mr: 0.5 }} />
+                      {msg.fileName || msg.message}
+                    </a>
+                  )
+                ) : (
+                  msg.text || msg.message || ""
+                )}
               </Typography>
               <Box
                 sx={{

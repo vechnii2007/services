@@ -11,6 +11,7 @@ import {
   MenuItem,
   Box,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 import { useForm } from "../hooks/useForm";
 import AddressAutocomplete from "../components/AddressAutocomplete";
@@ -23,7 +24,7 @@ const ROLE_OPTIONS = [
 const OauthSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { refetch, user, updateProfile } = useContext(AuthContext);
+  const { refetch, user, updateProfile, loading } = useContext(AuthContext);
   console.log("[OauthSuccess] updateProfile:", updateProfile);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const { values, handleChange, setValues } = useForm({
@@ -31,7 +32,6 @@ const OauthSuccess = () => {
     phone: "",
     address: "",
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [profileCompleted, setProfileCompleted] = useState(false);
   const [autocomplete, setAutocomplete] = useState(null);
@@ -47,8 +47,7 @@ const OauthSuccess = () => {
     const token = params.get("token");
     if (token) {
       localStorage.setItem("token", token);
-      console.log("[OauthSuccess] token set in localStorage", token);
-      window.location.href = "/oauth-success";
+      window.location.replace("/offers");
       return;
     } else {
       console.log("[OauthSuccess] No token in query, redirect to /login");
@@ -101,7 +100,6 @@ const OauthSuccess = () => {
   };
 
   const handleSubmit = async () => {
-    setLoading(true);
     setError("");
     try {
       const payload = { ...values, socialLogin: false };
@@ -114,66 +112,98 @@ const OauthSuccess = () => {
     } catch (err) {
       setError("Ошибка при обновлении профиля");
       console.error("[OauthSuccess] handleSubmit: error", err);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <>
-      <div>Авторизация через Google... Пожалуйста, подождите.</div>
-      {/* MUI Dialog для UX */}
-      <Dialog open={showProfileDialog} disableEscapeKeyDown>
-        <DialogTitle>Завершите регистрацию</DialogTitle>
-        <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} minWidth={300}>
-            <TextField
-              select
-              label="Роль"
-              name="role"
-              value={values.role}
-              onChange={handleChange}
-              fullWidth
-            >
-              {ROLE_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Телефон"
-              name="phone"
-              value={values.phone}
-              onChange={handleChange}
-              fullWidth
-            />
-            <AddressAutocomplete
-              value={values.address}
-              onChange={handleChange}
-              name="address"
-              label="Адрес"
-              required
-              fullWidth
-            />
-            {error && (
-              <Typography color="error" variant="body2">
-                {error}
-              </Typography>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
+      {loading ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          minHeight="40vh"
+        >
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography>
+            Авторизация через Google... Пожалуйста, подождите.
+          </Typography>
+        </Box>
+      ) : !user ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          minHeight="40vh"
+        >
+          <Typography color="error">
+            {error || "Ошибка авторизации. Попробуйте ещё раз."}
+          </Typography>
           <Button
-            onClick={handleSubmit}
-            color="primary"
             variant="contained"
-            disabled={loading}
+            sx={{ mt: 2 }}
+            onClick={() => navigate("/login")}
           >
-            Сохранить профиль
+            На страницу входа
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      ) : (
+        <>
+          {/* MUI Dialog для UX */}
+          <Dialog open={showProfileDialog} disableEscapeKeyDown>
+            <DialogTitle>Завершите регистрацию</DialogTitle>
+            <DialogContent>
+              <Box display="flex" flexDirection="column" gap={2} minWidth={300}>
+                <TextField
+                  select
+                  label="Роль"
+                  name="role"
+                  value={values.role}
+                  onChange={handleChange}
+                  fullWidth
+                >
+                  {ROLE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Телефон"
+                  name="phone"
+                  value={values.phone}
+                  onChange={handleChange}
+                  fullWidth
+                />
+                <AddressAutocomplete
+                  value={values.address}
+                  onChange={handleChange}
+                  name="address"
+                  label="Адрес"
+                  required
+                  fullWidth
+                />
+                {error && (
+                  <Typography color="error" variant="body2">
+                    {error}
+                  </Typography>
+                )}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={handleSubmit}
+                color="primary"
+                variant="contained"
+              >
+                Сохранить профиль
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </>
   );
 };

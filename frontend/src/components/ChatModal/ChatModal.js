@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import PropTypes from "prop-types";
 import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -16,22 +15,14 @@ import {
   useMediaQuery,
   Box,
   Typography,
-  Avatar,
-  Tooltip,
   CircularProgress,
   Paper,
-  TextField,
-  List as MUIList,
   Alert,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
-import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
-import DoneAllIcon from "@mui/icons-material/DoneAll";
 import { styled, alpha } from "@mui/material/styles";
 import { useAuth } from "../../context/AuthContext";
 import ChatService from "../../services/ChatService";
-import { getRelativeTime } from "../../utils/dateUtils";
 import {
   normalizeMessage,
   isMessageBelongsToChat,
@@ -493,10 +484,10 @@ const ChatModal = React.forwardRef(
       };
     }, [open, socket]);
 
-    // Отправка сообщения
-    const sendMessage = async () => {
+    // Отправка сообщения (теперь с поддержкой файлов)
+    const sendMessage = async (files = [], text = "") => {
       if (
-        !newMessage.trim() ||
+        (!text.trim() && (!files || files.length === 0)) ||
         !socket ||
         !isConnected ||
         !requestId ||
@@ -505,37 +496,98 @@ const ChatModal = React.forwardRef(
       )
         return;
       try {
-        const normalizedSenderId = normalizeId(user._id);
-        const normalizedRecipientId = normalizeId(recipientId);
-        const participants = [normalizedSenderId, normalizedRecipientId].sort();
-        const chatRoomId = participants.join("_");
-        const messageId = `msg_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-        const timestamp = new Date().toISOString();
-        const messageData = {
-          _id: messageId,
-          message: newMessage.trim(),
-          senderId: normalizedSenderId,
-          recipientId: normalizedRecipientId,
-          requestId: normalizeId(requestId),
-          timestamp,
-          chatRoomId,
-          userId: {
-            _id: normalizedSenderId,
-            name: user.name || "Unknown",
-            role: user.role,
-          },
-        };
-        const normalizedMessage = normalizeMessage({
-          ...messageData,
-          isSending: true,
-        });
-        if (normalizedMessage) {
-          setMessages((prev) => [...prev, normalizedMessage]);
-          scrollToBottom();
+        // 1. Сначала отправляем файлы (если есть)
+        if (files && files.length > 0) {
+          for (const file of files) {
+            const formData = new FormData();
+            formData.append("image", file);
+            const res = await fetch("/api/services/test-upload", {
+              method: "POST",
+              body: formData,
+            });
+            const data = await res.json();
+            if (data.success && data.file && data.file.path) {
+              const fileUrl = data.file.path.startsWith("http")
+                ? data.file.path
+                : `${window.location.origin}/${data.file.path}`;
+              // Отправляем ссылку на файл как отдельное сообщение
+              const normalizedSenderId = normalizeId(user._id);
+              const normalizedRecipientId = normalizeId(recipientId);
+              const participants = [
+                normalizedSenderId,
+                normalizedRecipientId,
+              ].sort();
+              const chatRoomId = participants.join("_");
+              const messageId = `msg_${Date.now()}_${Math.random()
+                .toString(36)
+                .substr(2, 9)}`;
+              const timestamp = new Date().toISOString();
+              const messageData = {
+                _id: messageId,
+                message: fileUrl,
+                senderId: normalizedSenderId,
+                recipientId: normalizedRecipientId,
+                requestId: normalizeId(requestId),
+                timestamp,
+                chatRoomId,
+                userId: {
+                  _id: normalizedSenderId,
+                  name: user.name || "Unknown",
+                  role: user.role,
+                },
+                type: "file",
+                fileName: file.name,
+              };
+              const normalizedMessage = normalizeMessage({
+                ...messageData,
+                isSending: true,
+              });
+              if (normalizedMessage) {
+                setMessages((prev) => [...prev, normalizedMessage]);
+                scrollToBottom();
+              }
+              socket.emit("private_message", messageData);
+            }
+          }
         }
-        socket.emit("private_message", messageData);
+        // 2. Затем отправляем текст (если есть)
+        if (text.trim()) {
+          const normalizedSenderId = normalizeId(user._id);
+          const normalizedRecipientId = normalizeId(recipientId);
+          const participants = [
+            normalizedSenderId,
+            normalizedRecipientId,
+          ].sort();
+          const chatRoomId = participants.join("_");
+          const messageId = `msg_${Date.now()}_${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
+          const timestamp = new Date().toISOString();
+          const messageData = {
+            _id: messageId,
+            message: text.trim(),
+            senderId: normalizedSenderId,
+            recipientId: normalizedRecipientId,
+            requestId: normalizeId(requestId),
+            timestamp,
+            chatRoomId,
+            userId: {
+              _id: normalizedSenderId,
+              name: user.name || "Unknown",
+              role: user.role,
+            },
+            type: "text",
+          };
+          const normalizedMessage = normalizeMessage({
+            ...messageData,
+            isSending: true,
+          });
+          if (normalizedMessage) {
+            setMessages((prev) => [...prev, normalizedMessage]);
+            scrollToBottom();
+          }
+          socket.emit("private_message", messageData);
+        }
         setNewMessage("");
       } catch (err) {
         setError(err.message || "Ошибка при отправке сообщения");
@@ -636,56 +688,62 @@ const ChatModal = React.forwardRef(
                 <CloseIcon />
               </IconButton>
             </ChatHeader>
-            {chatInfo && chatInfo.offerId && (
-              <OfferCardChat>
-                {chatInfo.offerId.image && (
-                  <Box
-                    component="img"
-                    src={chatInfo.offerId.image}
-                    alt={chatInfo.offerId.title}
-                    sx={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 2,
-                      objectFit: "cover",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                    }}
-                  />
-                )}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" fontWeight={600} noWrap>
-                    {chatInfo.offerId.title}
-                  </Typography>
-                  {chatInfo.offerId.price && (
-                    <Typography
-                      variant="body2"
-                      color="primary"
-                      fontWeight={500}
-                    >
-                      {chatInfo.offerId.price} €
-                    </Typography>
-                  )}
-                  {chatInfo.offerId.serviceType && (
-                    <Typography variant="caption" color="text.secondary">
-                      {chatInfo.offerId.serviceType}
-                    </Typography>
-                  )}
-                  {chatInfo.offerId.description && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
+            {chatInfo &&
+              chatInfo.offerId &&
+              (chatInfo.offerId.title ||
+                chatInfo.offerId.image ||
+                chatInfo.offerId.price) && (
+                <OfferCardChat>
+                  {chatInfo.offerId.image && (
+                    <Box
+                      component="img"
+                      src={chatInfo.offerId.image}
+                      alt={chatInfo.offerId.title}
                       sx={{
-                        mt: 0.5,
-                        maxWidth: 320,
-                        whiteSpace: "pre-line",
+                        width: 64,
+                        height: 64,
+                        borderRadius: 2,
+                        objectFit: "cover",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
                       }}
-                    >
-                      {chatInfo.offerId.description}
-                    </Typography>
+                    />
                   )}
-                </Box>
-              </OfferCardChat>
-            )}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {chatInfo.offerId.title && (
+                      <Typography variant="subtitle1" fontWeight={600} noWrap>
+                        {chatInfo.offerId.title}
+                      </Typography>
+                    )}
+                    {chatInfo.offerId.price && (
+                      <Typography
+                        variant="body2"
+                        color="primary"
+                        fontWeight={500}
+                      >
+                        {chatInfo.offerId.price} €
+                      </Typography>
+                    )}
+                    {chatInfo.offerId.serviceType && (
+                      <Typography variant="caption" color="text.secondary">
+                        {chatInfo.offerId.serviceType}
+                      </Typography>
+                    )}
+                    {chatInfo.offerId.description && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          mt: 0.5,
+                          maxWidth: 320,
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {chatInfo.offerId.description}
+                      </Typography>
+                    )}
+                  </Box>
+                </OfferCardChat>
+              )}
             {/* Сообщения */}
             <Box
               sx={{

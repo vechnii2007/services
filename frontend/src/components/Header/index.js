@@ -274,8 +274,6 @@ const Header = ({ onDrawerToggle }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { openChat } = useChatModal();
-  console.log(drawerOpen);
-  const [anchorEl, setAnchorEl] = useState(null);
   const [langAnchorEl, setLangAnchorEl] = useState(null);
   const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -283,7 +281,6 @@ const Header = ({ onDrawerToggle }) => {
   // --- Состояния для Drawer уведомлений на мобиле ---
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
 
-  const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleLangMenu = (event) => setLangAnchorEl(event.currentTarget);
 
   const handleNotificationsClick = async (event) => {
@@ -298,7 +295,6 @@ const Header = ({ onDrawerToggle }) => {
     }
   };
 
-  const handleClose = () => setAnchorEl(null);
   const handleLangClose = () => setLangAnchorEl(null);
   const handleNotificationsClose = () => setNotificationsAnchor(null);
 
@@ -466,7 +462,6 @@ const Header = ({ onDrawerToggle }) => {
   const handleLogout = () => {
     logout();
     navigate("/login");
-    handleClose();
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
