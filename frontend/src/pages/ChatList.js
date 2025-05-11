@@ -391,27 +391,6 @@ const ChatList = () => {
         </Badge>
       </Box>
 
-      {message && (
-        <Paper
-          sx={{
-            p: { xs: 1, sm: 2 },
-            mb: 2,
-            backgroundColor: theme.palette.background.default,
-            borderLeft: `4px solid ${theme.palette.primary.main}`,
-            borderRadius: { xs: 1, sm: 2 },
-            boxShadow: { xs: 0, sm: 1 },
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="textSecondary"
-            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-          >
-            {message}
-          </Typography>
-        </Paper>
-      )}
-
       <Paper
         sx={{
           mb: 2,

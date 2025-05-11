@@ -46,6 +46,8 @@ const StepIcon = styled(Box)(({ theme, color = "primary.main" }) => ({
   }15`, // 15% opacity
   color: theme.palette[color.split(".")[0]][color.split(".")[1] || "main"],
   marginBottom: theme.spacing(2),
+  marginLeft: "auto",
+  marginRight: "auto",
 }));
 
 const StepCard = styled(Card)(({ theme }) => ({

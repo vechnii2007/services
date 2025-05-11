@@ -471,5 +471,6 @@
   "location": "Ubicación",
   "load_more": "Cargar más",
   "no_more_offers": "No hay más ofertas",
-  "location_placeholder": "Ingresa una ubicación"
+  "location_placeholder": "Ingresa una ubicación",
+  "filters": "Filtros"
 }

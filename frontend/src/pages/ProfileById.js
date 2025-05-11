@@ -281,7 +281,7 @@ const ProfileById = () => {
                     {offer.description}
                   </Typography>
                   <Typography variant="body2" color="primary" fontWeight={600}>
-                    {offer.price} ₽
+                    {offer.price} €
                   </Typography>
                 </CardContent>
                 <CardActions>

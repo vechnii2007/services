@@ -72,7 +72,7 @@ const Profile = () => {
     }
   };
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (newValue) => {
     setTabValue(newValue);
   };
 
@@ -116,11 +116,11 @@ const Profile = () => {
                 id="profile-tab-0"
                 aria-controls="profile-tabpanel-0"
               />
-              <Tab
+              {/* <Tab
                 label={t("notifications")}
                 id="profile-tab-1"
                 aria-controls="profile-tabpanel-1"
-              />
+              /> */}
             </Tabs>
           </Box>
 

@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
-import LanguageSwitcher from "../components/Landing/LanguageSwitcher";
 import HeroSection from "../components/Landing/HeroSection";
 import FeatureSection from "../components/Landing/FeatureSection";
 import CategorySection from "../components/Landing/CategorySection";
@@ -10,6 +9,8 @@ import TestimonialSection from "../components/Landing/TestimonialsSection";
 import HowItWorksSection from "../components/Landing/HowItWorksSection";
 import CTASection from "../components/Landing/CTASection";
 import Footer from "../components/Landing/Footer";
+import Header from "../components/Header";
+import SideMenu from "../components/SideMenu";
 
 // Анимированные компоненты
 const MotionContainer = styled(motion.div)(({ theme }) => ({
@@ -18,6 +19,8 @@ const MotionContainer = styled(motion.div)(({ theme }) => ({
 }));
 
 const Landing = () => {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const handleDrawerToggle = () => setDrawerOpen((open) => !open);
   // Анимация для всего лендинга
   const pageVariants = {
     initial: { opacity: 0 },
@@ -38,11 +41,8 @@ const Landing = () => {
       exit="exit"
       variants={pageVariants}
     >
-      {/* Языковой переключатель в верхнем правом углу */}
-      <Box sx={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}>
-        <LanguageSwitcher />
-      </Box>
-
+      <Header onDrawerToggle={handleDrawerToggle} />
+      <SideMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       {/* Основной контент лендинга */}
       <HeroSection />
       <FeatureSection />

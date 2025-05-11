@@ -181,6 +181,90 @@ const languages = [
   },
 ];
 
+// --- NotificationsPanel ---
+const NotificationsPanel = ({
+  notifications,
+  loading,
+  unreadCount,
+  onMarkAllAsRead,
+  onMarkAsRead,
+  onDelete,
+  onAction,
+  onViewAll,
+  t,
+  navigate,
+  handleNotificationsClose,
+}) => (
+  <Box
+    sx={{
+      width: { xs: 320, sm: 420 },
+      maxWidth: 480,
+      maxHeight: { xs: "80vh", sm: "70vh" },
+      overflow: "auto",
+      p: 0,
+    }}
+  >
+    <Box
+      sx={{
+        p: 2,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexDirection: "row",
+        gap: 2,
+        flexWrap: "nowrap",
+      }}
+    >
+      <Typography variant="h6" sx={{ minWidth: 120 }}>
+        {t("notifications")}
+      </Typography>
+      <Box
+        sx={{ display: "flex", gap: 1.5, flexWrap: "nowrap", width: "auto" }}
+      >
+        {unreadCount > 0 && (
+          <Button
+            size="small"
+            onClick={onMarkAllAsRead}
+            disabled={loading}
+            sx={{ minWidth: 120, whiteSpace: "normal" }}
+          >
+            {t("mark_all_read")}
+          </Button>
+        )}
+        <Button
+          size="small"
+          onClick={onViewAll}
+          sx={{ minWidth: 120, whiteSpace: "normal" }}
+        >
+          {t("view_all")}
+        </Button>
+      </Box>
+    </Box>
+    <Divider />
+    {loading ? (
+      <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+        <CircularProgress size={24} />
+      </Box>
+    ) : notifications.length > 0 ? (
+      <List sx={{ p: 0 }}>
+        {notifications.map((notification) => (
+          <NotificationItem
+            key={notification._id}
+            notification={notification}
+            onMarkAsRead={onMarkAsRead}
+            onDelete={onDelete}
+            onAction={onAction}
+          />
+        ))}
+      </List>
+    ) : (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Typography color="text.secondary">{t("no_notifications")}</Typography>
+      </Box>
+    )}
+  </Box>
+);
+
 const Header = ({ onDrawerToggle }) => {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
@@ -190,18 +274,25 @@ const Header = ({ onDrawerToggle }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { openChat } = useChatModal();
-
+  console.log(drawerOpen);
   const [anchorEl, setAnchorEl] = useState(null);
   const [langAnchorEl, setLangAnchorEl] = useState(null);
   const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  // --- Состояния для Drawer уведомлений на мобиле ---
+  const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
 
   const handleMenu = (event) => setAnchorEl(event.currentTarget);
   const handleLangMenu = (event) => setLangAnchorEl(event.currentTarget);
 
   const handleNotificationsClick = async (event) => {
-    setNotificationsAnchor(event.currentTarget);
+    if (!user) return;
+    if (isMobile) {
+      setMobileNotificationsOpen(true);
+    } else {
+      setNotificationsAnchor(event.currentTarget);
+    }
     if (!notifications.length) {
       await loadNotifications();
     }
@@ -518,7 +609,6 @@ const Header = ({ onDrawerToggle }) => {
             >
               {drawerContent}
             </Drawer>
-            {/* Краткие иконки справа */}
             <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
               <IconButton color="inherit" onClick={handleLangMenu}>
                 <img
@@ -532,12 +622,50 @@ const Header = ({ onDrawerToggle }) => {
                   }}
                 />
               </IconButton>
-              <IconButton color="inherit" onClick={handleNotificationsClick}>
-                <Badge badgeContent={unreadCount} color="error">
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
+              {user && (
+                <IconButton color="inherit" onClick={handleNotificationsClick}>
+                  <Badge badgeContent={unreadCount} color="error">
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+              )}
             </Box>
+            {/* Drawer для уведомлений на мобиле */}
+            <Drawer
+              anchor="top"
+              open={mobileNotificationsOpen}
+              onClose={() => setMobileNotificationsOpen(false)}
+              PaperProps={{
+                sx: { borderRadius: "0 0 16px 16px", top: "56px" },
+              }}
+            >
+              <NotificationsPanel
+                notifications={notifications}
+                loading={loading}
+                unreadCount={unreadCount}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+                onAction={handleNotificationAction}
+                onViewAll={() => {
+                  navigate("/notifications");
+                  setMobileNotificationsOpen(false);
+                }}
+                t={t}
+                navigate={navigate}
+                handleNotificationsClose={() =>
+                  setMobileNotificationsOpen(false)
+                }
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setMobileNotificationsOpen(false)}
+                sx={{ m: 2, width: "calc(100% - 32px)" }}
+              >
+                {t("close")}
+              </Button>
+            </Drawer>
           </>
         ) : (
           // Десктопная версия (оставляем как есть)
@@ -603,11 +731,13 @@ const Header = ({ onDrawerToggle }) => {
                   </MenuItem>
                 ))}
               </Menu>
-              <IconButton color="inherit" onClick={handleNotificationsClick}>
-                <Badge badgeContent={unreadCount} color="error">
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
+              {user && (
+                <IconButton color="inherit" onClick={handleNotificationsClick}>
+                  <Badge badgeContent={unreadCount} color="error">
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+              )}
               <Popover
                 open={Boolean(notificationsAnchor)}
                 anchorEl={notificationsAnchor}
@@ -633,90 +763,23 @@ const Header = ({ onDrawerToggle }) => {
                   },
                 }}
               >
-                <Box
-                  sx={{
-                    p: 2,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexDirection: "row",
-                    gap: 2,
-                    flexWrap: "nowrap",
+                <NotificationsPanel
+                  notifications={notifications}
+                  loading={loading}
+                  unreadCount={unreadCount}
+                  onMarkAllAsRead={handleMarkAllAsRead}
+                  onMarkAsRead={handleMarkAsRead}
+                  onDelete={handleDelete}
+                  onAction={handleNotificationAction}
+                  onViewAll={() => {
+                    navigate("/notifications");
+                    handleNotificationsClose();
                   }}
-                >
-                  <Typography variant="h6" sx={{ minWidth: 120 }}>
-                    {t("notifications")}
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      gap: 1.5,
-                      flexWrap: "nowrap",
-                      width: "auto",
-                    }}
-                  >
-                    {unreadCount > 0 && (
-                      <Button
-                        size="small"
-                        onClick={handleMarkAllAsRead}
-                        disabled={loading}
-                        sx={{ minWidth: 120, whiteSpace: "normal" }}
-                      >
-                        {t("mark_all_read")}
-                      </Button>
-                    )}
-                    <Button
-                      size="small"
-                      onClick={() => {
-                        navigate("/notifications");
-                        handleNotificationsClose();
-                      }}
-                      sx={{ minWidth: 120, whiteSpace: "normal" }}
-                    >
-                      {t("view_all")}
-                    </Button>
-                  </Box>
-                </Box>
-                <Divider />
-                {loading ? (
-                  <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                    <CircularProgress size={24} />
-                  </Box>
-                ) : notifications.length > 0 ? (
-                  <List sx={{ p: 0 }}>
-                    {notifications.map((notification) => (
-                      <NotificationItem
-                        key={notification._id}
-                        notification={notification}
-                        onMarkAsRead={handleMarkAsRead}
-                        onDelete={handleDelete}
-                        onAction={handleNotificationAction}
-                      />
-                    ))}
-                  </List>
-                ) : (
-                  <Box sx={{ p: 3, textAlign: "center" }}>
-                    <Typography color="text.secondary">
-                      {t("no_notifications")}
-                    </Typography>
-                  </Box>
-                )}
+                  t={t}
+                  navigate={navigate}
+                  handleNotificationsClose={handleNotificationsClose}
+                />
               </Popover>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                {user ? (
-                  <IconButton
-                    onClick={handleMenu}
-                    color="inherit"
-                    sx={{ padding: 0.5 }}
-                  >
-                    {user.avatar ? (
-                      <Avatar src={user.avatar} alt={user.name} />
-                    ) : (
-                      <AccountCircle />
-                    )}
-                  </IconButton>
-                ) : null}
-              </Box>
             </Box>
           </>
         )}
