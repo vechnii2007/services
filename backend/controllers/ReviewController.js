@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Offer = require("../models/Offer");
 const ServiceOffer = require("../models/ServiceOffer");
 const mongoose = require("mongoose");
+const { isValidObjectId } = require("../utils/validation");
 
 /**
  * Создание нового отзыва
@@ -15,6 +16,10 @@ exports.createReview = async (req, res) => {
     // Проверяем существование предложения
     let offer;
     let Model = offerType === "Offer" ? Offer : ServiceOffer;
+
+    if (!isValidObjectId(offerId)) {
+      return res.status(400).json({ error: "Некорректный offerId" });
+    }
 
     try {
       offer = await Model.findById(offerId);
@@ -81,6 +86,10 @@ exports.getReviewsByOffer = async (req, res) => {
   try {
     const { offerId } = req.params;
 
+    if (!isValidObjectId(offerId)) {
+      return res.status(400).json({ error: "Некорректный offerId" });
+    }
+
     const reviews = await Review.find({ offerId, status: "approved" })
       .populate("userId", "name avatar")
       .sort({ createdAt: -1 });
@@ -106,6 +115,10 @@ exports.getReviewsByOffer = async (req, res) => {
 exports.getReviewsByProvider = async (req, res) => {
   try {
     const { providerId } = req.params;
+
+    if (!isValidObjectId(providerId)) {
+      return res.status(400).json({ error: "Некорректный providerId" });
+    }
 
     const reviews = await Review.find({ providerId, status: "approved" })
       .populate("userId", "name avatar")
@@ -134,6 +147,10 @@ exports.getReviewById = async (req, res) => {
   try {
     const { reviewId } = req.params;
 
+    if (!isValidObjectId(reviewId)) {
+      return res.status(400).json({ error: "Некорректный reviewId" });
+    }
+
     const review = await Review.findById(reviewId)
       .populate("userId", "name avatar")
       .populate("offerId", "title");
@@ -160,6 +177,10 @@ exports.updateReview = async (req, res) => {
     const { reviewId } = req.params;
     const { rating, comment } = req.body;
     const userId = req.user._id;
+
+    if (!isValidObjectId(reviewId)) {
+      return res.status(400).json({ error: "Некорректный reviewId" });
+    }
 
     // Проверяем существование отзыва
     const review = await Review.findById(reviewId);
@@ -209,6 +230,10 @@ exports.deleteReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
     const userId = req.user._id;
+
+    if (!isValidObjectId(reviewId)) {
+      return res.status(400).json({ error: "Некорректный reviewId" });
+    }
 
     // Проверяем существование отзыва
     const review = await Review.findById(reviewId);

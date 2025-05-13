@@ -27,6 +27,7 @@ import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { SocketContext } from "../context/SocketContext";
+import api from "../middleware/api";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const { t } = useTranslation();
@@ -134,7 +135,6 @@ const Notifications = () => {
         page: pageNum,
         limit: 20,
       });
-      console.log("API notifications response:", data);
       let newNotifications, pages;
       if (Array.isArray(data)) {
         newNotifications = data;
@@ -155,7 +155,6 @@ const Notifications = () => {
       setPage(pageNum);
     } catch (err) {
       setError(err.message);
-      console.error("Error loading notifications:", err);
     } finally {
       setLoading(false);
     }
@@ -189,11 +188,27 @@ const Notifications = () => {
       } else if (notification.type === "offer") {
         navigate(`/offers/${notification.relatedId}`);
       } else if (notification.type === "message") {
-        navigate(`/chat/${notification.relatedId}`);
+        let userId, providerId, requestId;
+        requestId = notification.relatedId;
+        try {
+          const response = await api.get(`/services/requests/${requestId}`);
+          const data = response.data;
+          userId = data.userId?._id || data.userId;
+          providerId = data.providerId?._id || data.providerId;
+        } catch (err) {
+          setError("Не удалось получить данные чата для уведомления");
+          return;
+        }
+        if (userId && providerId && requestId) {
+          navigate(`/chat/${requestId}`, {
+            state: { userId, providerId, requestId, fromNotification: true },
+          });
+        } else {
+          setError("Не удалось определить участников чата");
+        }
       }
     } catch (err) {
       setError(err.message);
-      console.error("Error marking notification as read or navigating:", err);
       alert(
         "Не удалось открыть уведомление. Возможно, запрос был удалён или у вас нет доступа."
       );
@@ -215,7 +230,6 @@ const Notifications = () => {
       setNotifications((prev) => prev.filter((notif) => notif._id !== id));
     } catch (err) {
       setError(err.message);
-      console.error("Error deleting notification:", err);
     }
   };
 

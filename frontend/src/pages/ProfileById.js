@@ -243,56 +243,65 @@ const ProfileById = () => {
           )}
         </Box>
         {/* Активные предложения */}
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Активные предложения
-        </Typography>
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          {offers.length === 0 && (
-            <Grid item xs={12}>
-              <Typography color="text.secondary">
-                Нет активных предложений
-              </Typography>
-            </Grid>
-          )}
-          {offers.map((offer) => (
-            <Grid item xs={12} sm={6} md={4} key={offer._id}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                    {offer.images && offer.images[0] && (
-                      <img
-                        src={offer.images[0]}
-                        alt={offer.title}
-                        width={60}
-                        height={40}
-                        style={{ borderRadius: 8, marginRight: 12 }}
-                      />
-                    )}
-                    <Typography variant="subtitle1" fontWeight={600} noWrap>
-                      {offer.title}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
-                  >
-                    {offer.description}
+        {user.role === "provider" && (
+          <>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+              Активные предложения
+            </Typography>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              {offers.length === 0 && (
+                <Grid item xs={12}>
+                  <Typography color="text.secondary">
+                    Нет активных предложений
                   </Typography>
-                  <Typography variant="body2" color="primary" fontWeight={600}>
-                    {offer.price} €
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <MuiLink href={`/offers/${offer._id}`} underline="none">
-                    <Button size="small">Подробнее</Button>
-                  </MuiLink>
-                </CardActions>
-              </Card>
+                </Grid>
+              )}
+              {offers.map((offer) => (
+                <Grid item xs={12} sm={6} md={4} key={offer._id}>
+                  <Card>
+                    <CardContent>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        {offer.images && offer.images[0] && (
+                          <img
+                            src={offer.images[0]}
+                            alt={offer.title}
+                            width={60}
+                            height={40}
+                            style={{ borderRadius: 8, marginRight: 12 }}
+                          />
+                        )}
+                        <Typography variant="subtitle1" fontWeight={600} noWrap>
+                          {offer.title}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1 }}
+                      >
+                        {offer.description}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="primary"
+                        fontWeight={600}
+                      >
+                        {offer.price} €
+                      </Typography>
+                    </CardContent>
+                    <CardActions>
+                      <MuiLink href={`/offers/${offer._id}`} underline="none">
+                        <Button size="small">Подробнее</Button>
+                      </MuiLink>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          </>
+        )}
         {/* Статистика */}
         <Divider sx={{ my: 2 }} />
         <Box sx={{ display: "flex", gap: 4, mb: 2 }}>

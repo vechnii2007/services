@@ -302,12 +302,8 @@ const Header = ({ onDrawerToggle }) => {
   useEffect(() => {
     if (!socket || !isConnected || !user) return;
 
-    console.log("[Header] Setting up real-time notifications");
-
     // Функция обработки полученного уведомления
     const handleNewNotification = (notification) => {
-      console.log("[Header] Received real-time notification:", notification);
-
       // Проверяем, нет ли такого уведомления уже в списке
       setNotifications((prev) => {
         const exists = prev.some((n) => n._id === notification._id);
@@ -321,8 +317,6 @@ const Header = ({ onDrawerToggle }) => {
 
     // Функция обработки нового сообщения
     const handleNewMessage = (messageData) => {
-      console.log("[Header] Received private message:", messageData);
-
       // Если сообщение от другого пользователя (не от текущего)
       if (messageData.senderId && user && messageData.senderId !== user._id) {
         // Показываем уведомление, если страница не активна
@@ -345,14 +339,8 @@ const Header = ({ onDrawerToggle }) => {
 
             // Проверяем наличие ID запроса для перехода к чату
             if (messageData.requestId) {
-              console.log(
-                `[Header] Navigating to chat with requestId: ${messageData.requestId}`
-              );
               openChat(messageData.requestId);
             } else {
-              console.log(
-                `[Header] No requestId found in message, navigating to chat list`
-              );
               navigate(`/chat-list`);
             }
           };
@@ -374,7 +362,6 @@ const Header = ({ onDrawerToggle }) => {
       // Дополнительная проверка, что notificationsCleanup - это функция
       if (notificationsCleanup && typeof notificationsCleanup === "function") {
         try {
-          console.log("[Header] Running notification cleanup function");
           notificationsCleanup();
         } catch (error) {
           console.error("[Header] Error cleaning up notifications:", error);
@@ -389,9 +376,6 @@ const Header = ({ onDrawerToggle }) => {
       if (socket) {
         try {
           socket.off("private_message", handleNewMessage);
-          console.log(
-            "[Header] Successfully unsubscribed from private_message events"
-          );
         } catch (error) {
           console.error(
             "[Header] Error unsubscribing from private_message:",

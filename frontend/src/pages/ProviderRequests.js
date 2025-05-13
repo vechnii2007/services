@@ -66,7 +66,6 @@ const ProviderRequests = () => {
         } else {
           setMessage("Error: " + error.message);
         }
-        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -122,7 +121,6 @@ const ProviderRequests = () => {
         ...prev,
         [requestId]: { message: "", price: "" }, // Сбрасываем форму для данного requestId
       }));
-      console.log(res.data);
     } catch (error) {
       if (error.response) {
         setMessage(
@@ -137,7 +135,6 @@ const ProviderRequests = () => {
       } else {
         setMessage("Error: " + error.message);
       }
-      console.error(error);
     }
   };
 

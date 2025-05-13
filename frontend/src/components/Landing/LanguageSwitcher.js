@@ -40,9 +40,14 @@ const LanguageSwitcher = ({ colorMode = "dark" }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
-  // Находим текущий язык
+  const supportedLangs = languages.map((l) => l.code);
+  const langCode = (i18n.language || "").slice(0, 2);
   const currentLanguage =
-    languages.find((lang) => lang.code === i18n.language) || languages[0];
+    languages.find((lang) => lang.code === langCode) ||
+    languages.find(
+      (lang) => lang.code === (i18n.options.fallbackLng || "ru")
+    ) ||
+    languages[0];
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);

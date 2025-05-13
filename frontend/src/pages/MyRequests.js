@@ -29,7 +29,6 @@ const MyRequests = () => {
   const [myChats, setMyChats] = useState([]);
   useEffect(() => {
     ChatService.getMyChats().then((chats) => {
-      console.log("myChats:", chats);
       setMyChats(chats);
     });
   }, []);
@@ -114,7 +113,6 @@ const MyRequests = () => {
         <Grid container spacing={3}>
           {requests.map((request) => {
             const providers = getProvidersForRequest(request._id);
-            console.log("providers for", request._id, providers);
             return (
               <Grid item xs={12} sm={6} md={4} key={request._id}>
                 <Card>

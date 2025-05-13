@@ -262,14 +262,15 @@ const OfferDetails = () => {
 
       // Переходим в чат - вызываем с небольшой задержкой для предотвращения конфликта событий
       setTimeout(() => {
+        const chatRequest =
+          existingRequests.data && existingRequests.data.length > 0
+            ? existingRequests.data[0]
+            : response?.data || null;
         openChat({
           requestId,
           providerId: offer.providerId?._id,
-          userId: offer.userId?._id,
-          request:
-            existingRequests.data && existingRequests.data.length > 0
-              ? existingRequests.data[0]
-              : response?.data || null,
+          userId: chatRequest?.userId?._id || chatRequest?.userId,
+          request: chatRequest,
         });
       }, 100);
 
@@ -784,21 +785,25 @@ const OfferDetails = () => {
                       }}
                     >
                       <Badge badgeContent={unreadMessages} color="error">
-                        <Button
-                          variant="contained"
-                          startIcon={<ChatIcon />}
-                          onClick={handleContactProvider}
-                          sx={{
-                            width: "100%",
-                            minHeight: 32,
-                            fontSize: 14,
-                            py: 0.5,
-                            position: "relative",
-                            zIndex: 5,
-                          }}
-                        >
-                          {t("chat")}
-                        </Button>
+                        {user &&
+                        user._id !== safeProvider._id &&
+                        user.role !== "admin" ? (
+                          <Button
+                            variant="contained"
+                            startIcon={<ChatIcon />}
+                            onClick={handleContactProvider}
+                            sx={{
+                              width: "100%",
+                              minHeight: 32,
+                              fontSize: 14,
+                              py: 0.5,
+                              position: "relative",
+                              zIndex: 5,
+                            }}
+                          >
+                            {t("chat")}
+                          </Button>
+                        ) : null}
                       </Badge>
 
                       {safeProvider.email && (

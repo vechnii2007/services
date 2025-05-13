@@ -20,6 +20,7 @@ const fs = require("fs");
 const NotificationService = require("../services/NotificationService");
 const Review = require("../models/Review");
 const { UPLOADS_PATH } = require("../config/uploadConfig");
+const { isValidObjectId } = require("../utils/validation");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -208,6 +209,9 @@ router.get("/offers/promoted", async (req, res) => {
 router.get("/offers/:id", async (req, res) => {
   console.log(`[Offer API] Получен запрос на offer id: ${req.params.id}`);
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: "Некорректный id" });
+    }
     const service = await ServiceOffer.findById(req.params.id);
     if (service) {
       console.log(`[Offer API] Найден ServiceOffer: ${service._id}`);
@@ -346,6 +350,7 @@ router.post(
   isProvider,
   upload.array("images", 10),
   async (req, res) => {
+    console.log("POST /offers called", req.body);
     try {
       const {
         title,
@@ -407,7 +412,18 @@ router.post(
       await offer.save();
       res.status(201).json(offer);
     } catch (error) {
-      res.status(500).json({ error: "Server error" });
+      console.error("[POST /offers] error:", error);
+      console.error("[POST /offers] req.body:", req.body);
+      console.error("[POST /offers] req.files:", req.files);
+      console.error("[POST /offers] req.user:", req.user);
+      console.error("[POST /offers] actualProviderId:", actualProviderId);
+      try {
+        const provider = await User.findById(actualProviderId);
+        console.error("[POST /offers] provider:", provider);
+      } catch (provErr) {
+        console.error("[POST /offers] provider fetch error:", provErr);
+      }
+      res.status(500).json({ error: "Server error", details: error.message });
     }
   }
 );
@@ -672,30 +688,42 @@ router.get("/requests", auth, async (req, res) => {
 
     // Проверяем права доступа - пользователи могут видеть только свои запросы или запросы к ним как к провайдеру
     if (req.user.role === "user") {
-      // Обычный пользователь может видеть только свои запросы
       query.userId = req.user.id;
     } else if (req.user.role === "provider") {
-      // Провайдер может видеть только запросы к нему
       query.providerId = req.user.id;
     } else if (req.user.role === "admin") {
-      // Админ может видеть все запросы, но с фильтрацией
-      if (providerId) query.providerId = providerId;
-      if (offerId) query.offerId = offerId;
+      if (providerId) {
+        if (!isValidObjectId(providerId)) {
+          return res.status(400).json({ error: "Invalid providerId format" });
+        }
+        query.providerId = new mongoose.Types.ObjectId(providerId);
+      }
+      if (offerId) {
+        if (!isValidObjectId(offerId)) {
+          return res.status(400).json({ error: "Invalid offerId format" });
+        }
+        query.offerId = new mongoose.Types.ObjectId(offerId);
+      }
     }
 
-    // Если указан providerId в запросе и пользователь - админ или запрашивает свои запросы
     if (
       providerId &&
       (req.user.role === "admin" || providerId === req.user.id)
     ) {
-      query.providerId = providerId;
+      if (!isValidObjectId(providerId)) {
+        return res.status(400).json({ error: "Invalid providerId format" });
+      }
+      query.providerId = new mongoose.Types.ObjectId(providerId);
     }
 
-    // Если указан offerId
     if (offerId) {
-      query.offerId = offerId;
+      if (!isValidObjectId(offerId)) {
+        return res.status(400).json({ error: "Invalid offerId format" });
+      }
+      query.offerId = new mongoose.Types.ObjectId(offerId);
     }
 
+    console.log("[GET /services/requests] query:", JSON.stringify(query));
     const requests = await ServiceRequest.find(query)
       .populate("userId", "name email")
       .populate("providerId", "name email")
@@ -703,7 +731,12 @@ router.get("/requests", auth, async (req, res) => {
 
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ error: "Server error" });
+    console.error("[/services/requests] Server error:", error);
+    res.status(500).json({
+      error: "Server error",
+      details: error.message,
+      stack: error.stack,
+    });
   }
 });
 
@@ -725,7 +758,7 @@ router.get("/messages/:requestId", auth, async (req, res) => {
 
   try {
     // Проверяем валидность ID запроса
-    if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+    if (!isValidObjectId(req.params.requestId)) {
       return res.status(400).json({ error: "Invalid request ID format" });
     }
 
@@ -813,7 +846,7 @@ router.post("/messages/:requestId", auth, async (req, res) => {
     }
 
     // Проверяем валидность ObjectId запроса
-    if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+    if (!isValidObjectId(req.params.requestId)) {
       return res.status(400).json({ error: "Invalid request ID format" });
     }
 
@@ -1193,7 +1226,7 @@ router.post("/offers/:id/promote", auth, async (req, res) => {
     const offerId = req.params.id;
 
     // Проверяем валидность ObjectId
-    if (!mongoose.Types.ObjectId.isValid(offerId)) {
+    if (!isValidObjectId(offerId)) {
       return res.status(400).json({ error: "Invalid offer ID format" });
     }
 
@@ -1253,7 +1286,7 @@ router.get("/offers/:id/promotion-status", async (req, res) => {
 
   try {
     // Проверяем валидность ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!isValidObjectId(id)) {
       return res.status(400).json({
         error: "Invalid offer ID format",
         isPromoted: false,
@@ -1346,7 +1379,7 @@ router.get("/requests/:id", auth, async (req, res) => {
     const userId = req.user.id;
 
     // Проверка валидности ID
-    if (!mongoose.Types.ObjectId.isValid(requestId)) {
+    if (!isValidObjectId(requestId)) {
       return res.status(400).json({ error: "Invalid request ID format" });
     }
 

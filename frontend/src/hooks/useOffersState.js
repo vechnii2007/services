@@ -164,7 +164,6 @@ const useOffersState = () => {
           category: debouncedSelectedCategory || undefined,
           providerId: debouncedProviderId || undefined,
         };
-        console.log("[OFFERS] fetchOffers params (debounced):", params);
         let response;
         if (debouncedSearchQuery?.trim()) {
           response = await searchService.searchOffers(
@@ -208,10 +207,6 @@ const useOffersState = () => {
   // --- Фильтры и обработчики ---
   const handleCategoryClick = useCallback(
     (categoryId) => {
-      console.log("[OFFERS] handleCategoryClick", {
-        categoryId,
-        selectedCategory,
-      });
       const newCategory = categoryId === selectedCategory ? null : categoryId;
       setSelectedCategory(newCategory);
       setPage(1);
@@ -295,18 +290,12 @@ const useOffersState = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const categoryFromQuery = params.get("category");
-    console.log("[OFFERS] useEffect sync query", {
-      categoryFromQuery,
-      selectedCategory,
-    });
     if (categoryFromQuery && categoryFromQuery !== selectedCategory) {
-      console.log("[OFFERS] setSelectedCategory from query", categoryFromQuery);
       setSelectedCategory(categoryFromQuery);
       setPage(1);
       setOffers([]);
     }
     if (!categoryFromQuery && selectedCategory) {
-      console.log("[OFFERS] clear selectedCategory");
       setSelectedCategory(null);
       setPage(1);
       setOffers([]);

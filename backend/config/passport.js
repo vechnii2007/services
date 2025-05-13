@@ -12,17 +12,24 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log("[GoogleStrategy] profile:", JSON.stringify(profile));
         let user = await User.findOne({ googleId: profile.id });
         if (!user) {
           // Если пользователя с таким googleId нет, ищем по email
           const email =
             profile.emails && profile.emails[0] && profile.emails[0].value;
+          console.log("[GoogleStrategy] Поиск по email:", email);
           user = await User.findOne({ email });
           if (user) {
+            console.log("[GoogleStrategy] Найден user по email:", user._id);
             user.googleId = profile.id;
             user.socialLogin = true;
             await user.save();
           } else {
+            console.log(
+              "[GoogleStrategy] Создаю нового пользователя через Google:",
+              email
+            );
             user = await User.create({
               googleId: profile.id,
               name: profile.displayName || "Google User",
@@ -30,10 +37,14 @@ passport.use(
               password: Math.random().toString(36).slice(-8), // временный пароль
               socialLogin: true,
             });
+            console.log("[GoogleStrategy] Новый user создан:", user._id);
           }
+        } else {
+          console.log("[GoogleStrategy] Найден user по googleId:", user._id);
         }
         return done(null, user);
       } catch (err) {
+        console.error("[GoogleStrategy] Ошибка:", err);
         return done(err, null);
       }
     }

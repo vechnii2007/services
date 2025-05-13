@@ -25,7 +25,7 @@ i18n
   .use(initReactI18next) // Интеграция с React
   .init({
     resources,
-    fallbackLng: "ua", // Язык по умолчанию, если не удалось определить язык
+    fallbackLng: "ru", // теперь fallback корректный
     debug: false, // Включаем отладку (можно отключить в продакшене)
     interpolation: {
       escapeValue: false, // React уже экранирует значения

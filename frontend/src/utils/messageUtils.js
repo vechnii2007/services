@@ -25,17 +25,12 @@ export const normalizeMessage = (message) => {
     const requestId = normalizeId(message.requestId || message.chatId);
 
     if (!senderId || !recipientId) {
-      console.warn(
-        "[MessageUtils] Message missing sender or recipient:",
-        message
-      );
       return null;
     }
 
     // Поддерживаем оба формата полей: text и message
     const messageText = message.message || message.text || "";
     if (!messageText) {
-      console.warn("[MessageUtils] Message has no content:", message);
       return null;
     }
 
@@ -62,7 +57,6 @@ export const normalizeMessage = (message) => {
       },
     };
   } catch (error) {
-    console.error("[MessageUtils] Error normalizing message:", error);
     return null;
   }
 };
@@ -78,12 +72,6 @@ export const isMessageBelongsToChat = (
   { requestId, currentUserId, recipientId }
 ) => {
   if (!message || !requestId || !currentUserId || !recipientId) {
-    console.warn("[MessageUtils] Missing required params for message check:", {
-      message,
-      requestId,
-      currentUserId,
-      recipientId,
-    });
     return false;
   }
 
@@ -104,17 +92,6 @@ export const isMessageBelongsToChat = (
     (msgSenderId === normalizedRecipientId &&
       msgRecipientId === normalizedCurrentUserId);
 
-  if (!belongs) {
-    console.log("[MessageUtils] Message does not belong to chat:", {
-      msgRequestId,
-      requestId,
-      msgSenderId,
-      msgRecipientId,
-      currentUserId: normalizedCurrentUserId,
-      recipientId: normalizedRecipientId,
-    });
-  }
-
   return belongs;
 };
 
@@ -131,10 +108,6 @@ export const isDuplicateMessage = (message, existingMessages) => {
   const isDuplicate = existingMessages.some(
     (msg) => msg._id?.toString() === messageId
   );
-
-  if (isDuplicate) {
-    console.log("[MessageUtils] Duplicate message detected:", messageId);
-  }
 
   return isDuplicate;
 };

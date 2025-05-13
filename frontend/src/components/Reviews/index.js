@@ -227,12 +227,22 @@ function Reviews({
 
   // Проверка, может ли пользователь редактировать отзыв
   const canEditReview = (review) => {
-    return isAuthenticated && user && review.userId._id === user._id;
+    return (
+      isAuthenticated &&
+      user &&
+      user._id &&
+      review &&
+      review.userId &&
+      review.userId._id === user._id
+    );
   };
 
   // Проверка, оставил ли текущий пользователь отзыв
   const hasUserReviewed = () => {
-    return reviews.some((review) => review.userId._id === user?._id);
+    if (!user || !user._id) return false;
+    return reviews.some(
+      (review) => review.userId && review.userId._id === user._id
+    );
   };
 
   return (
@@ -306,17 +316,27 @@ function Reviews({
               <CardContent>
                 <ReviewAuthor>
                   <Avatar
-                    src={formatImagePath(review.userId.avatar)}
-                    alt={review.userId.name}
+                    src={
+                      review.userId && review.userId.avatar
+                        ? formatImagePath(review.userId.avatar)
+                        : undefined
+                    }
+                    alt={
+                      review.userId && review.userId.name
+                        ? review.userId.name
+                        : "User"
+                    }
                     sx={{ mr: 1.5 }}
                   >
-                    {review.userId.name
+                    {review.userId && review.userId.name
                       ? review.userId.name[0].toUpperCase()
                       : "U"}
                   </Avatar>
                   <Box>
                     <Typography variant="subtitle2" fontWeight="bold">
-                      {review.userId.name}
+                      {review.userId && review.userId.name
+                        ? review.userId.name
+                        : "User"}
                     </Typography>
                     <Rating
                       value={review.rating}

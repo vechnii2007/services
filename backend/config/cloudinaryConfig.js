@@ -27,7 +27,7 @@ if (
     cloudinary: cloudinary,
     params: {
       folder: "service-portal",
-      allowed_formats: ["jpg", "jpeg", "png", "gif"],
+      allowed_formats: ["jpg", "jpeg", "png", "gif", "webp"],
       transformation: [{ width: 1000, height: 1000, crop: "limit" }],
       unique_filename: true,
       use_filename: true,
@@ -68,9 +68,15 @@ upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB
   },
   fileFilter: (req, file, cb) => {
-    // Проверяем тип файла
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Only images are allowed"));
+    // Разрешённые типы
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(
+        new Error(
+          "Формат изображения не поддерживается. Разрешены: jpg, png, gif, webp."
+        ),
+        false
+      );
     }
     cb(null, true);
   },

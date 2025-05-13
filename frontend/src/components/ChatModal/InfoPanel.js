@@ -1,21 +1,64 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { InfoPanel as StyledInfoPanel } from "./ChatModal.styled";
 import { Box, Avatar, Typography } from "@mui/material";
+import { UserService } from "../../services/UserService";
 
 const InfoPanel = ({ chatInfo, user, theme }) => {
-  if (!chatInfo || !user) return null;
-  const currentUserId = user._id;
-  let contact = null;
-  if (chatInfo.userId && chatInfo.providerId) {
-    if (chatInfo.userId._id === currentUserId) {
-      contact = chatInfo.providerId;
-    } else {
-      contact = chatInfo.userId;
+  const [companion, setCompanion] = useState(null);
+  useEffect(() => {
+    if (!chatInfo || !user) return;
+    let companionId = null;
+    if (chatInfo.userId && chatInfo.providerId) {
+      if (chatInfo.userId._id === user._id) {
+        companionId = chatInfo.providerId._id || chatInfo.providerId;
+      } else {
+        companionId = chatInfo.userId._id || chatInfo.userId;
+      }
     }
-  }
-  if (!contact) return null;
+    if (companionId) {
+      UserService.getById(companionId)
+        .then(setCompanion)
+        .catch(() => setCompanion(null));
+    }
+  }, [chatInfo, user]);
+
+  if (!companion) return null;
   return (
     <StyledInfoPanel>
+      {/* Блок с предложением (offer) */}
+      {chatInfo && (chatInfo.offer || chatInfo.offerId) && (
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            background: theme.palette.background.paper,
+            boxShadow: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <Avatar
+            variant="rounded"
+            src={chatInfo.offer?.images?.[0] || chatInfo.offerId?.images?.[0]}
+            sx={{ width: 80, height: 80, mb: 1, borderRadius: 2 }}
+          >
+            {chatInfo.offer?.title?.charAt(0).toUpperCase() ||
+              chatInfo.offerId?.title?.charAt(0).toUpperCase() ||
+              "?"}
+          </Avatar>
+          <Typography variant="subtitle1" fontWeight={600} align="center">
+            {chatInfo.offer?.title || chatInfo.offerId?.title || "Оффер"}
+          </Typography>
+          {chatInfo.offer?.price || chatInfo.offerId?.price ? (
+            <Typography variant="body2" color="primary" fontWeight={500}>
+              {chatInfo.offer?.price || chatInfo.offerId?.price} €
+            </Typography>
+          ) : null}
+        </Box>
+      )}
+      {/* Контакты собеседника */}
       <Box
         sx={{
           display: "flex",
@@ -32,35 +75,35 @@ const InfoPanel = ({ chatInfo, user, theme }) => {
             bgcolor: theme.palette.primary.main,
           }}
         >
-          {contact.name ? contact.name.charAt(0).toUpperCase() : "?"}
+          {companion.name ? companion.name.charAt(0).toUpperCase() : "?"}
         </Avatar>
         <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
-          {contact.name}
+          {companion.name}
         </Typography>
-        {contact.email && (
+        {companion.email && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            <b>Email:</b> {contact.email}
+            <b>Email:</b> {companion.email}
           </Typography>
         )}
-        {contact.phone && contact.phone !== "" && (
+        {companion.phone && companion.phone !== "" && (
           <Typography variant="body2" color="text.secondary">
-            <b>Телефон:</b> {contact.phone}
+            <b>Телефон:</b> {companion.phone}
           </Typography>
         )}
-        {contact.status && (
+        {companion.status && (
           <Typography
             variant="body2"
             color={
-              contact.status === "online" ? "success.main" : "text.secondary"
+              companion.status === "online" ? "success.main" : "text.secondary"
             }
           >
             <b>Статус:</b>{" "}
-            {contact.status === "online" ? "В сети" : "Не в сети"}
+            {companion.status === "online" ? "В сети" : "Не в сети"}
           </Typography>
         )}
         <Box sx={{ mt: 2 }}>
           <a
-            href={`/profile/${contact._id}`}
+            href={`/profile/${companion._id}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{

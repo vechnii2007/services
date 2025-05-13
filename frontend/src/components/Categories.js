@@ -39,11 +39,8 @@ const Categories = ({
   const { t } = useTranslation();
 
   if (!categories || categories.length === 0) {
-    console.log("No categories to display");
     return null;
   }
-
-  console.log("Rendering categories:", categories);
 
   return (
     <CategoriesContainer>

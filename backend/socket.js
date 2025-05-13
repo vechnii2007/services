@@ -186,20 +186,45 @@ const initializeSocket = (server) => {
         };
 
         const newMessage = await Message.create(messageData);
+        await newMessage.populate("senderId", "name avatar role");
+        await newMessage.populate("recipientId", "name avatar role");
 
-        // Отправляем сообщение
-        const messageToSend = {
-          ...newMessage.toObject(),
-          senderName: socket.user.name,
+        // Формируем DTO
+        const dto = {
+          _id: newMessage._id,
+          message: newMessage.message,
+          text: newMessage.message,
+          senderId: newMessage.senderId?._id?.toString() || newMessage.senderId,
+          recipientId:
+            newMessage.recipientId?._id?.toString() || newMessage.recipientId,
+          requestId: newMessage.requestId,
+          createdAt: newMessage.timestamp || newMessage.createdAt,
+          type: data.type || "text",
+          fileName: data.fileName || undefined,
+          sender: newMessage.senderId
+            ? {
+                _id: newMessage.senderId._id?.toString() || newMessage.senderId,
+                name: newMessage.senderId.name,
+                avatar: newMessage.senderId.avatar,
+                role: newMessage.senderId.role,
+              }
+            : undefined,
+          userId: newMessage.senderId
+            ? {
+                _id: newMessage.senderId._id?.toString() || newMessage.senderId,
+                name: newMessage.senderId.name,
+                role: newMessage.senderId.role,
+              }
+            : undefined,
         };
 
         // Отправляем в комнату чата
-        io.to(chatRoomId).emit("private_message", messageToSend);
+        io.to(chatRoomId).emit("private_message", dto);
 
         // Отправляем напрямую получателю для надежности
         const recipientSocketId = connectedUsers.get(normalizedRecipientId);
         if (recipientSocketId) {
-          io.to(recipientSocketId).emit("private_message", messageToSend);
+          io.to(recipientSocketId).emit("private_message", dto);
         }
 
         // --- PATCH: отправка уведомления через NotificationService ---
@@ -208,7 +233,7 @@ const initializeSocket = (server) => {
           const notifPayload = {
             type: "message",
             message: `Новое сообщение от ${socket.user.name}`,
-            relatedId: newMessage._id,
+            relatedId: requestId || null,
             senderId: userId,
             requestId: requestId || null,
           };

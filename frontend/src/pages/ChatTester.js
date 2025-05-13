@@ -50,14 +50,12 @@ const ChatTester = () => {
     const fetchRequestInfo = async () => {
       try {
         setLoading(true);
-        console.log(`[ChatTester] Fetching request info for ${requestId}`);
         const request = await ChatService.get(`/requests/${requestId}`);
 
         if (!request) {
           throw new Error("Запрос не найден");
         }
 
-        console.log("[ChatTester] Request info:", request);
         setRequestInfo(request);
 
         // Определение получателя в зависимости от роли
@@ -85,12 +83,7 @@ const ChatTester = () => {
 
         setRecipientId(recipient.toString());
         setRecipientName(recipientName);
-
-        console.log(
-          `[ChatTester] Set recipient: ${recipientName} (${recipient})`
-        );
       } catch (err) {
-        console.error("[ChatTester] Error fetching request info:", err);
         setError(`Ошибка загрузки данных: ${err.message}`);
       } finally {
         setLoading(false);
@@ -113,10 +106,8 @@ const ChatTester = () => {
         chats = await ChatService.getMyChats();
       }
 
-      console.log("[ChatTester] Loaded chats:", chats);
       setAllChats(chats);
     } catch (err) {
-      console.error("[ChatTester] Error loading chats:", err);
       setError(`Ошибка загрузки чатов: ${err.message}`);
     } finally {
       setLoadingChats(false);
@@ -161,9 +152,6 @@ const ChatTester = () => {
     }
 
     try {
-      console.log(
-        `[ChatTester] Sending test message to ${recipientId} for request ${requestId}`
-      );
       const success = sendTestMessage(requestId, recipientId, testMessage);
 
       if (success) {
@@ -174,7 +162,6 @@ const ChatTester = () => {
         setError("Не удалось отправить тестовое сообщение");
       }
     } catch (err) {
-      console.error("[ChatTester] Error sending test message:", err);
       setError(`Ошибка отправки тестового сообщения: ${err.message}`);
     }
   };

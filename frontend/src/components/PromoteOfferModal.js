@@ -40,13 +40,11 @@ const PromoteOfferModal = ({ open, onClose, offerId, onSuccess }) => {
   const handlePromote = async () => {
     try {
       setLoading(true);
-      console.log("Promoting offer:", { offerId, promotionType });
       await OfferService.promoteOffer(offerId, promotionType);
       toast.success(t("offer.promotion_success"));
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error("Error promoting offer:", error);
       toast.error(error.response?.data?.error || t("common.error"));
     } finally {
       setLoading(false);

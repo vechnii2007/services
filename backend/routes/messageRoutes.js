@@ -147,12 +147,41 @@ router.post("/", auth, async (req, res) => {
     }
 
     const newMessage = await Message.create(messageData);
-    await newMessage.populate("senderId", "name avatar");
-    await newMessage.populate("recipientId", "name avatar");
+    await newMessage.populate("senderId", "name avatar role");
+    await newMessage.populate("recipientId", "name avatar role");
+
+    // Формируем DTO
+    const dto = {
+      _id: newMessage._id,
+      message: newMessage.message,
+      text: newMessage.message,
+      senderId: newMessage.senderId?._id?.toString() || newMessage.senderId,
+      recipientId:
+        newMessage.recipientId?._id?.toString() || newMessage.recipientId,
+      requestId: newMessage.requestId,
+      createdAt: newMessage.timestamp || newMessage.createdAt,
+      type: req.body.type || "text",
+      fileName: req.body.fileName || undefined,
+      sender: newMessage.senderId
+        ? {
+            _id: newMessage.senderId._id?.toString() || newMessage.senderId,
+            name: newMessage.senderId.name,
+            avatar: newMessage.senderId.avatar,
+            role: newMessage.senderId.role,
+          }
+        : undefined,
+      userId: newMessage.senderId
+        ? {
+            _id: newMessage.senderId._id?.toString() || newMessage.senderId,
+            name: newMessage.senderId.name,
+            role: newMessage.senderId.role,
+          }
+        : undefined,
+    };
 
     // Отправляем через WebSocket
     const io = getIO();
-    io.to(normalizedRecipientId).emit("private_message", newMessage);
+    io.to(normalizedRecipientId).emit("private_message", dto);
 
     // Отправляем уведомление
     const notifPayload = {
@@ -167,7 +196,7 @@ router.post("/", auth, async (req, res) => {
       notifPayload
     );
 
-    res.status(201).json(newMessage);
+    res.status(201).json(dto);
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Server error" });

@@ -177,7 +177,6 @@ const CreateOffer = () => {
   const onPlaceChanged = () => {
     if (autocomplete !== null && window.google) {
       const place = autocomplete.getPlace();
-      console.log(1123, place);
       if (place.geometry) {
         setFormData({
           ...formData,
@@ -288,23 +287,11 @@ const CreateOffer = () => {
       // Если админ указал providerId, используем его
       if (userRole === "admin" && formData.providerId) {
         data.append("providerId", formData.providerId);
-        console.log(`Admin setting providerId: ${formData.providerId}`);
       }
 
       // Добавляем все изображения с именем "images"
       formData.images.forEach((image) => {
         data.append("images", image);
-      });
-
-      console.log("Sending offer data:", {
-        title: formData.title,
-        category: formData.serviceType,
-        location: formData.location,
-        description: formData.description.substring(0, 30) + "...",
-        price: formData.price || `${formData.priceFrom} - ${formData.priceTo}`,
-        providerId:
-          userRole === "admin" ? formData.providerId : "using current user",
-        imagesCount: formData.images.length,
       });
 
       const res = await axios.post(`/services/offers`, data, {
@@ -313,7 +300,6 @@ const CreateOffer = () => {
         },
       });
 
-      console.log("Offer created successfully:", res.data);
       setMessage(t("offer_created"));
       setFormData({
         title: "",
@@ -329,10 +315,6 @@ const CreateOffer = () => {
       setImagePreviews([]);
       setTimeout(() => navigate("/offers"), 2000);
     } catch (error) {
-      console.error(
-        "Error creating offer:",
-        error.response?.data || error.message
-      );
       if (error.response) {
         setMessage(
           "Error: " + (error.response.data.error || t("something_went_wrong"))

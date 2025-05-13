@@ -31,14 +31,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (error) console.error("[AuthContext] error:", error);
+  }, [user, error]);
+
   const login = async (email, password) => {
     try {
-      // console.log("Attempting login with:", { email });
       const response = await api.post("/users/login", {
         email,
         password,
       });
-      // console.log("Login response:", response.data);
 
       if (response.data && response.data.token) {
         setToken(response.data.token);
@@ -47,7 +49,6 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Invalid response format");
       }
     } catch (error) {
-      // console.error("Login error:", error.response || error);
       throw error;
     }
   };
@@ -67,7 +68,6 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setToken(null);
     resetUser();
-    // updateUser(null); // удалено, чтобы не было бесконечного цикла
   };
 
   const isAuthenticated = Boolean(token && user);

@@ -32,46 +32,7 @@ import ChatInput from "./ChatInput";
 import MessagesList from "./MessagesList";
 import InfoPanel from "./InfoPanel";
 import { SocketContext } from "../../context/SocketContext";
-
-const HEADER_HEIGHT = 64;
-
-const ChatLayout = styled(Box)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "row",
-  width: "100%",
-  height: "100%",
-  background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
-  [theme.breakpoints.down("md")]: {
-    flexDirection: "column",
-    height: "auto",
-    marginTop: 0,
-  },
-}));
-
-const ChatPanel = styled(Box)(({ theme }) => ({
-  flex: "0 0 65%",
-  minWidth: 0,
-  minHeight: 0,
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  borderRight: `1px solid ${theme.palette.divider}`,
-  [theme.breakpoints.down("md")]: {
-    flex: "1 1 100%",
-    borderRight: "none",
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    height: "auto",
-  },
-}));
-
-const ChatContainer = styled(Box)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-  background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
-  height: "100%",
-  minHeight: 0,
-}));
+import OfferService from "../../services/OfferService";
 
 const ChatHeader = styled(Box)(({ theme }) => ({
   padding: theme.spacing(1.2, 1.5),
@@ -90,37 +51,6 @@ const ChatParticipant = styled(Box)(({ theme }) => ({
   alignItems: "center",
   gap: theme.spacing(1),
   marginLeft: theme.spacing(0.5),
-}));
-
-const MessagesContainer = styled(Box)(({ theme }) => ({
-  flex: "1 1 auto",
-  overflowY: "auto",
-  display: "flex",
-  flexDirection: "column",
-  background: "transparent",
-  padding: theme.spacing(1, 0),
-  minHeight: 0,
-}));
-
-const Message = styled(Paper)(({ theme, isUser }) => ({
-  padding: theme.spacing(1, 1.5),
-  margin: theme.spacing(0.25, 0.5),
-  maxWidth: "80%",
-  alignSelf: isUser ? "flex-end" : "flex-start",
-  background: isUser
-    ? `linear-gradient(120deg, ${theme.palette.primary.light} 60%, ${theme.palette.primary.main} 100%)`
-    : `linear-gradient(120deg, ${theme.palette.grey[200]} 60%, ${theme.palette.background.paper} 100%)`,
-  color: isUser
-    ? theme.palette.primary.contrastText
-    : theme.palette.text.primary,
-  borderRadius: isUser
-    ? theme.spacing(2, 2, 0.5, 2)
-    : theme.spacing(2, 2, 2, 0.5),
-  boxShadow: `0 1px 4px ${alpha(theme.palette.common.black, 0.07)}`,
-  position: "relative",
-  wordBreak: "break-word",
-  fontSize: "0.97rem",
-  minHeight: 28,
 }));
 
 const TypingIndicator = styled(Typography)(({ theme }) => ({
@@ -197,7 +127,6 @@ const ChatModal = React.forwardRef(
     const reconnectTimeoutRef = useRef(null);
     const lastMessageRef = useRef(new Set());
     const socketRef = useRef(null);
-    const messagesContainerRef = useRef(null);
     const [chatInfo, setChatInfo] = useState(null);
     // Локальное состояние для контроля открытия, чтобы не потерять состояние при обновлении пропсов
     const [localOpen, setLocalOpen] = useState(open);
@@ -214,7 +143,16 @@ const ChatModal = React.forwardRef(
     }, [open]);
 
     // Добавляем логирование пропсов
-    useEffect(() => {}, [open, localOpen, requestId, userId, providerId]);
+    // useEffect(() => {
+    //   console.log("[ChatModal] Пропсы при открытии:", {
+    //     open,
+    //     localOpen,
+    //     requestId,
+    //     userId,
+    //     providerId,
+    //     request: requestProp,
+    //   });
+    // }, [open, localOpen, requestId, userId, providerId, requestProp]);
 
     // Скролл вниз
     const scrollToBottom = useCallback(() => {
@@ -222,6 +160,38 @@ const ChatModal = React.forwardRef(
         messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
       }
     }, []);
+
+    // --- ДОБАВЛЯЮ: обработчик новых сообщений ---
+    const handleNewMessage = useCallback(
+      (message) => {
+        // Проверка на дубликаты (по id)
+        if (!message || !message._id) return;
+        if (lastMessageRef.current.has(message._id)) return;
+        lastMessageRef.current.add(message._id);
+        // Нормализация сообщения
+        const normalized = normalizeMessage(message);
+        if (!normalized) return;
+        setMessages((prev) => {
+          // Если есть временное сообщение с тем же текстом и senderId — заменяем
+          const tempIndex = prev.findIndex(
+            (msg) =>
+              msg.isSending &&
+              msg.message === normalized.message &&
+              msg.senderId === normalized.senderId
+          );
+          if (tempIndex !== -1) {
+            const newArr = [...prev];
+            newArr[tempIndex] = { ...normalized, isSending: false };
+            return newArr;
+          }
+          // Если уже есть сообщение с таким id — не добавляем
+          if (prev.some((msg) => msg._id === normalized._id)) return prev;
+          return [...prev, { ...normalized, isSending: false }];
+        });
+        scrollToBottom();
+      },
+      [scrollToBottom]
+    );
 
     // Проверка параметров при инициализации
     useEffect(() => {
@@ -236,7 +206,20 @@ const ChatModal = React.forwardRef(
       setLoading(true);
       setIsInitialized(false);
       setChatInfo(null);
-    }, [open, requestId]);
+      // --- ДОБАВЛЯЮ: проверка на userId и providerId ---
+      // if (!userId || !providerId) {
+      //   setError(
+      //     "Чат не может быть открыт: отсутствует участник (userId или providerId)"
+      //   );
+      //   setLoading(false);
+      //   console.error("[ChatModal] Открытие чата без userId или providerId", {
+      //     userId,
+      //     providerId,
+      //     requestId,
+      //   });
+      //   return;
+      // }
+    }, [open, requestId, userId, providerId]);
 
     useEffect(() => {
       if (!open) return;
@@ -261,11 +244,20 @@ const ChatModal = React.forwardRef(
         if (!requestId || !recipientToUse) {
           setLoading(false);
           setError("Не удалось определить получателя для загрузки сообщений");
+          console.error(
+            "[ChatModal] fetchMessages: отсутствует requestId или recipientToUse",
+            { requestId, recipientToUse }
+          );
           return;
         }
         try {
           setLoading(true);
           const fetchedMessages = await ChatService.getMessages(requestId);
+          if (!fetchedMessages || fetchedMessages.length === 0) {
+            setMessages([]);
+            setLoading(false);
+            return;
+          }
           const normalizedMessages = fetchedMessages
             .map((msg) => normalizeMessage(msg))
             .filter(
@@ -283,6 +275,7 @@ const ChatModal = React.forwardRef(
         } catch (err) {
           setError(err.message || "Ошибка при загрузке сообщений");
           setLoading(false);
+          console.error("[ChatModal] Ошибка при загрузке сообщений:", err);
         }
       },
       [requestId, recipientId, user?._id, scrollToBottom]
@@ -290,11 +283,36 @@ const ChatModal = React.forwardRef(
 
     // Загрузка информации о чате
     const fetchChatInfo = useCallback(async () => {
-      if (!requestId || !user?._id) return;
+      if (!requestId || !user?._id) {
+        console.error(
+          "[ChatModal] fetchChatInfo: отсутствует requestId или user._id",
+          { requestId, user }
+        );
+        return;
+      }
       try {
         let response = requestProp;
         if (!response) {
           response = await ChatService.get(`/requests/${requestId}`);
+        }
+        // --- ДОБАВЛЕНО: подгрузка оффера, если его нет ---
+        if (!response.offer && response.offerId) {
+          let offerId = response.offerId;
+          if (typeof offerId === "object" && offerId._id) {
+            offerId = offerId._id;
+          }
+          if (typeof offerId === "string") {
+            try {
+              const offer = await OfferService.getById(offerId);
+              response.offer = offer;
+            } catch (e) {
+              console.warn(
+                "[ChatModal] Не удалось подгрузить offer по offerId",
+                offerId,
+                e
+              );
+            }
+          }
         }
         setChatInfo(response);
         if (!response?.userId) {
@@ -331,61 +349,24 @@ const ChatModal = React.forwardRef(
             newRecipientName = "";
           }
         }
+        console.log(
+          "[ChatModal] Вычислено recipientId:",
+          newRecipientId,
+          "recipientName:",
+          newRecipientName
+        );
         setRecipientId(newRecipientId);
         setRecipientName(newRecipientName);
         setIsInitialized(true);
       } catch (err) {
         setError(err.message || "Не удалось загрузить информацию о чате");
         setLoading(false);
+        console.error(
+          "[ChatModal] Ошибка при загрузке информации о чате:",
+          err
+        );
       }
     }, [requestId, user?._id, user?.role, userId, providerId, requestProp]);
-
-    // useEffect для загрузки сообщений только при изменении recipientId и open
-    useEffect(() => {
-      if (recipientId && open) {
-        fetchMessages(recipientId);
-      }
-    }, [recipientId, open]);
-
-    // Обработчик нового сообщения
-    const handleNewMessage = useCallback(
-      (newMsg) => {
-        if (!newMsg._id) return;
-        if (lastMessageRef.current.has(newMsg._id)) return;
-        lastMessageRef.current.add(newMsg._id);
-        if (lastMessageRef.current.size > 100) {
-          const values = Array.from(lastMessageRef.current);
-          lastMessageRef.current = new Set(values.slice(-50));
-        }
-        const normalizedMessage = normalizeMessage({
-          ...newMsg,
-          text: newMsg.message || newMsg.text,
-        });
-        if (!normalizedMessage) return;
-        if (
-          !isMessageBelongsToChat(normalizedMessage, {
-            requestId,
-            currentUserId: user?._id,
-            recipientId,
-          })
-        ) {
-          return;
-        }
-        setMessages((prevMessages) => {
-          const isDuplicate = prevMessages.some(
-            (msg) =>
-              msg._id === normalizedMessage._id ||
-              (msg.timestamp === normalizedMessage.timestamp &&
-                msg.message === normalizedMessage.message &&
-                msg.senderId === normalizedMessage.senderId)
-          );
-          if (isDuplicate) return prevMessages;
-          return [...prevMessages, normalizedMessage];
-        });
-        scrollToBottom();
-      },
-      [requestId, user?._id, recipientId, scrollToBottom]
-    );
 
     // Инициализация чата
     useEffect(() => {
@@ -538,14 +519,15 @@ const ChatModal = React.forwardRef(
                 type: "file",
                 fileName: file.name,
               };
-              const normalizedMessage = normalizeMessage({
+              const tempId = `local-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`;
+              const optimisticMessage = {
                 ...messageData,
+                _id: tempId,
                 isSending: true,
-              });
-              if (normalizedMessage) {
-                setMessages((prev) => [...prev, normalizedMessage]);
-                scrollToBottom();
-              }
+              };
+              setMessages((prev) => [...prev, optimisticMessage]);
               socket.emit("private_message", messageData);
             }
           }
@@ -578,14 +560,15 @@ const ChatModal = React.forwardRef(
             },
             type: "text",
           };
-          const normalizedMessage = normalizeMessage({
+          const tempId = `local-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
+          const optimisticMessage = {
             ...messageData,
+            _id: tempId,
             isSending: true,
-          });
-          if (normalizedMessage) {
-            setMessages((prev) => [...prev, normalizedMessage]);
-            scrollToBottom();
-          }
+          };
+          setMessages((prev) => [...prev, optimisticMessage]);
           socket.emit("private_message", messageData);
         }
         setNewMessage("");
@@ -640,6 +623,13 @@ const ChatModal = React.forwardRef(
       }
     }, [messages, open, scrollToBottom]);
 
+    useEffect(() => {
+      if (open && recipientId && isInitialized && requestId && user?._id) {
+        fetchMessages();
+      }
+      // eslint-disable-next-line
+    }, [open, recipientId, isInitialized, requestId, user?._id]);
+
     // --- Рендер ---
     return (
       <Dialog
@@ -688,62 +678,6 @@ const ChatModal = React.forwardRef(
                 <CloseIcon />
               </IconButton>
             </ChatHeader>
-            {chatInfo &&
-              chatInfo.offerId &&
-              (chatInfo.offerId.title ||
-                chatInfo.offerId.image ||
-                chatInfo.offerId.price) && (
-                <OfferCardChat>
-                  {chatInfo.offerId.image && (
-                    <Box
-                      component="img"
-                      src={chatInfo.offerId.image}
-                      alt={chatInfo.offerId.title}
-                      sx={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 2,
-                        objectFit: "cover",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                      }}
-                    />
-                  )}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    {chatInfo.offerId.title && (
-                      <Typography variant="subtitle1" fontWeight={600} noWrap>
-                        {chatInfo.offerId.title}
-                      </Typography>
-                    )}
-                    {chatInfo.offerId.price && (
-                      <Typography
-                        variant="body2"
-                        color="primary"
-                        fontWeight={500}
-                      >
-                        {chatInfo.offerId.price} €
-                      </Typography>
-                    )}
-                    {chatInfo.offerId.serviceType && (
-                      <Typography variant="caption" color="text.secondary">
-                        {chatInfo.offerId.serviceType}
-                      </Typography>
-                    )}
-                    {chatInfo.offerId.description && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          mt: 0.5,
-                          maxWidth: 320,
-                          whiteSpace: "pre-line",
-                        }}
-                      >
-                        {chatInfo.offerId.description}
-                      </Typography>
-                    )}
-                  </Box>
-                </OfferCardChat>
-              )}
             {/* Сообщения */}
             <Box
               sx={{

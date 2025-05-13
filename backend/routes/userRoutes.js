@@ -6,6 +6,7 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const passport = require("../config/passport");
 require("dotenv").config();
+const { isValidObjectId } = require("../utils/validation");
 
 // Регистрация пользователя
 router.post("/register", async (req, res) => {
@@ -146,6 +147,9 @@ router.post("/login", async (req, res) => {
 // Получение данных текущего пользователя
 router.get("/me", auth, async (req, res) => {
   try {
+    if (!isValidObjectId(req.user.id)) {
+      return res.status(400).json({ error: "Некорректный userId" });
+    }
     const user = await User.findById(req.user.id).select("-password");
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -160,6 +164,9 @@ router.get("/me", auth, async (req, res) => {
 // Обновление статистики провайдера
 router.post("/provider/stats", auth, async (req, res) => {
   try {
+    if (!isValidObjectId(req.user.id)) {
+      return res.status(400).json({ error: "Некорректный userId" });
+    }
     const user = await User.findById(req.user.id);
     if (!user || user.role !== "provider") {
       return res.status(403).json({ error: "Not authorized as provider" });
@@ -190,6 +197,9 @@ router.post("/provider/stats", auth, async (req, res) => {
 // Получение статистики провайдера
 router.get("/provider/:id/stats", async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: "Некорректный providerId" });
+    }
     const user = await User.findById(req.params.id);
     if (!user || user.role !== "provider") {
       return res.status(404).json({ error: "Provider not found" });
@@ -210,37 +220,15 @@ router.get("/provider/:id/stats", async (req, res) => {
 // Получение информации о пользователе по ID (для публичного доступа)
 router.get("/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select(
-      "-password -email -phone -__v"
-    );
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: "Некорректный userId" });
+    }
+    const user = await User.findById(req.params.id).select("-password -__v");
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
-    // Возвращаем только безопасную информацию о пользователе
-    const safeUserInfo = {
-      _id: user._id,
-      name: user.name,
-      role: user.role,
-      status: user.status === "active" ? "active" : "inactive", // Не раскрываем другие статусы
-      createdAt: user.createdAt,
-    };
-
-    // Если это провайдер, добавляем публичную информацию о провайдере
-    if (user.role === "provider" && user.providerInfo) {
-      safeUserInfo.providerInfo = {
-        specialization: user.providerInfo.specialization,
-        languages: user.providerInfo.languages,
-        description: user.providerInfo.description,
-        workingHours: user.providerInfo.workingHours,
-        completedOffers: user.providerInfo.completedOffers,
-        responseRate: user.providerInfo.responseRate,
-      };
-    }
-
-    res.json(safeUserInfo);
+    res.json(user);
   } catch (error) {
-    console.error("Error fetching user:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -256,20 +244,32 @@ router.get(
   "/auth/google/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/" }),
   (req, res) => {
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-    res.redirect(
-      `${
+    try {
+      console.log("[Google OAuth callback] req.user:", req.user);
+      const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      console.log("[Google OAuth callback] JWT token:", token);
+      const redirectUrl = `${
         process.env.FRONTEND_URL || "http://localhost:3000"
-      }/oauth-success?token=${token}`
-    );
+      }/oauth-success?token=${token}`;
+      console.log("[Google OAuth callback] redirect to:", redirectUrl);
+      res.redirect(redirectUrl);
+    } catch (err) {
+      console.error("[Google OAuth callback] Ошибка:", err);
+      res
+        .status(500)
+        .json({ error: "OAuth callback error", details: err.message });
+    }
   }
 );
 
 // Обновление профиля пользователя (роль, телефон, адрес и т.д.)
 router.put("/profile", auth, async (req, res) => {
   try {
+    if (!isValidObjectId(req.user.id)) {
+      return res.status(400).json({ error: "Некорректный userId" });
+    }
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });

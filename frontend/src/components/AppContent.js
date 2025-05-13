@@ -23,6 +23,7 @@ import { useChatModal } from "../context/ChatModalContext";
 import toast, { Toaster } from "react-hot-toast";
 import { SocketContext } from "../context/SocketContext";
 import useNotification from "../composables/useNotification";
+import api from "../middleware/api";
 
 // Избегаем частых ререндеров за счет мемоизации компонента
 const AppContent = () => {
@@ -60,21 +61,72 @@ const AppContent = () => {
     []
   );
 
+  // Флаг для защиты от повторного открытия чата
+  const lastOpenedRequestIdRef = React.useRef(null);
+
   // Выносим обработку пути для чата в отдельный эффект
   useEffect(() => {
-    // Проверяем, совпадает ли путь с /chat/:requestId
     const match = matchPath("/chat/:requestId", location.pathname);
     if (match && match.params && match.params.requestId) {
-      // Если модалка уже открыта с этим requestId, ничего не делаем
+      if (lastOpenedRequestIdRef.current === match.params.requestId) {
+        return;
+      }
       if (!isOpen || modalRequestId !== match.params.requestId) {
-        openChat(match.params.requestId);
+        const {
+          userId,
+          providerId,
+          requestId: stateRequestId,
+        } = location.state || {};
+        const openWithParams = (params) => {
+          openChat(params);
+          lastOpenedRequestIdRef.current = match.params.requestId;
+          // navigate(location.pathname, { replace: true, state: {} }); // Временно убираем
+        };
+        if (userId && providerId) {
+          openWithParams({
+            requestId: match.params.requestId,
+            userId,
+            providerId,
+          });
+        } else {
+          (async () => {
+            try {
+              const response = await api.get(
+                `/services/requests/${match.params.requestId}`
+              );
+              const data = response.data;
+              const userIdApi = data.userId?._id || data.userId;
+              const providerIdApi = data.providerId?._id || data.providerId;
+              if (userIdApi && providerIdApi) {
+                openWithParams({
+                  requestId: match.params.requestId,
+                  userId: userIdApi,
+                  providerId: providerIdApi,
+                });
+              } else {
+                openWithParams(match.params.requestId); // fallback
+              }
+            } catch (err) {
+              openWithParams(match.params.requestId); // fallback
+            }
+          })();
+        }
+      }
+    } else {
+      lastOpenedRequestIdRef.current = null;
+      if (isOpen) {
+        closeChat();
       }
     }
-    // Если мы не на /chat/:requestId, но модалка открыта — закрываем её
-    if (!match && isOpen) {
-      closeChat();
-    }
-  }, [location.pathname, modalRequestId, isOpen, openChat, closeChat]);
+  }, [
+    location.pathname,
+    modalRequestId,
+    isOpen,
+    openChat,
+    closeChat,
+    location.state,
+    navigate,
+  ]);
 
   // Логирование монтирования компонента без вызова повторных рендеров
   useEffect(() => {

@@ -13,7 +13,7 @@ export const menuItems = [
   {
     key: "offers",
     label: "offers",
-    path: "/",
+    path: "/offers",
     icon: <OfferIcon />,
     show: (user) => true,
   },

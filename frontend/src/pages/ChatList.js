@@ -180,10 +180,12 @@ const ChatList = () => {
           },
         }}
         onClick={() => {
+          const userId = chat.userId?._id || chat.userId || (user && user._id);
           openChat({
             requestId: chat.requestId || chat._id,
-            providerId: chat.providerId,
-            userId: chat.userId,
+            providerId: chat.providerId?._id || chat.providerId,
+            userId,
+            request: chat,
           });
         }}
       >

@@ -28,13 +28,6 @@ export const searchService = {
   // Получить результаты поиска
   async searchOffers(query, filters = {}) {
     try {
-      console.log(
-        "[searchService] Searching offers with query:",
-        query,
-        "and filters:",
-        filters
-      );
-
       // Используем новый API эндпоинт для поиска
       const response = await api.get("/search/offers", {
         params: {
@@ -42,8 +35,6 @@ export const searchService = {
           ...filters,
         },
       });
-
-      console.log("[searchService] Search response:", response.data);
 
       // Возвращаем результаты поиска в том же формате, что и OfferService.getAll
       return response.data;

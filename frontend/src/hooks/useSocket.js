@@ -19,10 +19,10 @@ export const useSocket = () => {
     try {
       // Анализ структуры объекта события
       if (data && typeof data === "object") {
-        console.log(data);
+        // ... существующий код ...
       }
     } catch (e) {
-      console.error(`[Socket Debug] Error analyzing event:`, e);
+      // ... существующий код ...
     }
   }, []);
 
@@ -78,20 +78,13 @@ export const useSocket = () => {
 
       // Если достигли максимального количества попыток, останавливаем повторные попытки
       if (reconnectAttemptsRef.current >= RECONNECT_ATTEMPTS) {
-        console.error(
-          "[Socket] Maximum reconnection attempts reached, giving up"
-        );
+        // ... существующий код ...
       }
     };
 
     // Обработчик общих ошибок
     const handleError = (error) => {
-      console.error("[Socket] Error:", error);
-      setLastError({
-        type: "error",
-        message: typeof error === "object" ? error.message : error,
-        time: new Date().toISOString(),
-      });
+      // ... существующий код ...
     };
 
     // Обработчик отключения
@@ -122,15 +115,7 @@ export const useSocket = () => {
 
     // Подписка на ошибки токена авторизации
     const handleAuthError = (error) => {
-      console.error("[Socket] Authentication error:", error);
-      setLastError({
-        type: "auth_error",
-        message: error.message,
-        time: new Date().toISOString(),
-      });
-
-      // При ошибке авторизации не пытаемся переподключаться
-      newSocket.disconnect();
+      // ... существующий код ...
     };
 
     // Подписка на события
@@ -143,12 +128,12 @@ export const useSocket = () => {
 
     // Добавляем отладочную информацию для события private_message
     newSocket.on("private_message", (data) => {
-      debugEvent("private_message", data);
+      // ... существующий код ...
     });
 
     // Добавляем отладочную информацию для события notification
     newSocket.on("notification", (data) => {
-      debugEvent("notification", data);
+      // ... существующий код ...
     });
 
     setSocket(newSocket);
@@ -188,9 +173,7 @@ export const useSocket = () => {
   const sendTestMessage = useCallback(
     (requestId, recipientId, message = "test") => {
       if (!socket || !isConnected) {
-        console.error(
-          "[Socket] Cannot send test message: Socket not connected"
-        );
+        // ... существующий код ...
         return false;
       }
 
@@ -205,7 +188,7 @@ export const useSocket = () => {
         socket.emit("private_message", testMessage);
         return true;
       } catch (error) {
-        console.error("[Socket] Error sending test message:", error);
+        // ... существующий код ...
         return false;
       }
     },

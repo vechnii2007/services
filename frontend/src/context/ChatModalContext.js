@@ -26,14 +26,11 @@ export const ChatModalProvider = ({ children }) => {
   // Избегаем использования нескольких состояний, которые могут
   // рассинхронизироваться при быстрых действиях пользователя
   const openChat = useCallback((params) => {
-    console.log("[ChatModalContext] openChat called with params:", params);
-
     // Обновляем временную метку открытия
     lastOpenTimestampRef.current = Date.now();
 
     // Обрабатываем разные типы параметров
     if (typeof params === "string") {
-      console.log("[ChatModalContext] Setting requestId:", params);
       setState({
         isOpen: true,
         requestId: params,
@@ -42,7 +39,6 @@ export const ChatModalProvider = ({ children }) => {
         request: null,
       });
     } else {
-      console.log("[ChatModalContext] Setting complex params:", params);
       setState({
         isOpen: true,
         requestId: params.requestId || null,
@@ -51,21 +47,14 @@ export const ChatModalProvider = ({ children }) => {
         request: params.request || null,
       });
     }
-
-    console.log("[ChatModalContext] Chat opened");
   }, []);
 
   const closeChat = useCallback(() => {
-    console.log("[ChatModalContext] closeChat called");
-
     // Защита от случайного закрытия сразу после открытия
     const now = Date.now();
     const timeSinceLastOpen = now - lastOpenTimestampRef.current;
 
     if (timeSinceLastOpen < safeCloseWindowMs) {
-      console.log(
-        `[ChatModalContext] Prevented accidental close: ${timeSinceLastOpen}ms after open`
-      );
       return;
     }
 
@@ -76,8 +65,6 @@ export const ChatModalProvider = ({ children }) => {
       providerId: null,
       request: null,
     });
-
-    console.log("[ChatModalContext] Chat closed");
   }, []);
 
   // Очистка состояния при размонтировании
