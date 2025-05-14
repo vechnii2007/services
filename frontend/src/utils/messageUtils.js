@@ -44,6 +44,8 @@ export const normalizeMessage = (message) => {
       room: message.room,
       createdAt:
         message.timestamp || message.createdAt || new Date().toISOString(),
+      type: message.type || "text", // Поддержка разных типов сообщений (text, file)
+      fileName: message.fileName || null, // Имя файла для type: 'file'
       sender: {
         _id: senderId,
         name: message.sender?.name || message.userId?.name || "Пользователь",

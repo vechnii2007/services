@@ -33,6 +33,7 @@ import MessagesList from "./MessagesList";
 import InfoPanel from "./InfoPanel";
 import { SocketContext } from "../../context/SocketContext";
 import OfferService from "../../services/OfferService";
+import api from "../../services/api";
 
 const ChatHeader = styled(Box)(({ theme }) => ({
   padding: theme.spacing(1.2, 1.5),
@@ -482,15 +483,24 @@ const ChatModal = React.forwardRef(
           for (const file of files) {
             const formData = new FormData();
             formData.append("image", file);
-            const res = await fetch("/api/services/test-upload", {
+
+            // Используем полный URL из api конфига вместо относительного пути
+            const baseURL = api.defaults.baseURL;
+            const url = `${baseURL}/services/img-upload`.replace(
+              "/api/api/",
+              "/api/"
+            );
+
+            const res = await fetch(url, {
               method: "POST",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
               body: formData,
             });
             const data = await res.json();
-            if (data.success && data.file && data.file.path) {
-              const fileUrl = data.file.path.startsWith("http")
-                ? data.file.path
-                : `${window.location.origin}/${data.file.path}`;
+            if (data.success && data.url) {
+              const fileUrl = data.url;
               // Отправляем ссылку на файл как отдельное сообщение
               const normalizedSenderId = normalizeId(user._id);
               const normalizedRecipientId = normalizeId(recipientId);

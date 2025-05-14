@@ -1449,9 +1449,18 @@ router.get("/requests/:id", auth, async (req, res) => {
 });
 
 // Тестовый маршрут для загрузки изображений
-router.post("/test-upload", upload.single("image"), (req, res) => {
+router.post("/img-upload", upload.single("image"), (req, res) => {
   try {
-    console.log("[DIAG][test-upload] Запрос получен:", {
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      return res
+        .status(500)
+        .json({ error: "Cloudinary is not configured on this server" });
+    }
+    console.log("[DIAG][img-upload] Запрос получен:", {
       method: req.method,
       headers: req.headers,
       body: req.body,
@@ -1460,22 +1469,23 @@ router.post("/test-upload", upload.single("image"), (req, res) => {
       query: req.query,
     });
     if (!req.file) {
-      console.warn("[DIAG][test-upload] Нет файла в запросе");
+      console.warn("[DIAG][img-upload] Нет файла в запросе");
       return res.status(400).json({ error: "No file uploaded" });
     }
-
+    // Cloudinary URL
+    const url = req.file.path;
     res.json({
       success: true,
+      url,
       file: {
-        path: req.file.path,
         filename: req.file.filename,
         mimetype: req.file.mimetype,
         size: req.file.size,
-        cloudinaryData: req.file.cloudinaryData,
+        cloudinaryData: req.file,
       },
     });
   } catch (error) {
-    console.error("[DIAG][test-upload] Ошибка при загрузке:", error);
+    console.error("[DIAG][img-upload] Ошибка при загрузке:", error);
     res.status(500).json({
       error: "Failed to upload file",
       details: error.message,
