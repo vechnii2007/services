@@ -1451,7 +1451,16 @@ router.get("/requests/:id", auth, async (req, res) => {
 // Тестовый маршрут для загрузки изображений
 router.post("/test-upload", upload.single("image"), (req, res) => {
   try {
+    console.log("[DIAG][test-upload] Запрос получен:", {
+      method: req.method,
+      headers: req.headers,
+      body: req.body,
+      file: req.file,
+      originalUrl: req.originalUrl,
+      query: req.query,
+    });
     if (!req.file) {
+      console.warn("[DIAG][test-upload] Нет файла в запросе");
       return res.status(400).json({ error: "No file uploaded" });
     }
 
@@ -1466,6 +1475,7 @@ router.post("/test-upload", upload.single("image"), (req, res) => {
       },
     });
   } catch (error) {
+    console.error("[DIAG][test-upload] Ошибка при загрузке:", error);
     res.status(500).json({
       error: "Failed to upload file",
       details: error.message,

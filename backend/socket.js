@@ -146,7 +146,20 @@ const initializeSocket = (server) => {
       try {
         const { recipientId, message, requestId } = data;
 
+        console.log("[DIAG][private_message] Входящие данные:", {
+          from: userId,
+          to: recipientId,
+          requestId,
+          data,
+          userRole: socket.user.role,
+          userName: socket.user.name,
+        });
+
         if (!recipientId || !message) {
+          console.error("[DIAG][private_message] Нет recipientId или message", {
+            recipientId,
+            message,
+          });
           throw new Error("Missing required message data");
         }
 
@@ -157,6 +170,9 @@ const initializeSocket = (server) => {
             : recipientId;
 
         if (!normalizedRecipientId) {
+          console.error("[DIAG][private_message] Некорректный recipientId", {
+            recipientId,
+          });
           throw new Error("Invalid recipient ID");
         }
 
@@ -185,9 +201,25 @@ const initializeSocket = (server) => {
           timestamp: new Date(),
         };
 
-        const newMessage = await Message.create(messageData);
-        await newMessage.populate("senderId", "name avatar role");
-        await newMessage.populate("recipientId", "name avatar role");
+        let newMessage;
+        try {
+          newMessage = await Message.create(messageData);
+          await newMessage.populate("senderId", "name avatar role");
+          await newMessage.populate("recipientId", "name avatar role");
+          console.log("[DIAG][private_message] Сообщение успешно создано:", {
+            _id: newMessage._id,
+            senderId: newMessage.senderId?._id,
+            recipientId: newMessage.recipientId?._id,
+            requestId: newMessage.requestId,
+            message: newMessage.message,
+          });
+        } catch (err) {
+          console.error(
+            "[DIAG][private_message] Ошибка при создании сообщения:",
+            err
+          );
+          throw err;
+        }
 
         // Формируем DTO
         const dto = {
@@ -245,7 +277,10 @@ const initializeSocket = (server) => {
           console.error("[DIAG][socket] NotificationService error:", notifErr);
         }
       } catch (error) {
-        console.error("Error sending private message:", error);
+        console.error(
+          "[DIAG][private_message] Error sending private message:",
+          error
+        );
         socket.emit("error", { message: error.message });
       }
     });
