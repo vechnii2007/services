@@ -214,112 +214,37 @@ const Offers = () => {
         </Alert>
       )}
 
-      {isMobile ? (
-        <>
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={() => setFiltersOpen(true)}
-            sx={{
-              mb: 2,
-              width: "100%",
-              borderRadius: 3,
-              fontWeight: 600,
-              fontSize: "1.1rem",
-              py: 1.5,
-            }}
-          >
-            {t("filters")}
-          </Button>
-          <Drawer
-            anchor="top"
-            open={filtersOpen}
-            onClose={() => setFiltersOpen(false)}
-            PaperProps={{ sx: { borderRadius: "0 0 20px 20px", top: "64px" } }}
-          >
-            <Box sx={{ p: 2 }}>
-              {filtersOpen && (
-                <MemoizedOfferFilters
-                  {...filterProps}
-                  onSearch={() => {
-                    setFiltersOpen(false);
-                    handleSearch();
-                  }}
-                />
-              )}
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setFiltersOpen(false)}
-                sx={{
-                  mt: 2,
-                  width: "100%",
-                  borderRadius: 3,
-                  fontWeight: 600,
-                  fontSize: "1.1rem",
-                  py: 1.5,
-                }}
-              >
-                {t("close")}
-              </Button>
-            </Box>
-          </Drawer>
-          <CategoriesSection>
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 1,
-                fontWeight: "medium",
-                color: "text.primary",
-              }}
-            >
-              {t("categories")}
-            </Typography>
-            <MemoizedCategorySlider
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategorySelect={handleCategoryClick}
-              counts={counts}
-            />
-          </CategoriesSection>
-          <MemoizedPromotedOffersSlider
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-          />
-          <MemoizedOfferList ref={listRef} {...offerListProps} />
-        </>
-      ) : (
-        <Grid container spacing={4} alignItems="flex-start">
-          <Grid item xs={12} md={3}>
-            <MemoizedOfferFilters {...filterProps} />
-          </Grid>
-          <Grid item xs={12} md={9}>
-            <CategoriesSection>
-              <Typography
-                variant="h6"
-                sx={{
-                  mb: 1,
-                  fontWeight: "medium",
-                  color: "text.primary",
-                }}
-              >
-                {t("categories")}
-              </Typography>
-              <MemoizedCategorySlider
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onCategorySelect={handleCategoryClick}
-                counts={counts}
-              />
-            </CategoriesSection>
-            <MemoizedPromotedOffersSlider
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-            />
-            <MemoizedOfferList ref={listRef} {...offerListProps} />
-          </Grid>
-        </Grid>
-      )}
+      {/* Фильтры сверху по центру */}
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+        <Box sx={{ width: "100%", maxWidth: 600 }}>
+          <MemoizedOfferFilters {...filterProps} />
+        </Box>
+      </Box>
+
+      {/* Категории */}
+      <CategoriesSection>
+        <Typography
+          variant="h6"
+          sx={{ mb: 1, fontWeight: "medium", color: "text.primary" }}
+        >
+          {t("categories")}
+        </Typography>
+        <MemoizedCategorySlider
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategorySelect={handleCategoryClick}
+          counts={counts}
+        />
+      </CategoriesSection>
+
+      {/* Промо-офферы */}
+      <MemoizedPromotedOffersSlider
+        favorites={favorites}
+        toggleFavorite={toggleFavorite}
+      />
+
+      {/* Список офферов */}
+      <MemoizedOfferList ref={listRef} {...offerListProps} />
     </ContentContainer>
   );
 };
