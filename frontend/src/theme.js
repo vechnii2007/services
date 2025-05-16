@@ -76,14 +76,14 @@ const theme = createTheme({
     },
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 20,
   },
   shadows: [
     "none",
     "0px 1px 2px rgba(0, 0, 0, 0.06), 0px 1px 3px rgba(0, 0, 0, 0.1)",
     "0px 2px 4px rgba(0, 0, 0, 0.06), 0px 4px 6px rgba(0, 0, 0, 0.1)",
     "0px 4px 6px rgba(0, 0, 0, 0.05), 0px 10px 15px rgba(0, 0, 0, 0.1)",
-    "0px 6px 15px rgba(0, 0, 0, 0.1), 0px 10px 24px rgba(0, 0, 0, 0.05)",
+    "0px 6px 24px rgba(80,80,120,0.10), 0px 10px 24px rgba(0, 0, 0, 0.05)",
     "0px 12px 22px rgba(0, 0, 0, 0.1), 0px 18px 35px rgba(0, 0, 0, 0.15)",
     "0px 18px 28px rgba(0, 0, 0, 0.15), 0px 24px 42px rgba(0, 0, 0, 0.1)",
     "0px 24px 38px rgba(0, 0, 0, 0.14), 0px 30px 60px rgba(0, 0, 0, 0.12)",
@@ -109,31 +109,34 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 16,
           padding: "8px 16px",
           fontSize: "0.875rem",
           fontWeight: 500,
+          transition: "all 0.18s cubic-bezier(.4,2,.6,1)",
         },
         contained: {
-          boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)",
+          boxShadow: "0 2px 8px rgba(80,80,120,0.08)",
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 20,
           boxShadow:
-            "0px 1px 3px rgba(0, 0, 0, 0.1), 0px 1px 2px rgba(0, 0, 0, 0.06)",
+            "0 6px 24px rgba(80,80,120,0.10), 0px 1px 2px rgba(0, 0, 0, 0.06)",
+          transition:
+            "box-shadow 0.18s cubic-bezier(.4,2,.6,1), border-radius 0.18s cubic-bezier(.4,2,.6,1)",
         },
       },
     },
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 12,
           fontSize: "0.875rem",
-          height: 32,
+          height: 36,
         },
       },
     },

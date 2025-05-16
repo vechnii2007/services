@@ -30,6 +30,7 @@ import {
   MenuItem,
   Tooltip,
   Badge,
+  DialogTitle,
 } from "@mui/material";
 import {
   Favorite as FavoriteIcon,
@@ -49,6 +50,7 @@ import {
   LinkedIn as LinkedInIcon,
   WhatsApp as WhatsAppIcon,
   Close as CloseIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate, formatPrice } from "../utils/formatters";
@@ -59,6 +61,8 @@ import { useChatModal } from "../context/ChatModalContext";
 import { SocketContext } from "../context/SocketContext";
 import AuthRequiredModal from "../components/AuthRequiredModal";
 import { useAuth } from "../hooks/useAuth";
+import EditOfferModal from "../components/OfferCard/EditOfferModal";
+import OfferForm from "../components/OfferCard/OfferForm";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -83,6 +87,7 @@ const OfferDetails = () => {
   const { user, isAuthenticated } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'chat' | 'favorite' | 'profile'
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -900,6 +905,19 @@ const OfferDetails = () => {
             </MotionBox>
           </Box>
         </Box>
+
+        {/* Кнопка редактирования для владельца или админа */}
+        {offer &&
+          (user?.role === "admin" || offer?.providerId?._id === user?._id) && (
+            <IconButton
+              color="primary"
+              sx={{ mb: 2 }}
+              onClick={() => setEditModalOpen(true)}
+              title={t("edit")}
+            >
+              <EditIcon />
+            </IconButton>
+          )}
       </Box>
 
       {/* Fullscreen image dialog */}
@@ -973,6 +991,50 @@ const OfferDetails = () => {
           navigate("/register");
         }}
       />
+
+      <Dialog
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            m: 0,
+            p: 2,
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            backgroundColor: (theme) => theme.palette.background.paper,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            minHeight: 64,
+          }}
+        >
+          {t("edit_offer")}
+          <IconButton
+            aria-label="close"
+            onClick={() => setEditModalOpen(false)}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <OfferForm
+          mode="edit"
+          offer={offer}
+          onSuccess={(updatedOffer) => {
+            setOffer(updatedOffer);
+            setEditModalOpen(false);
+          }}
+          onCancel={() => setEditModalOpen(false)}
+          headerOffset={72}
+        />
+      </Dialog>
     </MotionContainer>
   );
 };

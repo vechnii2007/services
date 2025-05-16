@@ -16,14 +16,16 @@ import VerifiedIcon from "@mui/icons-material/Verified";
 import StarIcon from "@mui/icons-material/Star";
 
 const StyledAvatar = styled(Avatar)(({ theme }) => ({
-  width: 40,
-  height: 40,
-  marginRight: theme.spacing(1),
-  border: `2px solid ${theme.palette.primary.main}`,
-  transition: "all 0.3s ease",
+  width: 48,
+  height: 48,
+  marginRight: theme.spacing(1.5),
+  border: `2.5px solid ${theme.palette.primary.main}`,
+  borderRadius: 12,
+  transition: "all 0.3s cubic-bezier(.4,2,.6,1)",
+  boxShadow: "0 2px 8px rgba(80,80,120,0.08)",
   "&:hover": {
-    transform: "scale(1.1)",
-    boxShadow: theme.shadows[4],
+    transform: "scale(1.08)",
+    boxShadow: theme.shadows[6],
   },
 }));
 
@@ -65,7 +67,7 @@ const RatingWrapper = styled(Box)(({ theme }) => ({
 }));
 
 const ProviderInfo = memo(
-  ({ provider, rating, reviewCount, variant = "full" }) => {
+  ({ provider, rating, reviewCount, variant = "full", onClick }) => {
     if (!provider) return null;
 
     const {
@@ -113,39 +115,49 @@ const ProviderInfo = memo(
           alignItems: "center",
         }}
       >
-        <OnlineBadge
-          overlap="circular"
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          variant="dot"
-          invisible={!isOnline}
+        <Box
+          onClick={onClick}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            cursor: onClick ? "pointer" : "default",
+            borderRadius: 2,
+            transition: "background 0.15s",
+            "&:hover": onClick ? { background: "rgba(79,70,229,0.06)" } : {},
+            pr: 1.5,
+          }}
         >
-          <StyledAvatar
-            src={avatar}
-            alt={name}
-            component={motion.div}
-            whileHover={{ scale: 1.1 }}
-          />
-        </OnlineBadge>
-
-        <Stack spacing={0.5}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography
-              variant={variant === "full" ? "subtitle1" : "subtitle2"}
-              component="span"
-              sx={{
-                fontWeight: "medium",
-                color: "text.primary",
-              }}
-            >
-              {name}
-            </Typography>
-            {isVerified && (
-              <Tooltip title="Проверенный поставщик">
-                <VerifiedIcon color="primary" fontSize="small" />
-              </Tooltip>
-            )}
-          </Box>
-
+          <OnlineBadge
+            overlap="circular"
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            variant="dot"
+            invisible={!isOnline}
+          >
+            <StyledAvatar
+              src={avatar}
+              alt={name}
+              component={motion.div}
+              whileHover={{ scale: 1.1 }}
+            />
+          </OnlineBadge>
+          <Typography
+            variant={variant === "full" ? "subtitle1" : "subtitle2"}
+            component="span"
+            sx={{
+              fontWeight: "medium",
+              color: "text.primary",
+              ml: 0.5,
+            }}
+          >
+            {name}
+          </Typography>
+          {isVerified && (
+            <Tooltip title="Проверенный поставщик">
+              <VerifiedIcon color="primary" fontSize="small" />
+            </Tooltip>
+          )}
+        </Box>
+        <Stack spacing={0.5} sx={{ ml: 1 }}>
           {variant === "full" ? (
             <>
               <RatingWrapper>
@@ -217,6 +229,7 @@ ProviderInfo.propTypes = {
     badges: PropTypes.arrayOf(PropTypes.string),
   }),
   variant: PropTypes.oneOf(["full", "compact"]),
+  onClick: PropTypes.func,
 };
 
 ProviderInfo.defaultProps = {

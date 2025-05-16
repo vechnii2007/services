@@ -9,17 +9,20 @@ import PropTypes from "prop-types";
 const InfoContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  gap: theme.spacing(1),
+  gap: theme.spacing(1.5),
 }));
 
 const PriceTypography = styled(Typography)(({ theme }) => ({
   color: theme.palette.primary.main,
   fontWeight: theme.typography.fontWeightBold,
-  fontSize: theme.typography.h6.fontSize,
+  fontSize: "1.35rem",
   background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   display: "inline-block",
+  letterSpacing: "-0.5px",
+  marginTop: theme.spacing(0.5),
+  marginBottom: theme.spacing(0.5),
 }));
 
 const MetaInfo = styled(Box)(({ theme }) => ({
@@ -65,6 +68,8 @@ const OfferInfo = memo(
                 WebkitBoxOrient: "vertical",
                 lineHeight: 1.2,
                 cursor: "default",
+                fontSize: "1.15rem",
+                letterSpacing: "-0.5px",
               })}
             >
               {title}

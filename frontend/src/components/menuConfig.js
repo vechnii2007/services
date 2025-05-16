@@ -18,13 +18,6 @@ export const menuItems = [
     show: (user) => true,
   },
   {
-    key: "profile",
-    label: "profile",
-    path: "/profile",
-    icon: <AccountCircle />,
-    show: (user) => !!user,
-  },
-  {
     key: "favorites",
     label: "favorites",
     path: "/favorites",

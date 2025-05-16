@@ -28,6 +28,12 @@ import OfferService from "../../services/OfferService";
 import PromoteOfferModal from "../PromoteOfferModal";
 import AuthRequiredModal from "../AuthRequiredModal";
 import { useAuth } from "../../hooks/useAuth";
+import EditOfferModal from "./EditOfferModal";
+import OfferForm from "./OfferForm";
+import EditIcon from "@mui/icons-material/Edit";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import CloseIcon from "@mui/icons-material/Close";
 
 // Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
@@ -126,6 +132,7 @@ const OfferCard = memo(
     const [promoteModalOpen, setPromoteModalOpen] = useState(false);
     const [promotionStatus, setPromotionStatus] = useState(null);
     const [authModalOpen, setAuthModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
 
     // Безопасный доступ к свойствам
     const safeOfferId = offer?._id || "";
@@ -208,6 +215,14 @@ const OfferCard = memo(
       }
     };
 
+    // Переход в профиль провайдера
+    const handleProviderClick = (e) => {
+      e.stopPropagation();
+      if (safeProvider?._id) {
+        navigate(`/profile/${safeProvider._id}`);
+      }
+    };
+
     // Добавляем промо-статус для отображения в карточке
     const isPromoted =
       promotionStatus?.isPromoted ||
@@ -224,8 +239,9 @@ const OfferCard = memo(
       <>
         <MotionCard
           whileHover={{
-            y: -5,
-            boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+            y: -8,
+            boxShadow: "0 12px 32px rgba(80,80,120,0.12)",
+            scale: 1.025,
           }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -234,16 +250,22 @@ const OfferCard = memo(
           transition={{
             opacity: { duration: 0.2 },
             layout: { duration: 0.2 },
+            scale: { duration: 0.18 },
           }}
           sx={{
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            borderRadius: "12px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            borderRadius: "20px",
+            boxShadow: "0 6px 24px rgba(80,80,120,0.10)",
             backgroundColor: "background.paper",
             position: "relative",
             overflow: "hidden",
+            p: 0.5,
+            transition: (theme) =>
+              theme.transitions.create(["box-shadow", "transform"], {
+                duration: theme.transitions.duration.shorter,
+              }),
           }}
           onClick={handleViewClick}
         >
@@ -270,13 +292,21 @@ const OfferCard = memo(
             title={safeOfferTitle}
           />
 
-          <CardContent sx={{ p: 2, flexGrow: 1 }}>
+          <CardContent
+            sx={{
+              p: 2.5,
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: 1,
+            }}
+          >
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                mb: 1.5,
+                mb: 2.5,
               }}
             >
               <Chip
@@ -290,6 +320,20 @@ const OfferCard = memo(
                   height: "24px",
                 }}
               />
+              {(isOwner || userRole === "admin") && (
+                <IconButton
+                  size="small"
+                  color="primary"
+                  sx={{ ml: 1 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditModalOpen(true);
+                  }}
+                  title={t("edit")}
+                >
+                  <EditIcon />
+                </IconButton>
+              )}
             </Box>
 
             <OfferInfo
@@ -307,29 +351,46 @@ const OfferCard = memo(
               provider={safeProvider}
               rating={Number(offer.rating) || 0}
               reviewCount={Number(offer.reviewCount) || 0}
+              onClick={handleProviderClick}
             />
 
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "space-between",
-                mt: 2,
-                pt: 1,
-                borderTop: (theme) => `1px solid ${theme.palette.divider}`,
+                mt: 2.5,
+                pt: 1.5,
+                borderTop: (theme) => `1.5px solid ${theme.palette.divider}`,
+                gap: 1.5,
               }}
             >
-              <IconButton onClick={handleViewClick} size="small">
+              <IconButton
+                onClick={handleViewClick}
+                size="medium"
+                sx={{ borderRadius: 2 }}
+              >
                 <VisibilityIcon />
               </IconButton>
               <Button
                 variant="contained"
-                size="small"
+                size="large"
                 color="primary"
                 onClick={handleViewClick}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  fontSize: "1rem",
+                  px: 3,
+                  boxShadow: "0 2px 8px rgba(80,80,120,0.08)",
+                }}
               >
                 {t("view_offer")}
               </Button>
-              <IconButton onClick={handleFavoriteClick} size="small">
+              <IconButton
+                onClick={handleFavoriteClick}
+                size="medium"
+                sx={{ borderRadius: 2 }}
+              >
                 {isFavorite ? (
                   <FavoriteIcon color="error" />
                 ) : (
@@ -359,6 +420,52 @@ const OfferCard = memo(
             navigate("/register");
           }}
         />
+
+        <Dialog
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              m: 0,
+              p: 2,
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              backgroundColor: (theme) => theme.palette.background.paper,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              minHeight: 64,
+            }}
+          >
+            {t("edit_offer")}
+            <IconButton
+              aria-label="close"
+              onClick={() => setEditModalOpen(false)}
+              sx={{
+                position: "absolute",
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <OfferForm
+            mode="edit"
+            offer={offer}
+            onSuccess={(updatedOffer) => {
+              setEditModalOpen(false);
+              if (typeof onUpdate === "function") {
+                onUpdate(updatedOffer);
+              }
+            }}
+            onCancel={() => setEditModalOpen(false)}
+            headerOffset={72}
+          />
+        </Dialog>
       </>
     );
   }
