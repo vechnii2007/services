@@ -181,7 +181,14 @@
       "inactive": "Неактивно"
     },
     "promote": "Продвинуть",
-    "promoted": "В топе"
+    "promoted": "В топе",
+    "promote_title": "Продвинуть предложение",
+    "promote_description": "Выберите срок продвижения для вашего предложения.",
+    "promote_24h": "24 часа",
+    "promote_24h_description": "Ваше предложение будет выделено и поднято в топ на 24 часа.",
+    "promote_7d": "7 дней",
+    "promote_7d_description": "Ваше предложение будет выделено и поднято в топ на 7 дней.",
+    "promote_button": "Продвинуть"
   },
   "promoted_offers": "Продвигаемые предложения",
   "popular_categories": "Популярные категории",
@@ -473,5 +480,8 @@
   },
   "filters": "Фильтры",
   "showing_offers_from_provider": "Показаны предложения только этого поставщика",
-  "clear_filter": "Сбросить фильтр"
+  "clear_filter": "Сбросить фильтр",
+  "common": {
+    "cancel": "Отмена"
+  }
 }

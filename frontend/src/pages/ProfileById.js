@@ -11,8 +11,6 @@ import {
   Divider,
   Button,
   Grid,
-  IconButton,
-  Tooltip,
   Rating,
   List,
   ListItem,
@@ -25,10 +23,6 @@ import {
   Alert as MuiAlert,
 } from "@mui/material";
 import { UserService } from "../services/UserService";
-import ChatIcon from "@mui/icons-material/Chat";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import StarIcon from "@mui/icons-material/Star";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -156,7 +150,7 @@ const ProfileById = () => {
 
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
-      <Paper sx={{ p: 4, borderRadius: 4, boxShadow: 2 }}>
+      <Paper sx={{ p: 4, borderRadius: 2, boxShadow: 2 }}>
         {/* Основная информация */}
         <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
           <Avatar sx={{ width: 72, height: 72, mr: 3, fontSize: 36 }}>

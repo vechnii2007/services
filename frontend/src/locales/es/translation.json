@@ -181,7 +181,14 @@
       "inactive": "Inactivo"
     },
     "promote": "Promocionar",
-    "promoted": "Destacado"
+    "promoted": "Destacado",
+    "promote_title": "Promocionar oferta",
+    "promote_description": "Elija el período de promoción para su oferta.",
+    "promote_24h": "24 horas",
+    "promote_24h_description": "Su oferta será destacada y mostrada en la parte superior durante 24 horas.",
+    "promote_7d": "7 días",
+    "promote_7d_description": "Su oferta será destacada y mostrada en la parte superior durante 7 días.",
+    "promote_button": "Promocionar"
   },
   "promoted_offers": "Ofertas promocionadas",
   "popular_categories": "Categorías populares",
@@ -472,5 +479,8 @@
   "load_more": "Cargar más",
   "no_more_offers": "No hay más ofertas",
   "location_placeholder": "Ingresa una ubicación",
-  "filters": "Filtros"
+  "filters": "Filtros",
+  "common": {
+    "cancel": "Cancelar"
+  }
 }

@@ -66,8 +66,7 @@ const useOffersState = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [message, setMessage] = useState("");
-  const [totalResults, setTotalResults] = useState(0);
+
   const listRef = useRef();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -81,7 +80,6 @@ const useOffersState = () => {
   const debouncedMaxPrice = useDebounce(maxPrice, 400);
   const debouncedLocationFilter = useDebounce(locationFilter, 400);
   const debouncedSelectedCategory = useDebounce(selectedCategory, 400);
-  const debouncedProviderId = useDebounce(providerId, 400);
 
   // --- Загрузка данных ---
   // Категории и счётчики
@@ -176,11 +174,7 @@ const useOffersState = () => {
           category: debouncedSelectedCategory || undefined,
           providerId: providerIdFromQuery,
         });
-        console.log("[useOffersState] fetchOffers", {
-          locationSearch: location.search,
-          providerIdFromQuery,
-          params,
-        });
+
         let response;
         if (debouncedSearchQuery?.trim()) {
           response = await searchService.searchOffers(

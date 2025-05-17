@@ -69,7 +69,6 @@ router.put(
 
 // Получение всех предложений с фильтрацией по категории и поиском по тексту
 router.get("/offers", async (req, res) => {
-  console.log("[GET /offers] req.query:", req.query);
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -111,8 +110,6 @@ router.get("/offers", async (req, res) => {
     }
   }
 
-  console.log("[GET /offers] FILTER:", filter);
-
   // Получаем только активные предложения
   filter.status = "active";
 
@@ -123,12 +120,6 @@ router.get("/offers", async (req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ "promoted.isPromoted": -1, createdAt: -1 });
-
-    console.log(
-      "[GET /offers] RESULT:",
-      offers.length,
-      offers.map((o) => o.providerId)
-    );
 
     // Получаем общее количество предложений для пагинации
     const totalOffers = await Offer.countDocuments(filter);
@@ -225,14 +216,12 @@ router.get("/offers/promoted", async (req, res) => {
 
 // Получение конкретного предложения по ID (доступно всем, включая гостей)
 router.get("/offers/:id", async (req, res) => {
-  console.log(`[Offer API] Получен запрос на offer id: ${req.params.id}`);
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: "Некорректный id" });
     }
     const service = await ServiceOffer.findById(req.params.id);
     if (service) {
-      console.log(`[Offer API] Найден ServiceOffer: ${service._id}`);
       return res.json({ ...service._doc, type: "ServiceOffer" });
     }
 
@@ -242,7 +231,6 @@ router.get("/offers/:id", async (req, res) => {
     });
 
     if (offer) {
-      console.log(`[Offer API] Найден Offer: ${offer._id}`);
       // Получаем рейтинг и отзывы по предложению
       const offerRatingInfo = await Review.getAverageRatingByOffer(offer._id);
       // Форматируем ответ
@@ -291,7 +279,6 @@ router.get("/offers/:id", async (req, res) => {
       return res.json(formattedOffer);
     }
 
-    console.log(`[Offer API] Offer not found: ${req.params.id}`);
     res.status(404).json({ error: "Offer not found" });
   } catch (error) {
     console.error(
@@ -368,7 +355,6 @@ router.post(
   isProvider,
   upload.array("images", 10),
   async (req, res) => {
-    console.log("POST /offers called", req.body);
     try {
       const {
         title,
@@ -748,7 +734,6 @@ router.get("/requests", auth, async (req, res) => {
     // Если переданы все три — ищем по всем трём (userId, providerId, offerId)
     // Это позволит всегда находить уникальный ServiceRequest для чата
 
-    console.log("[GET /services/requests] query:", JSON.stringify(query));
     const requests = await ServiceRequest.find(query)
       .populate("userId", "name email")
       .populate("providerId", "name email")
@@ -1484,14 +1469,6 @@ router.post("/img-upload", upload.single("image"), (req, res) => {
         .status(500)
         .json({ error: "Cloudinary is not configured on this server" });
     }
-    console.log("[DIAG][img-upload] Запрос получен:", {
-      method: req.method,
-      headers: req.headers,
-      body: req.body,
-      file: req.file,
-      originalUrl: req.originalUrl,
-      query: req.query,
-    });
     if (!req.file) {
       console.warn("[DIAG][img-upload] Нет файла в запросе");
       return res.status(400).json({ error: "No file uploaded" });

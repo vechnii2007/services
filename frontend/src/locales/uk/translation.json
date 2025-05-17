@@ -187,7 +187,14 @@
       "inactive": "Неактивно"
     },
     "promote": "Просувати",
-    "promoted": "У топі"
+    "promoted": "У топі",
+    "promote_title": "Просунути пропозицію",
+    "promote_description": "Оберіть термін просування для вашої пропозиції.",
+    "promote_24h": "24 години",
+    "promote_24h_description": "Ваша пропозиція буде виділена та піднята в топ на 24 години.",
+    "promote_7d": "7 днів",
+    "promote_7d_description": "Ваша пропозиція буде виділена та піднята в топ на 7 днів.",
+    "promote_button": "Просунути"
   },
   "promoted_offers": "Просувні пропозиції",
   "popular_categories": "Популярні категорії",
@@ -479,5 +486,8 @@
   },
   "filters": "Фільтри",
   "showing_offers_from_provider": "Показані пропозиції тільки цього постачальника",
-  "clear_filter": "Скинути фільтр"
+  "clear_filter": "Скинути фільтр",
+  "common": {
+    "cancel": "Скасувати"
+  }
 }
