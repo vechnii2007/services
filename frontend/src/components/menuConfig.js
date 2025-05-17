@@ -7,6 +7,7 @@ import {
   ListAlt as ListAltIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
   Notifications as NotificationsIcon,
+  Logout as LogoutIcon,
 } from "@mui/icons-material";
 
 export const menuItems = [
@@ -60,9 +61,17 @@ export const menuItems = [
     show: () => true,
   },
   {
+    key: "profile",
+    label: "profile",
+    path: "/profile",
+    icon: <AccountCircle />,
+    show: (user) => !!user,
+  },
+
+  {
     key: "logout",
     label: "logout",
-    icon: <AccountCircle />,
+    icon: <LogoutIcon />,
     isLogout: true,
     show: (user) => !!user,
   },

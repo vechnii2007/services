@@ -6,6 +6,10 @@ class BaseService {
   }
 
   async get(endpoint = "", params = {}) {
+    console.log("[BaseService] GET", {
+      endpoint: `${this.basePath}${endpoint}`,
+      params,
+    });
     const response = await api.get(`${this.basePath}${endpoint}`, { params });
     return response.data;
   }

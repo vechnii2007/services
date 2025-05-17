@@ -6,8 +6,8 @@ import OfferFilters from "../components/OfferFilters";
 import CategorySlider from "../components/CategorySlider";
 import OfferList from "../components/OfferList";
 import PromotedOffersSlider from "../components/PromotedOffersSlider";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import useOffersState from "../hooks/useOffersState";
+import { Link } from "react-router-dom";
 
 const PageTitle = styled(Typography)(({ theme }) => ({
   fontSize: theme.typography.h1.fontSize,
@@ -85,8 +85,6 @@ const Offers = () => {
     loadingMore,
     hasMore,
     listRef,
-    isMobile,
-    filtersOpen,
     locations,
     popularSearches,
     filteredOffers,
@@ -96,7 +94,6 @@ const Offers = () => {
     setMinPrice,
     setMaxPrice,
     setLocationFilter,
-    setFiltersOpen,
     handleCategoryClick,
     handleSearch,
     toggleFavorite,
@@ -198,7 +195,28 @@ const Offers = () => {
 
   return (
     <ContentContainer maxWidth="lg">
-      <PageTitle variant="h1">{t("offers_and_services")}</PageTitle>
+      <PageTitle variant="h1">
+        {t("offers_and_services")}
+        {providerName && providerId && (
+          <Box
+            component="span"
+            sx={{
+              color: "primary.main",
+              fontWeight: 500,
+              ml: 2,
+              fontSize: "0.8em",
+            }}
+          >
+            {t("provider")}:{" "}
+            <Link
+              to={`/profile/${providerId}`}
+              style={{ color: "inherit", textDecoration: "underline" }}
+            >
+              {providerName}
+            </Link>
+          </Box>
+        )}
+      </PageTitle>
 
       {providerId && providerName && (
         <Alert

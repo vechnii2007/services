@@ -12,7 +12,7 @@
   "password": "Пароль",
   "role": "Роль",
   "user": "Пользователь",
-  "provider": "Провайдер",
+  "provider": "Поставщик",
   "register_button": "Зарегистрироваться",
   "login_button": "Войти",
   "service_type": "Тип услуги",
@@ -471,5 +471,7 @@
     "login": "Войти",
     "register": "Зарегистрироваться"
   },
-  "filters": "Фильтры"
+  "filters": "Фильтры",
+  "showing_offers_from_provider": "Показаны предложения только этого поставщика",
+  "clear_filter": "Сбросить фильтр"
 }

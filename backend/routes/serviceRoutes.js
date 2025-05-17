@@ -69,6 +69,7 @@ router.put(
 
 // Получение всех предложений с фильтрацией по категории и поиском по тексту
 router.get("/offers", async (req, res) => {
+  console.log("[GET /offers] req.query:", req.query);
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -101,6 +102,17 @@ router.get("/offers", async (req, res) => {
     filter.location = new RegExp(req.query.location, "i");
   }
 
+  // Фильтрация по провайдеру
+  if (req.query.providerId) {
+    if (mongoose.Types.ObjectId.isValid(req.query.providerId)) {
+      filter.providerId = req.query.providerId;
+    } else {
+      return res.status(400).json({ error: "Invalid providerId format" });
+    }
+  }
+
+  console.log("[GET /offers] FILTER:", filter);
+
   // Получаем только активные предложения
   filter.status = "active";
 
@@ -111,6 +123,12 @@ router.get("/offers", async (req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ "promoted.isPromoted": -1, createdAt: -1 });
+
+    console.log(
+      "[GET /offers] RESULT:",
+      offers.length,
+      offers.map((o) => o.providerId)
+    );
 
     // Получаем общее количество предложений для пагинации
     const totalOffers = await Offer.countDocuments(filter);
@@ -1497,6 +1515,21 @@ router.post("/img-upload", upload.single("image"), (req, res) => {
       details: error.message,
       stack: error.stack,
     });
+  }
+});
+
+// Публичный роут для получения информации о пользователе по id
+router.get("/users/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select(
+      "name email phone status providerInfo"
+    );
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
   }
 });
 

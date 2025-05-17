@@ -5,22 +5,8 @@ class OfferService extends BaseService {
     super("/services");
   }
 
-  async getAll({
-    page = 1,
-    limit = 10,
-    minPrice,
-    maxPrice,
-    location,
-    category,
-  } = {}) {
-    return this.get("/offers", {
-      page,
-      limit,
-      minPrice,
-      maxPrice,
-      location,
-      category,
-    });
+  async getAll(params = {}) {
+    return this.get("/offers", params);
   }
 
   async getMyOffers() {

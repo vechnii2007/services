@@ -476,8 +476,10 @@ const Header = ({ onDrawerToggle }) => {
       setDrawerOpen(false);
       return;
     }
-    if (item.path) {
-      navigate(item.path);
+    // Если path — функция, вызываем с user
+    const path = typeof item.path === "function" ? item.path(user) : item.path;
+    if (path) {
+      navigate(path);
       setDrawerOpen(false);
       return;
     }

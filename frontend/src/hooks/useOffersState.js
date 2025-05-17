@@ -32,6 +32,13 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
+// Утилита для очистки params
+function cleanParams(obj) {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, v]) => v !== undefined && v !== null)
+  );
+}
+
 const useOffersState = () => {
   const { t } = useTranslation();
   const { isAuthenticated } = useContext(AuthContext);
@@ -53,7 +60,6 @@ const useOffersState = () => {
   const [maxPrice, setMaxPrice] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [providerId, setProviderId] = useState("");
   const [providerName, setProviderName] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -64,6 +70,10 @@ const useOffersState = () => {
   const [totalResults, setTotalResults] = useState(0);
   const listRef = useRef();
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const initialProviderId =
+    new URLSearchParams(location.search).get("providerId") || "";
+  const [providerId, setProviderId] = useState(initialProviderId);
 
   // --- Дебаунсим фильтры ---
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
@@ -151,7 +161,9 @@ const useOffersState = () => {
       if (page === 1) setLoading(true);
       else setLoadingMore(true);
       try {
-        const params = {
+        const providerIdFromQuery =
+          new URLSearchParams(location.search).get("providerId") || undefined;
+        const params = cleanParams({
           page,
           limit: WINDOW_SIZE,
           minPrice: debouncedMinPrice || undefined,
@@ -162,8 +174,13 @@ const useOffersState = () => {
               ? debouncedLocationFilter.label
               : debouncedLocationFilter || undefined,
           category: debouncedSelectedCategory || undefined,
-          providerId: debouncedProviderId || undefined,
-        };
+          providerId: providerIdFromQuery,
+        });
+        console.log("[useOffersState] fetchOffers", {
+          locationSearch: location.search,
+          providerIdFromQuery,
+          params,
+        });
         let response;
         if (debouncedSearchQuery?.trim()) {
           response = await searchService.searchOffers(
@@ -201,7 +218,7 @@ const useOffersState = () => {
     debouncedMaxPrice,
     debouncedLocationFilter,
     debouncedSelectedCategory,
-    debouncedProviderId,
+    location.search, // теперь зависим от location.search
   ]);
 
   // --- Фильтры и обработчики ---
@@ -301,6 +318,43 @@ const useOffersState = () => {
       setOffers([]);
     }
   }, [location.search]);
+
+  // --- Синхронизация providerId с query-параметром ---
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const providerIdFromQuery = params.get("providerId");
+    if (providerIdFromQuery && providerIdFromQuery !== providerId) {
+      setProviderId(providerIdFromQuery);
+      setPage(1);
+      setOffers([]);
+    }
+    if (!providerIdFromQuery && providerId) {
+      setProviderId("");
+      setPage(1);
+      setOffers([]);
+    }
+  }, [location.search]);
+
+  // Подгрузка имени провайдера по providerId
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchProviderName() {
+      if (providerId) {
+        try {
+          const provider = await OfferService.getProviderInfo(providerId);
+          if (!cancelled) setProviderName(provider?.name || "");
+        } catch {
+          if (!cancelled) setProviderName("");
+        }
+      } else {
+        setProviderName("");
+      }
+    }
+    fetchProviderName();
+    return () => {
+      cancelled = true;
+    };
+  }, [providerId]);
 
   return {
     offers,

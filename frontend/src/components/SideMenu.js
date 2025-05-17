@@ -17,6 +17,7 @@ const SideMenu = ({ open, onClose, onLanguage, onLogout }) => {
   const { user, logout } = useAuth();
 
   const handleItemClick = (item) => {
+    console.log(item);
     if (item.isLogout) {
       (onLogout || logout)();
       onClose();
