@@ -2,19 +2,13 @@ import React, { useEffect, useState } from "react";
 import { InfoPanel as StyledInfoPanel } from "./ChatModal.styled";
 import { Box, Avatar, Typography } from "@mui/material";
 import { UserService } from "../../services/UserService";
+import { getCompanionId } from "../../utils/messageUtils";
 
 const InfoPanel = ({ chatInfo, user, theme }) => {
   const [companion, setCompanion] = useState(null);
   useEffect(() => {
     if (!chatInfo || !user) return;
-    let companionId = null;
-    if (chatInfo.userId && chatInfo.providerId) {
-      if (chatInfo.userId._id === user._id) {
-        companionId = chatInfo.providerId._id || chatInfo.providerId;
-      } else {
-        companionId = chatInfo.userId._id || chatInfo.userId;
-      }
-    }
+    const companionId = getCompanionId(chatInfo, user._id);
     if (companionId) {
       UserService.getById(companionId)
         .then(setCompanion)

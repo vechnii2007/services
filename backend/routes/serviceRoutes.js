@@ -615,6 +615,22 @@ router.post("/requests", auth, async (req, res) => {
       return res.status(400).json({ error: "Service type is required" });
     }
 
+    // Получаем объекты пользователей
+    const currentUser = await User.findById(req.user.id);
+    const providerUser = providerId ? await User.findById(providerId) : null;
+
+    // Определяем тип заявки
+    let requestType = "default";
+    if (
+      currentUser &&
+      providerUser &&
+      ((currentUser.role === "provider" && providerUser.role === "provider") ||
+        (currentUser.role === "admin" && providerUser.role === "provider") ||
+        (currentUser.role === "provider" && providerUser.role === "admin"))
+    ) {
+      requestType = "internal";
+    }
+
     // Создание запроса
     const newRequest = new ServiceRequest({
       userId: req.user.id,
@@ -623,6 +639,7 @@ router.post("/requests", auth, async (req, res) => {
       serviceType,
       description: message || "",
       status: "pending",
+      type: requestType,
     });
 
     await newRequest.save();
@@ -683,45 +700,35 @@ router.post("/requests", auth, async (req, res) => {
 // Получение всех запросов с фильтрацией (доступно для авторизованных пользователей)
 router.get("/requests", auth, async (req, res) => {
   try {
-    const { providerId, offerId } = req.query;
+    const { providerId, offerId, userId } = req.query;
     const query = {};
 
-    // Проверяем права доступа - пользователи могут видеть только свои запросы или запросы к ним как к провайдеру
-    if (req.user.role === "user") {
+    // Если явно передан userId (например, для поиска чата между двумя провайдерами)
+    if (userId) {
+      if (!isValidObjectId(userId)) {
+        return res.status(400).json({ error: "Invalid userId format" });
+      }
+      query.userId = new mongoose.Types.ObjectId(userId);
+    } else if (req.user.role === "user") {
       query.userId = req.user.id;
-    } else if (req.user.role === "provider") {
-      query.providerId = req.user.id;
-    } else if (req.user.role === "admin") {
-      if (providerId) {
-        if (!isValidObjectId(providerId)) {
-          return res.status(400).json({ error: "Invalid providerId format" });
-        }
-        query.providerId = new mongoose.Types.ObjectId(providerId);
-      }
-      if (offerId) {
-        if (!isValidObjectId(offerId)) {
-          return res.status(400).json({ error: "Invalid offerId format" });
-        }
-        query.offerId = new mongoose.Types.ObjectId(offerId);
-      }
     }
-
-    if (
-      providerId &&
-      (req.user.role === "admin" || providerId === req.user.id)
-    ) {
+    if (providerId) {
       if (!isValidObjectId(providerId)) {
         return res.status(400).json({ error: "Invalid providerId format" });
       }
       query.providerId = new mongoose.Types.ObjectId(providerId);
+    } else if (req.user.role === "provider") {
+      query.providerId = req.user.id;
     }
-
     if (offerId) {
       if (!isValidObjectId(offerId)) {
         return res.status(400).json({ error: "Invalid offerId format" });
       }
       query.offerId = new mongoose.Types.ObjectId(offerId);
     }
+
+    // Если переданы все три — ищем по всем трём (userId, providerId, offerId)
+    // Это позволит всегда находить уникальный ServiceRequest для чата
 
     console.log("[GET /services/requests] query:", JSON.stringify(query));
     const requests = await ServiceRequest.find(query)
@@ -1164,18 +1171,14 @@ router.get("/provider-chats", auth, async (req, res) => {
     for (const msg of providerMessages) {
       const requestId = msg.requestId ? msg.requestId.toString() : null;
       if (!requestId) continue;
-      // Определяем userId для этого сообщения
+      // Определяем userId для этого сообщения (любой собеседник, кроме себя)
       let userId = null;
       if (msg.senderId.toString() === req.user.id && msg.recipientId) {
-        // Если провайдер отправитель, ищем пользователя среди получателей
-        const recipient = await User.findById(msg.recipientId).select("role");
-        if (recipient && recipient.role === "user") {
+        if (msg.recipientId.toString() !== req.user.id) {
           userId = msg.recipientId.toString();
         }
       } else if (msg.recipientId.toString() === req.user.id && msg.senderId) {
-        // Если провайдер получатель, ищем пользователя среди отправителей
-        const sender = await User.findById(msg.senderId).select("role");
-        if (sender && sender.role === "user") {
+        if (msg.senderId.toString() !== req.user.id) {
           userId = msg.senderId.toString();
         }
       }
@@ -1186,10 +1189,12 @@ router.get("/provider-chats", auth, async (req, res) => {
       }
     }
 
-    // Собираем инфу о пользователях
+    // Собираем инфу о собеседниках
     const chatList = [];
     for (const { requestId, userId } of chatMap.values()) {
-      const user = await User.findById(userId).select("_id name email status");
+      const user = await User.findById(userId).select(
+        "_id name email status role"
+      );
       chatList.push({
         requestId,
         providerId: req.user.id,
@@ -1200,6 +1205,7 @@ router.get("/provider-chats", auth, async (req, res) => {
               name: user.name,
               email: user.email,
               status: user.status,
+              role: user.role,
             }
           : null,
       });

@@ -549,6 +549,13 @@ const Header = ({ onDrawerToggle }) => {
     </Box>
   );
 
+  // Загружать уведомления при монтировании и при каждом логине
+  useEffect(() => {
+    if (user) {
+      loadNotifications();
+    }
+  }, [user]);
+
   return (
     <AppBar
       position="fixed"

@@ -44,24 +44,14 @@ router.get("/request/:requestId", auth, async (req, res) => {
       return res.status(404).json({ error: "Request not found" });
     }
 
-    // --- PATCH: безопасная проверка providerId ---
-    const userIdStr = request.userId ? request.userId.toString() : null;
-    const providerIdStr = request.providerId
-      ? request.providerId.toString()
-      : null;
-    // --- PATCH: разрешаем доступ автору и любому провайдеру, если providerId отсутствует ---
-    if (!providerIdStr) {
-      // Общий запрос
-      const currentUser = await User.findById(req.user.id);
-      if (userIdStr !== req.user.id && currentUser?.role !== "provider") {
-        return res
-          .status(403)
-          .json({ error: "Access denied (general request)" });
-      }
-    } else {
-      if (userIdStr !== req.user.id && providerIdStr !== req.user.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+    // Универсальная проверка: доступен любому участнику (userId, providerId, adminId)
+    const participantIds = [
+      request.userId?.toString(),
+      request.providerId?.toString(),
+      request.adminId?.toString(),
+    ].filter(Boolean);
+    if (!participantIds.includes(req.user.id.toString())) {
+      return res.status(403).json({ error: "Access denied" });
     }
 
     const messages = await Message.find({ requestId })
@@ -200,35 +190,6 @@ router.post("/", auth, async (req, res) => {
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Получение сообщений для конкретного запроса
-router.get("/:requestId", auth, async (req, res) => {
-  try {
-    const { requestId } = req.params;
-    const userId = req.user.id;
-
-    // Проверка доступа к сообщениям
-    const chatRequest = await ServiceRequest.findById(requestId);
-    if (!chatRequest) {
-      return res.status(404).json({ message: "Запрос не найден" });
-    }
-
-    // Проверяем, что пользователь имеет право читать сообщения (является отправителем или получателем)
-    if (
-      chatRequest.userId.toString() !== userId &&
-      chatRequest.providerId.toString() !== userId
-    ) {
-      return res.status(403).json({ message: "Доступ запрещен" });
-    }
-
-    const messages = await Message.find({ requestId }).sort({ createdAt: 1 });
-
-    res.json(messages);
-  } catch (error) {
-    console.error("Ошибка при получении сообщений:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
   }
 });
 

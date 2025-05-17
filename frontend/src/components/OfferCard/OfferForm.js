@@ -258,9 +258,20 @@ const OfferForm = ({
         onSuccess && onSuccess(res.data);
       }
     } catch (error) {
-      setMessage(
-        "Error: " + (error.response?.data?.error || t("something_went_wrong"))
-      );
+      let customMsg =
+        error.response?.data?.error ||
+        error.message ||
+        t("something_went_wrong");
+      // Multer ошибка превышения размера файла
+      if (
+        customMsg.includes("File too large") ||
+        customMsg.includes("file too large") ||
+        (error.response?.data?.message &&
+          error.response.data.message.includes("File too large"))
+      ) {
+        customMsg = t("image_too_large", { size: "10MB" });
+      }
+      setMessage("Error: " + customMsg);
       setErrors(error.response?.data?.errors || {});
     } finally {
       setLoading(false);
@@ -441,6 +452,13 @@ const OfferForm = ({
               <>
                 <Typography variant="body1" color="text.primary">
                   {t("drag_drop_images")}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
+                  {t("max_file_size", { size: "5MB" })}
                 </Typography>
                 <Button
                   variant="outlined"

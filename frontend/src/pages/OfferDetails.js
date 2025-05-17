@@ -442,6 +442,23 @@ const OfferDetails = () => {
               {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
             </IconButton>
 
+            {/* Кнопка редактирования для владельца или админа */}
+            {offer &&
+              (user?.role === "admin" ||
+                offer?.providerId?._id === user?._id) && (
+                <IconButton
+                  color="primary"
+                  onClick={() => setEditModalOpen(true)}
+                  title={t("edit")}
+                  sx={{
+                    transition: "all 0.3s ease",
+                    "&:hover": { transform: "scale(1.1)" },
+                  }}
+                >
+                  <EditIcon />
+                </IconButton>
+              )}
+
             <IconButton
               onClick={(e) => setShareAnchorEl(e.currentTarget)}
               sx={{
@@ -905,19 +922,6 @@ const OfferDetails = () => {
             </MotionBox>
           </Box>
         </Box>
-
-        {/* Кнопка редактирования для владельца или админа */}
-        {offer &&
-          (user?.role === "admin" || offer?.providerId?._id === user?._id) && (
-            <IconButton
-              color="primary"
-              sx={{ mb: 2 }}
-              onClick={() => setEditModalOpen(true)}
-              title={t("edit")}
-            >
-              <EditIcon />
-            </IconButton>
-          )}
       </Box>
 
       {/* Fullscreen image dialog */}

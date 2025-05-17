@@ -27,6 +27,7 @@ import {
   normalizeMessage,
   isMessageBelongsToChat,
   normalizeId,
+  getCompanionId,
 } from "../../utils/messageUtils";
 import ChatInput from "./ChatInput";
 import MessagesList from "./MessagesList";
@@ -242,6 +243,14 @@ const ChatModal = React.forwardRef(
     const fetchMessages = useCallback(
       async (currentRecipientId) => {
         const recipientToUse = currentRecipientId || recipientId;
+        console.log(
+          "[ChatModal] fetchMessages: requestId",
+          requestId,
+          "recipientToUse",
+          recipientToUse,
+          "currentUserId",
+          user?._id
+        );
         if (!requestId || !recipientToUse) {
           setLoading(false);
           setError("Не удалось определить получателя для загрузки сообщений");
@@ -254,6 +263,10 @@ const ChatModal = React.forwardRef(
         try {
           setLoading(true);
           const fetchedMessages = await ChatService.getMessages(requestId);
+          console.log(
+            "[ChatModal] fetchMessages: получено с сервера",
+            fetchedMessages
+          );
           if (!fetchedMessages || fetchedMessages.length === 0) {
             setMessages([]);
             setLoading(false);
@@ -261,15 +274,20 @@ const ChatModal = React.forwardRef(
           }
           const normalizedMessages = fetchedMessages
             .map((msg) => normalizeMessage(msg))
-            .filter(
-              (msg) =>
+            .filter((msg) => {
+              const belongs =
                 msg !== null &&
                 isMessageBelongsToChat(msg, {
                   requestId,
                   currentUserId: user?._id,
                   recipientId: recipientToUse,
-                })
-            );
+                });
+              if (!belongs) {
+                console.log("[ChatModal] ОТФИЛЬТРОВАНО", msg);
+              }
+              return belongs;
+            });
+          console.log("[ChatModal] После фильтрации:", normalizedMessages);
           setMessages(normalizedMessages);
           setLoading(false);
           scrollToBottom();
@@ -316,48 +334,30 @@ const ChatModal = React.forwardRef(
           }
         }
         setChatInfo(response);
-        if (!response?.userId) {
-          throw new Error("Некорректные данные запроса: отсутствует userId");
-        }
         const currentUserId = normalizeId(user._id);
-        let newRecipientId = "";
-        let newRecipientName = "";
-        if (userId && providerId) {
-          if (currentUserId === normalizeId(providerId)) {
-            newRecipientId = normalizeId(userId);
-            newRecipientName = response.userId?.name || "Клиент";
-          } else if (currentUserId === normalizeId(userId)) {
-            newRecipientId = normalizeId(providerId);
-            newRecipientName =
-              response.provider?.name ||
-              response.providerId?.name ||
-              "Провайдер";
-          }
-        } else if (response.providerId && response.providerId._id) {
-          const isProvider = currentUserId === normalizeId(response.providerId);
-          newRecipientId = isProvider
-            ? normalizeId(response.userId)
-            : normalizeId(response.providerId);
-          newRecipientName = isProvider
-            ? response.userId?.name || "Клиент"
-            : response.providerId?.name || "Провайдер";
-        } else {
-          if (user.role === "provider") {
-            newRecipientId = normalizeId(response.userId);
-            newRecipientName = response.userId?.name || "Клиент";
-          } else {
-            newRecipientId = "";
-            newRecipientName = "";
-          }
+        const companionId = getCompanionId(response, currentUserId);
+        let companionName = "Собеседник";
+        if (
+          companionId &&
+          response.userId &&
+          response.userId._id === companionId
+        ) {
+          companionName = response.userId.name || "Собеседник";
+        } else if (
+          companionId &&
+          response.providerId &&
+          response.providerId._id === companionId
+        ) {
+          companionName = response.providerId.name || "Собеседник";
+        } else if (
+          companionId &&
+          response.adminId &&
+          response.adminId._id === companionId
+        ) {
+          companionName = response.adminId.name || "Собеседник";
         }
-        console.log(
-          "[ChatModal] Вычислено recipientId:",
-          newRecipientId,
-          "recipientName:",
-          newRecipientName
-        );
-        setRecipientId(newRecipientId);
-        setRecipientName(newRecipientName);
+        setRecipientId(companionId);
+        setRecipientName(companionName);
         setIsInitialized(true);
       } catch (err) {
         setError(err.message || "Не удалось загрузить информацию о чате");
@@ -367,7 +367,7 @@ const ChatModal = React.forwardRef(
           err
         );
       }
-    }, [requestId, user?._id, user?.role, userId, providerId, requestProp]);
+    }, [requestId, user?._id, user?.role, requestProp]);
 
     // Инициализация чата
     useEffect(() => {
@@ -635,6 +635,12 @@ const ChatModal = React.forwardRef(
 
     useEffect(() => {
       if (open && recipientId && isInitialized && requestId && user?._id) {
+        console.log(
+          "[ChatModal] useEffect: открытие чата, recipientId",
+          recipientId,
+          "currentUserId",
+          user._id
+        );
         fetchMessages();
       }
       // eslint-disable-next-line
@@ -653,7 +659,7 @@ const ChatModal = React.forwardRef(
           sx: {
             height: isMobile ? "100vh" : "90vh",
             minHeight: isMobile ? 0 : 600,
-            borderRadius: isMobile ? 0 : 3,
+            borderRadius: isMobile ? 0 : 1,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",

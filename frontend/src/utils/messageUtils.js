@@ -113,3 +113,15 @@ export const isDuplicateMessage = (message, existingMessages) => {
 
   return isDuplicate;
 };
+
+/**
+ * Возвращает id собеседника (не текущего пользователя) из ServiceRequest
+ */
+export function getCompanionId(chatInfo, currentUserId) {
+  const ids = [
+    chatInfo.userId?._id || chatInfo.userId,
+    chatInfo.providerId?._id || chatInfo.providerId,
+    chatInfo.adminId?._id || chatInfo.adminId,
+  ].filter(Boolean);
+  return ids.find((id) => id && id !== currentUserId);
+}
