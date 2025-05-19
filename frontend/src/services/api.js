@@ -30,3 +30,7 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+export const createServiceRequest = async (data) => {
+  return api.post("/services/requests", data);
+};

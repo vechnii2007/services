@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState, useContext } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
-import theme from "./theme";
+import { CssBaseline } from "@mui/material";
+// import theme from "./theme"; // Удаляем старый импорт
 import AppContent from "./components/AppContent";
 import { ChatModalProvider, useChatModal } from "./context/ChatModalContext";
 import ChatModal from "./components/ChatModal/ChatModal";
 import { AuthContext } from "./context/AuthContext";
 import RegisterCompleteDialog from "./components/RegisterCompleteDialog";
+import { ThemeProviderCustom, useThemeMode } from "./context/ThemeContext";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 
 const ChatModalRoot = () => {
   const { isOpen, requestId, userId, providerId, request, closeChat } =
@@ -37,7 +41,7 @@ const ChatModalRoot = () => {
   );
 };
 
-const App = () => {
+const AppInner = () => {
   const { user, updateProfile, refetch, loading } = useContext(AuthContext);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(true);
   const [registerError, setRegisterError] = useState("");
@@ -51,8 +55,11 @@ const App = () => {
       setRegisterError("Ошибка при обновлении профиля");
     }
   };
+  // Получаем тему из ThemeContext
+  const { theme } = useThemeMode();
   return (
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <ChatModalProvider>
         <Router>
           <AppContent />
@@ -71,5 +78,13 @@ const App = () => {
     </ThemeProvider>
   );
 };
+
+const App = () => (
+  <ThemeProviderCustom>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <AppInner />
+    </LocalizationProvider>
+  </ThemeProviderCustom>
+);
 
 export default App;

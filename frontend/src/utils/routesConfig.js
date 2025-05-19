@@ -104,7 +104,7 @@ export const routesConfig = [
   {
     path: "/my-requests",
     element: withSuspense(MyRequests),
-    requiredRole: "user",
+    requiredRole: ["user", "provider", "admin"],
   },
   {
     path: "/provider-requests",

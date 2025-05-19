@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   AppBar,
   Toolbar,
@@ -23,13 +23,13 @@ import {
 import {
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
-  Language as LanguageIcon,
-  AccountCircle,
   Message as MessageIcon,
   LocalOffer as OfferIcon,
   Update as UpdateIcon,
   Delete as DeleteIcon,
   FavoriteBorder as FavoriteBorderIcon,
+  Brightness4,
+  Brightness7,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -37,8 +37,6 @@ import { useAuth } from "../../hooks/useAuth";
 import { formatDistance } from "date-fns";
 import { ru } from "date-fns/locale";
 import NotificationService from "../../services/NotificationService";
-import ChatService from "../../services/ChatService";
-import { useSocket } from "../../hooks/useSocket";
 import Drawer from "@mui/material/Drawer";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../assets/images/logo.svg";
@@ -48,13 +46,9 @@ import { menuItems } from "../menuConfig";
 import SpainFlag from "../../assets/flags/es.svg";
 import UkraineFlag from "../../assets/flags/ua.svg";
 import RussiaFlag from "../../assets/flags/ru.svg";
+import { useThemeMode } from "../../context/ThemeContext";
 
-const NotificationItem = ({
-  notification,
-  onMarkAsRead,
-  onDelete,
-  onAction,
-}) => {
+const NotificationItem = ({ notification, onDelete, onAction }) => {
   const getIcon = () => {
     switch (notification.type) {
       case "message":
@@ -265,6 +259,20 @@ const NotificationsPanel = ({
   </Box>
 );
 
+const ThemeToggleButton = () => {
+  const { mode, toggleTheme } = useThemeMode();
+  return (
+    <IconButton
+      color="inherit"
+      onClick={toggleTheme}
+      sx={{ ml: 1 }}
+      aria-label="toggle theme"
+    >
+      {mode === "dark" ? <Brightness7 /> : <Brightness4 />}
+    </IconButton>
+  );
+};
+
 const Header = ({ onDrawerToggle }) => {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
@@ -449,6 +457,9 @@ const Header = ({ onDrawerToggle }) => {
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadRequestsCount = notifications.filter(
+    (n) => !n.read && n.type === "request"
+  ).length;
 
   const handleNotificationAction = (notification) => {
     // Отметить как прочитанное
@@ -615,6 +626,15 @@ const Header = ({ onDrawerToggle }) => {
                   <Badge badgeContent={unreadCount} color="error">
                     <NotificationsIcon />
                   </Badge>
+                  {unreadRequestsCount > 0 && (
+                    <Badge
+                      badgeContent={unreadRequestsCount}
+                      color="warning"
+                      sx={{ ml: 1 }}
+                    >
+                      <NotificationsIcon fontSize="small" />
+                    </Badge>
+                  )}
                 </IconButton>
               )}
             </Box>
@@ -654,6 +674,7 @@ const Header = ({ onDrawerToggle }) => {
                 {t("close")}
               </Button>
             </Drawer>
+            <ThemeToggleButton />
           </>
         ) : (
           // Десктопная версия (оставляем как есть)
@@ -680,6 +701,7 @@ const Header = ({ onDrawerToggle }) => {
               onClick={() => navigate("/")}
             />
             <Box sx={{ flexGrow: 1 }} />
+            <ThemeToggleButton />
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <IconButton color="inherit" onClick={handleLangMenu}>
                 <img
@@ -724,6 +746,15 @@ const Header = ({ onDrawerToggle }) => {
                   <Badge badgeContent={unreadCount} color="error">
                     <NotificationsIcon />
                   </Badge>
+                  {unreadRequestsCount > 0 && (
+                    <Badge
+                      badgeContent={unreadRequestsCount}
+                      color="warning"
+                      sx={{ ml: 1 }}
+                    >
+                      <NotificationsIcon fontSize="small" />
+                    </Badge>
+                  )}
                 </IconButton>
               )}
               <Popover

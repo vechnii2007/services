@@ -653,18 +653,21 @@ const ChatModal = React.forwardRef(
         onClose={onClose}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         ref={ref}
         scroll="paper"
         PaperProps={{
           sx: {
-            height: isMobile ? "100vh" : "90vh",
-            minHeight: isMobile ? 0 : 600,
+            height: isMobile ? "100dvh" : "90vh",
+            minHeight: isMobile ? "100dvh" : 600,
+            width: isMobile ? "100vw" : undefined,
+            maxWidth: isMobile ? "100vw" : undefined,
             borderRadius: isMobile ? 0 : 1,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            margin: "auto",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+            margin: isMobile ? 0 : "auto",
+            boxShadow: isMobile ? "none" : "0 8px 32px rgba(0,0,0,0.12)",
           },
         }}
       >
@@ -677,7 +680,7 @@ const ChatModal = React.forwardRef(
               flexDirection: "column",
               height: "100%",
               minWidth: 0,
-              background: "#f7f9fc",
+              background: "transparent",
             }}
           >
             {/* Шапка и карточка предложения */}
@@ -820,7 +823,7 @@ const ChatModal = React.forwardRef(
             <Box
               sx={{
                 borderTop: `1px solid ${theme.palette.divider}`,
-                background: "#fff",
+                background: theme.palette.background.paper,
                 px: 2,
                 py: 1.5,
                 flexShrink: 0,

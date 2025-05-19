@@ -19,8 +19,6 @@ import OfferInfo from "./OfferInfo";
 import ProviderInfo from "../ProviderInfo";
 import { motion } from "framer-motion";
 import { styled } from "@mui/material/styles";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import CategoryIcon from "@mui/icons-material/Category";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { useTranslation } from "react-i18next";
@@ -28,7 +26,6 @@ import OfferService from "../../services/OfferService";
 import PromoteOfferModal from "../PromoteOfferModal";
 import AuthRequiredModal from "../AuthRequiredModal";
 import { useAuth } from "../../hooks/useAuth";
-import EditOfferModal from "./EditOfferModal";
 import OfferForm from "./OfferForm";
 import EditIcon from "@mui/icons-material/Edit";
 import Dialog from "@mui/material/Dialog";
@@ -258,14 +255,20 @@ const OfferCard = memo(
             flexDirection: "column",
             borderRadius: "20px",
             boxShadow: "0 6px 24px rgba(80,80,120,0.10)",
-            backgroundColor: "background.paper",
+            backgroundColor: (theme) =>
+              theme.palette.mode === "dark"
+                ? theme.palette.background.level2
+                : theme.palette.background.paper,
             position: "relative",
             overflow: "hidden",
             p: 0.5,
             transition: (theme) =>
-              theme.transitions.create(["box-shadow", "transform"], {
-                duration: theme.transitions.duration.shorter,
-              }),
+              theme.transitions.create(
+                ["box-shadow", "transform", "background-color"],
+                {
+                  duration: theme.transitions.duration.shorter,
+                }
+              ),
           }}
           onClick={handleViewClick}
         >
@@ -376,15 +379,41 @@ const OfferCard = memo(
                 size="large"
                 color="primary"
                 onClick={handleViewClick}
-                sx={{
+                sx={(theme) => ({
                   borderRadius: 2,
                   fontWeight: 600,
                   fontSize: "1rem",
                   px: 3,
-                  boxShadow: "0 2px 8px rgba(80,80,120,0.08)",
-                }}
+                  boxShadow:
+                    theme.palette.mode === "dark"
+                      ? "0 2px 12px 0 rgba(99,102,241,0.18), 0 1.5px 4px 0 rgba(0,0,0,0.32)"
+                      : "0 2px 8px rgba(80,80,120,0.08)",
+                  background:
+                    theme.palette.mode === "dark"
+                      ? theme.palette.primary.main
+                      : undefined,
+                  color:
+                    theme.palette.mode === "dark"
+                      ? theme.palette.common.white
+                      : undefined,
+                  border:
+                    theme.palette.mode === "dark"
+                      ? "1.5px solid rgba(255,255,255,0.10)"
+                      : undefined,
+                  transition: "background 0.18s, box-shadow 0.18s",
+                  "&:hover": {
+                    background:
+                      theme.palette.mode === "dark"
+                        ? theme.palette.primary.light
+                        : undefined,
+                    boxShadow:
+                      theme.palette.mode === "dark"
+                        ? "0 0 0 3px rgba(99,102,241,0.18), 0 2px 12px 0 rgba(99,102,241,0.18)"
+                        : undefined,
+                  },
+                })}
               >
-                {t("view_offer")}
+                {t("detail_button")}
               </Button>
               <IconButton
                 onClick={handleFavoriteClick}

@@ -44,12 +44,16 @@ const SliderContainer = styled(Box)(({ theme, isMobile }) => ({
   "&:before": {
     left: 0,
     background:
-      "linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0))",
+      theme.palette.mode === "dark"
+        ? "linear-gradient(to right, rgba(24,26,32,1), rgba(24,26,32,0))"
+        : "linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0))",
   },
   "&:after": {
     right: 0,
     background:
-      "linear-gradient(to left, rgba(255,255,255,1), rgba(255,255,255,0))",
+      theme.palette.mode === "dark"
+        ? "linear-gradient(to left, rgba(24,26,32,1), rgba(24,26,32,0))"
+        : "linear-gradient(to left, rgba(255,255,255,1), rgba(255,255,255,0))",
   },
   "& .swiper-button-next, & .swiper-button-prev": {
     color: theme.palette.primary.main,
@@ -57,7 +61,10 @@ const SliderContainer = styled(Box)(({ theme, isMobile }) => ({
     width: 40,
     height: 40,
     borderRadius: "50%",
-    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+    boxShadow:
+      theme.palette.mode === "dark"
+        ? "0px 2px 8px rgba(0,0,0,0.32)"
+        : "0px 2px 4px rgba(0, 0, 0, 0.1)",
     "&:after": {
       fontSize: "20px",
     },

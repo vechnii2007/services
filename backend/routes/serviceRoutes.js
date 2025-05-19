@@ -612,7 +612,15 @@ router.get("/provider-offers", auth, async (req, res) => {
 router.post("/requests", auth, async (req, res) => {
   try {
     const io = require("../socket").getIO();
-    const { providerId, offerId, serviceType, message } = req.body;
+    const {
+      providerId,
+      offerId,
+      serviceType,
+      message,
+      comment,
+      dateTime,
+      description,
+    } = req.body;
 
     // Проверка обязательных полей
     if (!serviceType) {
@@ -641,7 +649,9 @@ router.post("/requests", auth, async (req, res) => {
       providerId,
       offerId, // Может быть undefined, если запрос не связан с конкретным предложением
       serviceType,
-      description: message || "",
+      description: description || message || "",
+      comment: comment || "",
+      dateTime: dateTime || null,
       status: "pending",
       type: requestType,
     });
@@ -755,7 +765,10 @@ router.get("/my-requests", auth, async (req, res) => {
   try {
     const requests = await ServiceRequest.find({
       userId: req.user.id,
-    }).populate("userId", "name email phone address status");
+    })
+      .populate("userId", "name email phone address status")
+      .populate("offerId", "title serviceType location")
+      .sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -1398,7 +1411,7 @@ router.get("/requests/:id", auth, async (req, res) => {
       .populate("providerId", "name _id email phone status")
       .populate({
         path: "offerId",
-        select: "title serviceType",
+        select: "title serviceType location price description images",
       });
 
     if (!request) {
@@ -1505,6 +1518,52 @@ router.get("/users/:id", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// --- Смена статуса запроса (только provider или admin) ---
+router.put("/requests/:id/status", auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+    // Только исполнитель (provider) или admin может менять статус
+    if (
+      req.user.role !== "admin" &&
+      (!request.providerId || request.providerId.toString() !== req.user.id)
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Only provider or admin can change status" });
+    }
+    request.status = status;
+    await request.save();
+    res.json({ message: "Status updated", request });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// --- Подтверждение выполнения заказчиком (user) ---
+router.put("/requests/:id/confirm", auth, async (req, res) => {
+  try {
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+    // Только заказчик (user) может подтверждать выполнение
+    if (request.userId.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: "Only customer can confirm completion" });
+    }
+    request.customerConfirmed = true;
+    await request.save();
+    res.json({ message: "Request confirmed by customer", request });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }

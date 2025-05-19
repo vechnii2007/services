@@ -47,6 +47,13 @@ export const menuItems = [
     show: (user) => user && (user.role === "provider" || user.role === "admin"),
   },
   {
+    key: "my_requests",
+    label: "my_requests",
+    path: "/my-requests",
+    icon: <ListAltIcon />,
+    show: (user) => !!user,
+  },
+  {
     key: "admin_panel",
     label: "admin_panel",
     path: "/admin",

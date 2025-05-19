@@ -3,15 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Card, Typography, Box, Tooltip } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import PropTypes from "prop-types";
-import CategoryIcon from "@mui/icons-material/Category";
-import HealthcareIcon from "@mui/icons-material/HealthAndSafety";
-import EducationIcon from "@mui/icons-material/School";
-import FinanceIcon from "@mui/icons-material/AccountBalance";
-import HouseholdIcon from "@mui/icons-material/HomeWork";
-import TransportIcon from "@mui/icons-material/DirectionsCar";
-import LegalIcon from "@mui/icons-material/Gavel";
-import WorkIcon from "@mui/icons-material/Work";
-import DevicesIcon from "@mui/icons-material/Devices";
 
 // Карточка категории для десктопа
 const CategoryCardWrapper = styled(Card)(({ theme, selected }) => ({
@@ -22,11 +13,21 @@ const CategoryCardWrapper = styled(Card)(({ theme, selected }) => ({
   overflow: "hidden",
   cursor: "pointer",
   transition: "transform 0.3s ease, box-shadow 0.3s ease",
-  boxShadow: selected ? `0 2px 8px rgba(0,0,0,1)` : "0 1px 3px rgba(0,0,0,0.1)",
+  background: theme.palette.background.paper,
+  boxShadow: selected
+    ? theme.palette.mode === "dark"
+      ? "0 2px 8px rgba(0,0,0,0.7)"
+      : "0 2px 8px rgba(0,0,0,1)"
+    : theme.palette.mode === "dark"
+    ? "0 1.5px 4px rgba(0,0,0,0.32)"
+    : "0 1px 3px rgba(0,0,0,0.1)",
   top: selected ? -5 : 0,
   "&:hover": {
     transform: "translateY(-4px)",
-    boxShadow: "0 6px 14px rgba(0,0,0,0.15)",
+    boxShadow:
+      theme.palette.mode === "dark"
+        ? "0 6px 14px rgba(0,0,0,0.32)"
+        : "0 6px 14px rgba(0,0,0,0.15)",
   },
   [theme.breakpoints.up("sm")]: {
     width: 140,
@@ -86,19 +87,6 @@ const MobileImage = styled("img")({
   width: "100%",
   height: "100%",
   objectFit: "contain",
-});
-
-const MobileTitle = styled(Typography)({
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  textAlign: "center",
-  padding: "4px 2px",
-  lineHeight: 1.2,
-  maxHeight: "28px",
-  overflow: "hidden",
-  display: "-webkit-box",
-  WebkitLineClamp: 2,
-  WebkitBoxOrient: "vertical",
 });
 
 const MobileCountBadge = styled(Box)(({ theme }) => ({
@@ -173,25 +161,8 @@ const CategoryTitle = styled(Typography)(({ theme }) => ({
   },
 }));
 
-// Функция для получения иконки категории
-const getCategoryIcon = (categoryName) => {
-  const icons = {
-    healthcare: <HealthcareIcon />,
-    education: <EducationIcon />,
-    finance: <FinanceIcon />,
-    household: <HouseholdIcon />,
-    transport: <TransportIcon />,
-    legal: <LegalIcon />,
-    jobs: <WorkIcon />,
-    technology: <DevicesIcon />,
-  };
-
-  return icons[categoryName] || <CategoryIcon />;
-};
-
 const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
   const { t } = useTranslation();
-  const icon = getCategoryIcon(category.name);
 
   const getFallbackImageUrl = (categoryName) =>
     `https://placehold.co/300x180/e0e0e0/808080?text=${encodeURIComponent(

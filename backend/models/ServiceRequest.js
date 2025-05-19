@@ -30,9 +30,21 @@ const serviceRequestSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  comment: {
+    type: String,
+    default: "",
+  },
+  dateTime: {
+    type: Date,
+    default: null,
+  },
   status: {
     type: String,
     default: "pending",
+  },
+  customerConfirmed: {
+    type: Boolean,
+    default: false,
   },
   createdAt: {
     type: Date,

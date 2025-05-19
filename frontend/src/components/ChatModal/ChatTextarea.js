@@ -14,6 +14,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import SendIcon from "@mui/icons-material/Send";
+import { useTheme } from "@mui/material/styles";
 
 const MAX_FILES = 3;
 
@@ -22,6 +23,7 @@ const ChatTextarea = ({ value, onChange, onSend, disabled }) => {
   const [files, setFiles] = useState([]);
   const textareaRef = useRef();
   const fileInputRef = useRef();
+  const theme = useTheme();
 
   const handleEmojiSelect = (emoji) => {
     // emoji-mart v5+: emoji.unified, emoji.native, emoji.skins, emoji.shortcodes, emoji.id
@@ -91,8 +93,24 @@ const ChatTextarea = ({ value, onChange, onSend, disabled }) => {
       onDragOver={(e) => e.preventDefault()}
     >
       <Box sx={{ position: "relative" }}>
-        <IconButton onClick={() => setShowEmoji((v) => !v)} size="small">
-          <EmojiEmotionsIcon />
+        <IconButton
+          onClick={() => setShowEmoji((v) => !v)}
+          size="small"
+          sx={(theme) => ({
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.text.primary
+                : theme.palette.grey[700],
+          })}
+        >
+          <EmojiEmotionsIcon
+            sx={(theme) => ({
+              color:
+                theme.palette.mode === "dark"
+                  ? theme.palette.text.primary
+                  : theme.palette.grey[700],
+            })}
+          />
         </IconButton>
         {showEmoji && (
           <Box sx={{ position: "absolute", bottom: 40, left: 0, zIndex: 10 }}>
@@ -104,8 +122,24 @@ const ChatTextarea = ({ value, onChange, onSend, disabled }) => {
           </Box>
         )}
       </Box>
-      <IconButton onClick={() => fileInputRef.current.click()} size="small">
-        <AttachFileIcon />
+      <IconButton
+        onClick={() => fileInputRef.current.click()}
+        size="small"
+        sx={(theme) => ({
+          color:
+            theme.palette.mode === "dark"
+              ? theme.palette.text.primary
+              : theme.palette.grey[700],
+        })}
+      >
+        <AttachFileIcon
+          sx={(theme) => ({
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.text.primary
+                : theme.palette.grey[700],
+          })}
+        />
       </IconButton>
       <input
         ref={fileInputRef}
@@ -127,14 +161,24 @@ const ChatTextarea = ({ value, onChange, onSend, disabled }) => {
           style={{
             width: "100%",
             borderRadius: 16,
-            border: "1.5px solid #d0d7de",
+            border: `1.5px solid ${theme.palette.divider}`,
             padding: "10px 14px",
             fontSize: 16,
             resize: "none",
-            background: disabled ? "#f5f5f5" : "#fff",
+            background:
+              theme.palette.mode === "dark"
+                ? theme.palette.background.paper
+                : disabled
+                ? "#f5f5f5"
+                : "#fff",
             outline: "none",
             boxShadow: "none",
-            color: disabled ? "#aaa" : undefined,
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.text.primary
+                : disabled
+                ? "#aaa"
+                : undefined,
           }}
           disabled={disabled}
           onKeyDown={(e) => {
@@ -148,9 +192,23 @@ const ChatTextarea = ({ value, onChange, onSend, disabled }) => {
           color="primary"
           disabled={disabled || (!value.trim() && files.length === 0)}
           onClick={handleSend}
-          sx={{ ml: 1, alignSelf: "flex-end" }}
+          sx={(theme) => ({
+            ml: 1,
+            alignSelf: "flex-end",
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.primary.main
+                : undefined,
+          })}
         >
-          <SendIcon />
+          <SendIcon
+            sx={(theme) => ({
+              color:
+                theme.palette.mode === "dark"
+                  ? theme.palette.primary.main
+                  : undefined,
+            })}
+          />
         </IconButton>
       </Box>
       {/* Предпросмотр файлов */}
@@ -159,19 +217,31 @@ const ChatTextarea = ({ value, onChange, onSend, disabled }) => {
           {files.map((file, idx) => (
             <Box
               key={idx}
-              sx={{
+              sx={(theme) => ({
                 display: "flex",
                 alignItems: "center",
-                bgcolor: "#f0f0f0",
+                bgcolor:
+                  theme.palette.mode === "dark"
+                    ? theme.palette.background.level2
+                    : "#f0f0f0",
                 borderRadius: 2,
-                px: 1,
-                py: 0.5,
-              }}
+                px: 2,
+                py: 1,
+                color:
+                  theme.palette.mode === "dark"
+                    ? theme.palette.common.white
+                    : theme.palette.text.primary,
+                minWidth: 120,
+              })}
             >
-              <Typography variant="body2" sx={{ mr: 1 }}>
+              <Typography variant="body2" sx={{ mr: 1, color: "inherit" }}>
                 {file.name}
               </Typography>
-              <IconButton size="small" onClick={() => handleRemoveFile(idx)}>
+              <IconButton
+                size="small"
+                onClick={() => handleRemoveFile(idx)}
+                sx={{ color: "inherit" }}
+              >
                 <CloseIcon fontSize="small" />
               </IconButton>
             </Box>

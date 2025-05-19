@@ -489,5 +489,17 @@
   "clear_filter": "Скинути фільтр",
   "common": {
     "cancel": "Скасувати"
-  }
+  },
+  "detail_button": "Детальніше",
+  "add_review": "Додати відгук",
+  "request_details": "Деталі запиту",
+  "no_description": "Немає опису",
+  "coordinates": "Координати",
+  "offer_info": "Інформація про пропозицію",
+  "no_title": "(без назви)",
+  "offer_description": "Опис пропозиції",
+  "open_chat": "Відкрити чат",
+  "contact": "Зв'язатися",
+  "complete_order": "Завершити замовлення",
+  "confirm_completion": "Підтвердити виконання"
 }

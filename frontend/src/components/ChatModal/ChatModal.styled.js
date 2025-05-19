@@ -13,7 +13,7 @@ export const ChatLayout = styled(Box)(({ theme }) => ({
   flexDirection: "row",
   width: "100%",
   height: "100%",
-  background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
+  background: theme.palette.background.default,
   [theme.breakpoints.down("md")]: {
     flexDirection: "column",
     height: "auto",
@@ -29,6 +29,7 @@ export const ChatPanel = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   borderRight: `1px solid ${theme.palette.divider}`,
+  background: theme.palette.background.default,
   [theme.breakpoints.down("md")]: {
     flex: "1 1 100%",
     borderRight: "none",
@@ -55,7 +56,7 @@ export const ChatContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
-  background: `linear-gradient(135deg, ${theme.palette.background.default} 60%, ${theme.palette.grey[100]} 100%)`,
+  background: theme.palette.background.default,
   height: "100%",
   minHeight: 0,
 }));
@@ -84,7 +85,7 @@ export const MessagesContainer = styled(Box)(({ theme }) => ({
   overflowY: "auto",
   display: "flex",
   flexDirection: "column",
-  background: "transparent",
+  background: theme.palette.background.default,
   padding: theme.spacing(1, 0),
   minHeight: 0,
 }));
@@ -113,10 +114,14 @@ export const Message = styled(Paper)(({ theme, isUser }) => ({
   maxWidth: "80%",
   alignSelf: isUser ? "flex-end" : "flex-start",
   background: isUser
-    ? `linear-gradient(120deg, ${theme.palette.primary.light} 60%, ${theme.palette.primary.main} 100%)`
+    ? `linear-gradient(120deg, ${theme.palette.primary.main} 60%, ${theme.palette.primary.dark} 100%)`
+    : theme.palette.mode === "dark"
+    ? theme.palette.background.level2
     : `linear-gradient(120deg, ${theme.palette.grey[200]} 60%, ${theme.palette.background.paper} 100%)`,
   color: isUser
     ? theme.palette.primary.contrastText
+    : theme.palette.mode === "dark"
+    ? theme.palette.text.primary
     : theme.palette.text.primary,
   borderRadius: isUser
     ? theme.spacing(2, 2, 0.5, 2)
@@ -147,13 +152,12 @@ export const MessageItem = styled(Box)(({ theme, isUser }) => ({
 export const StyledTextField = styled(TextField)(({ theme }) => ({
   "& .MuiOutlinedInput-root": {
     borderRadius: theme.spacing(2.5),
-    backgroundColor: alpha(theme.palette.background.default, 0.95),
+    backgroundColor: theme.palette.background.paper,
+    color: theme.palette.text.primary,
     fontSize: "0.97rem",
     minHeight: 36,
     padding: 0,
-    border: "2px solid blue", // убрать после диагностики
-    background: "#e6f7ff", // убрать после диагностики
-    height: 40, // убрать после диагностики
+    height: 40,
     "&.Mui-focused": {
       boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.13)}`,
     },
@@ -166,6 +170,9 @@ export const StyledTextField = styled(TextField)(({ theme }) => ({
     "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
       borderColor: theme.palette.primary.main,
     },
+  },
+  input: {
+    color: theme.palette.text.primary,
   },
 }));
 

@@ -483,5 +483,17 @@
   "clear_filter": "Сбросить фильтр",
   "common": {
     "cancel": "Отмена"
-  }
+  },
+  "detail_button": "Детальнее",
+  "add_review": "Добавить отзыв",
+  "request_details": "Детали запроса",
+  "no_description": "Нет описания",
+  "coordinates": "Координаты",
+  "offer_info": "Информация о предложении",
+  "no_title": "(без названия)",
+  "offer_description": "Описание предложения",
+  "open_chat": "Открыть чат",
+  "contact": "Связаться",
+  "complete_order": "Завершить заказ",
+  "confirm_completion": "Подтвердить выполнение"
 }

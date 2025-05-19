@@ -55,14 +55,13 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate, formatPrice } from "../utils/formatters";
 import api from "../middleware/api";
-import { useSocket } from "../hooks/useSocket";
 import Reviews from "../components/Reviews";
 import { useChatModal } from "../context/ChatModalContext";
 import { SocketContext } from "../context/SocketContext";
 import AuthRequiredModal from "../components/AuthRequiredModal";
 import { useAuth } from "../hooks/useAuth";
-import EditOfferModal from "../components/OfferCard/EditOfferModal";
 import OfferForm from "../components/OfferCard/OfferForm";
+import CreateOrderModal from "../components/OfferCard/CreateOrderModal";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -77,7 +76,6 @@ const OfferDetails = () => {
   const [offer, setOffer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [shareAnchorEl, setShareAnchorEl] = useState(null);
@@ -86,8 +84,8 @@ const OfferDetails = () => {
   const { openChat } = useChatModal();
   const { user, isAuthenticated } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState(null); // 'chat' | 'favorite' | 'profile'
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -98,7 +96,6 @@ const OfferDetails = () => {
         const res = await api.get(`/services/offers/${id}`);
         if (isMounted) {
           setOffer(res.data);
-          setSuccess(t("offer_loaded"));
 
           // Проверяем, находится ли предложение в избранном
           try {
@@ -153,7 +150,6 @@ const OfferDetails = () => {
 
   const handleFavoriteToggle = async () => {
     if (!isAuthenticated) {
-      setPendingAction("favorite");
       setAuthModalOpen(true);
       return;
     }
@@ -161,7 +157,6 @@ const OfferDetails = () => {
       if (isFavorite) {
         await api.delete(`/services/favorites/${id}`);
         setIsFavorite(false);
-        setSuccess(t("removed_from_favorites"));
       } else {
         // Преобразуем тип предложения к формату, ожидаемому сервером
         const serverOfferType =
@@ -176,10 +171,7 @@ const OfferDetails = () => {
           offerType: serverOfferType,
         });
         setIsFavorite(true);
-        setSuccess(t("added_to_favorites"));
       }
-
-      setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
       setError(error.response?.data?.error || t("something_went_wrong"));
       setTimeout(() => setError(""), 3000);
@@ -214,7 +206,6 @@ const OfferDetails = () => {
         break;
       default:
         navigator.clipboard.writeText(url);
-        setSuccess(t("link_copied"));
         setShareAnchorEl(null);
         return;
     }
@@ -225,7 +216,6 @@ const OfferDetails = () => {
 
   const handleContactProvider = async (e) => {
     if (!isAuthenticated) {
-      setPendingAction("chat");
       setAuthModalOpen(true);
       return;
     }
@@ -290,7 +280,6 @@ const OfferDetails = () => {
   const handleProviderProfileClick = (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      setPendingAction("profile");
       setAuthModalOpen(true);
       return;
     }
@@ -885,7 +874,33 @@ const OfferDetails = () => {
               </Box>
 
               {/* Добавляем блок с отзывами */}
-              <Divider sx={{ mb: 3 }} />
+              <Box
+                sx={{ mt: 3, mb: 2, display: "flex", justifyContent: "center" }}
+              >
+                {isAuthenticated &&
+                  user?._id !== offer?.providerId?._id &&
+                  user?.role !== "admin" && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="large"
+                      sx={{
+                        borderRadius: 2,
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                        px: 4,
+                      }}
+                      onClick={() => setOrderModalOpen(true)}
+                    >
+                      {t("create_request")}
+                    </Button>
+                  )}
+              </Box>
+              <CreateOrderModal
+                open={orderModalOpen}
+                onClose={() => setOrderModalOpen(false)}
+                offer={offer}
+              />
               <Reviews
                 offerId={id}
                 offerType={offerType}

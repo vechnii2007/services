@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -11,7 +11,6 @@ import {
   Collapse,
   Typography,
   Divider,
-  CircularProgress,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -20,6 +19,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import HistoryIcon from "@mui/icons-material/History";
 import { motion, AnimatePresence } from "framer-motion";
 import { searchService } from "../services/searchService";
+import { useTheme } from "@mui/material/styles";
 
 // Используем motion вместо устаревшего motion.create
 const MotionPaper = motion(Paper);
@@ -47,6 +47,7 @@ const OfferFilters = ({
   popularSearches = [],
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const searchRef = useRef(null);
   const filtersRef = useRef(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -77,12 +78,6 @@ const OfferFilters = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  // Получение иконки для категории
-  const getCategoryIcon = (categoryName) => {
-    const category = categories.find((c) => c.name === categoryName);
-    return category?.icon || "🔍";
-  };
 
   // Сохраняем поисковый запрос в историю и на сервер
   const saveToRecentSearches = async (query) => {
@@ -129,7 +124,7 @@ const OfferFilters = ({
 
   return (
     <MotionPaper
-      elevation={3}
+      elevation={theme.palette.mode === "dark" ? 1 : 3}
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -137,7 +132,15 @@ const OfferFilters = ({
         p: { xs: 2, sm: 3 },
         mb: 4,
         borderRadius: 2,
-        background: "linear-gradient(to right, #ffffff, #f8f9fa)",
+        background:
+          theme.palette.mode === "dark"
+            ? theme.palette.background.paper
+            : "linear-gradient(to right, #ffffff, #f8f9fa)",
+        boxShadow:
+          theme.palette.mode === "dark"
+            ? "0 2px 8px rgba(0,0,0,0.32)"
+            : "0 2px 8px rgba(80,80,120,0.08)",
+        color: theme.palette.text.primary,
         position: "relative",
       }}
       ref={filtersRef}
@@ -323,7 +326,39 @@ const OfferFilters = ({
             variant="contained"
             color="primary"
             size="large"
-            sx={{ py: 1.5, fontSize: "1rem" }}
+            sx={(theme) => ({
+              py: 1.5,
+              fontSize: "1rem",
+              fontWeight: 600,
+              borderRadius: 2,
+              boxShadow:
+                theme.palette.mode === "dark"
+                  ? "0 2px 12px 0 rgba(99,102,241,0.18), 0 1.5px 4px 0 rgba(0,0,0,0.32)"
+                  : "0 2px 8px rgba(80,80,120,0.08)",
+              background:
+                theme.palette.mode === "dark"
+                  ? theme.palette.primary.main
+                  : undefined,
+              color:
+                theme.palette.mode === "dark"
+                  ? theme.palette.common.white
+                  : undefined,
+              border:
+                theme.palette.mode === "dark"
+                  ? "1.5px solid rgba(255,255,255,0.10)"
+                  : undefined,
+              transition: "background 0.18s, box-shadow 0.18s",
+              "&:hover": {
+                background:
+                  theme.palette.mode === "dark"
+                    ? theme.palette.primary.light
+                    : undefined,
+                boxShadow:
+                  theme.palette.mode === "dark"
+                    ? "0 0 0 3px rgba(99,102,241,0.18), 0 2px 12px 0 rgba(99,102,241,0.18)"
+                    : undefined,
+              },
+            })}
             onClick={handleSearch}
             disabled={isSearching}
           >
