@@ -17,7 +17,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { styled } from "@mui/material/styles";
@@ -26,18 +25,6 @@ import { useTranslation } from "react-i18next";
 import OfferService from "../../services/OfferService";
 import AddressAutocomplete from "../AddressAutocomplete";
 import axios from "../../utils/axiosConfig";
-
-const VisuallyHiddenInput = styled("input")({
-  clip: "rect(0 0 0 0)",
-  clipPath: "inset(50%)",
-  height: 1,
-  overflow: "hidden",
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  whiteSpace: "nowrap",
-  width: 1,
-});
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -145,6 +132,34 @@ const OfferForm = ({
     }
   }, [offer]);
 
+  // Приводим serviceType к key после загрузки категорий и оффера
+  useEffect(() => {
+    if (offer && categories.length > 0) {
+      let key = "";
+      // Если в оффере уже key
+      if (
+        categories.some(
+          (cat) => cat.key === offer.category || cat.key === offer.serviceType
+        )
+      ) {
+        key = offer.category || offer.serviceType;
+      } else if (
+        categories.some(
+          (cat) => cat._id === offer.category || cat._id === offer.serviceType
+        )
+      ) {
+        // Если в оффере id
+        const found = categories.find(
+          (cat) => cat._id === offer.category || cat._id === offer.serviceType
+        );
+        key = found ? found.key : "";
+      }
+      if (key && key !== formData.serviceType) {
+        setFormData((prev) => ({ ...prev, serviceType: key }));
+      }
+    }
+  }, [offer, categories]);
+
   const onDrop = useCallback((acceptedFiles) => {
     const newPreviews = acceptedFiles.map((file) => ({
       file,
@@ -175,25 +190,6 @@ const OfferForm = ({
         images: prev.images.filter((_, i) => i !== index),
       }));
       setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleImageEdit = (index) => (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      URL.revokeObjectURL(imagePreviews[index].preview);
-      const newPreview = URL.createObjectURL(file);
-      const newImages = [...formData.images];
-      newImages[index] = file;
-      setFormData((prev) => ({
-        ...prev,
-        images: newImages,
-      }));
-      setImagePreviews((prev) => {
-        const newPreviews = [...prev];
-        newPreviews[index] = { file, preview: newPreview };
-        return newPreviews;
-      });
     }
   };
 
@@ -316,10 +312,7 @@ const OfferForm = ({
             </MenuItem>
           ) : categories.length > 0 ? (
             categories.map((category) => (
-              <MenuItem
-                key={category._id || category.name}
-                value={category.name}
-              >
+              <MenuItem key={category._id || category.key} value={category.key}>
                 {category.label || t(category.name)}
               </MenuItem>
             ))

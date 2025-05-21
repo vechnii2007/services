@@ -437,5 +437,4 @@ const OfferFilters = ({
   );
 };
 
-// Экспортируем компонент обернутый в memo для предотвращения ненужных ререндеров
 export default React.memo(OfferFilters);

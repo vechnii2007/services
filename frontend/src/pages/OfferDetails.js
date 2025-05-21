@@ -62,6 +62,7 @@ import AuthRequiredModal from "../components/AuthRequiredModal";
 import { useAuth } from "../hooks/useAuth";
 import OfferForm from "../components/OfferCard/OfferForm";
 import CreateOrderModal from "../components/OfferCard/CreateOrderModal";
+import { useTheme } from "@mui/material/styles";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -86,6 +87,7 @@ const OfferDetails = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const theme = useTheme();
 
   useEffect(() => {
     let isMounted = true;
@@ -411,14 +413,6 @@ const OfferDetails = () => {
             mb: 3,
           }}
         >
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(-1)}
-          >
-            {t("back_to_offers")}
-          </Button>
-
           <Stack direction="row" spacing={1}>
             <IconButton
               color={isFavorite ? "error" : "default"}
@@ -608,8 +602,16 @@ const OfferDetails = () => {
                   backgroundColor: "background.default",
                   borderRadius: 2,
                   width: "100%",
+                  color: theme.palette.text.primary,
+                  transition: "background 0.2s, color 0.2s",
                 }}
-                whileHover={{ backgroundColor: "#f7f9fc" }}
+                whileHover={{
+                  backgroundColor:
+                    theme.palette.mode === "dark"
+                      ? theme.palette.grey[800]
+                      : "#f7f9fc",
+                  color: theme.palette.text.primary,
+                }}
               >
                 <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
                   {safeDescription}
@@ -791,84 +793,113 @@ const OfferDetails = () => {
                       sx={{
                         mt: 1,
                         display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
+                        flexDirection: "row",
+                        gap: 1.5,
+                        justifyContent: "center",
+                        alignItems: "center",
                       }}
                     >
-                      <Badge badgeContent={unreadMessages} color="error">
-                        {user &&
+                      {user &&
                         user._id !== safeProvider._id &&
-                        user.role !== "admin" ? (
-                          <Button
-                            variant="contained"
-                            startIcon={<ChatIcon />}
-                            onClick={handleContactProvider}
-                            sx={{
-                              width: "100%",
-                              minHeight: 32,
-                              fontSize: 14,
-                              py: 0.5,
-                              position: "relative",
-                              zIndex: 5,
-                            }}
-                          >
-                            {t("chat")}
-                          </Button>
-                        ) : null}
-                      </Badge>
-
+                        user.role !== "admin" && (
+                          <Tooltip title={t("chat") || "Чат"}>
+                            <span>
+                              <Badge
+                                badgeContent={unreadMessages}
+                                color="error"
+                              >
+                                <IconButton
+                                  color="primary"
+                                  onClick={handleContactProvider}
+                                  sx={{
+                                    bgcolor: "primary.light",
+                                    color: "white",
+                                    transition:
+                                      "background 0.2s, box-shadow 0.2s",
+                                    boxShadow: 1,
+                                    "&:hover": {
+                                      bgcolor: "primary.dark",
+                                      boxShadow: 3,
+                                    },
+                                  }}
+                                >
+                                  <ChatIcon fontSize="small" />
+                                </IconButton>
+                              </Badge>
+                            </span>
+                          </Tooltip>
+                        )}
                       {safeProvider.email && (
-                        <Button
-                          variant="outlined"
-                          startIcon={<EmailIcon />}
-                          onClick={() =>
-                            (window.location.href = `mailto:${safeProvider.email}`)
-                          }
-                          sx={{
-                            width: "100%",
-                            minHeight: 32,
-                            fontSize: 14,
-                            py: 0.5,
-                          }}
-                        >
-                          {t("send_email")}
-                        </Button>
+                        <Tooltip title={t("send_email") || "Email"}>
+                          <span>
+                            <IconButton
+                              color="primary"
+                              sx={{
+                                bgcolor: "primary.light",
+                                color: "white",
+                                transition: "background 0.2s, box-shadow 0.2s",
+                                boxShadow: 1,
+                                "&:hover": {
+                                  bgcolor: "primary.dark",
+                                  boxShadow: 3,
+                                },
+                              }}
+                              onClick={() =>
+                                (window.location.href = `mailto:${safeProvider.email}`)
+                              }
+                            >
+                              <EmailIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       )}
-
                       {safeProvider.phone && (
-                        <Tooltip title={t("call_provider")}>
-                          <IconButton
-                            color="primary"
-                            sx={{
-                              bgcolor: "primary.light",
-                              color: "white",
-                              width: 36,
-                              height: 36,
-                            }}
-                            onClick={() =>
-                              (window.location.href = `tel:${safeProvider.phone}`)
-                            }
-                          >
-                            <CallIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={t("call_provider") || "Позвонить"}>
+                          <span>
+                            <IconButton
+                              color="primary"
+                              sx={{
+                                bgcolor: "primary.light",
+                                color: "white",
+                                transition: "background 0.2s, box-shadow 0.2s",
+                                boxShadow: 1,
+                                "&:hover": {
+                                  bgcolor: "primary.dark",
+                                  boxShadow: 3,
+                                },
+                              }}
+                              onClick={() =>
+                                (window.location.href = `tel:${safeProvider.phone}`)
+                              }
+                            >
+                              <CallIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       )}
                     </Box>
-
-                    <Box sx={{ mt: 1 }}>
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        sx={{ minHeight: 32, fontSize: 14, py: 0.5 }}
-                        onClick={() =>
-                          navigate(`/offers?providerId=${safeProvider._id}`)
-                        }
+                    {safeProvider._id && (
+                      <Box
+                        sx={{
+                          mt: 1,
+                          display: "flex",
+                          justifyContent: "center",
+                        }}
                       >
-                        {t("view_all_provider_offers", {
-                          defaultValue: "Посмотреть все предложения провайдера",
-                        })}
-                      </Button>
-                    </Box>
+                        <Button
+                          variant="text"
+                          onClick={() =>
+                            navigate(`/offers?providerId=${safeProvider._id}`)
+                          }
+                          sx={{ fontSize: 15, fontWeight: 500 }}
+                        >
+                          {t("view_all_provider_offers", {
+                            defaultValue:
+                              "Посмотреть все предложения провайдера",
+                          })}
+                        </Button>
+                      </Box>
+                    )}
                   </CardContent>
                 </MotionCard>
               </Box>

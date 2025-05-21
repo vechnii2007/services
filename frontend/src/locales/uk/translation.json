@@ -448,7 +448,7 @@
   "error_loading_messages": "Не вдалося завантажити повідомлення",
   "connection_error": "Помилка з'єднання",
   "view_all": "Показати все",
-  "mark_all_read": "Позначити всі прочитаними",
+  "mark_all_read": "Позначити всі як прочитані",
   "notification_mark_read_success": "Сповіщення позначено як прочитане",
   "notification_mark_read_error": "Помилка при позначенні сповіщення",
   "notification_delete_success": "Сповіщення видалено",
@@ -501,5 +501,9 @@
   "open_chat": "Відкрити чат",
   "contact": "Зв'язатися",
   "complete_order": "Завершити замовлення",
-  "confirm_completion": "Підтвердити виконання"
+  "confirm_completion": "Підтвердити виконання",
+  "select_all": "Вибрати всі",
+  "deselect_all": "Зняти виділення",
+  "mark_selected_read": "Позначити вибрані як прочитані",
+  "select_notification": "Вибрати сповіщення"
 }

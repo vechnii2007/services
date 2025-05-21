@@ -142,12 +142,12 @@ const CategorySlider = ({
         slidesOffsetAfter={0}
       >
         {categories.map((category) => (
-          <SwiperSlide key={category.name}>
+          <SwiperSlide key={category.key || category._id}>
             <CategoryCard
               category={category}
-              selected={selectedCategory === category.name}
-              onClick={() => onCategorySelect?.(category.name)}
-              count={counts[category.name] || 0}
+              selected={selectedCategory === category.key}
+              onClick={() => onCategorySelect?.(category.key)}
+              count={counts[category.key] || 0}
             />
           </SwiperSlide>
         ))}

@@ -10,7 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
-import { menuItems } from "./menuConfig";
+import { mainMenuItems } from "./menuConfig";
 
 const SideMenu = ({ open, onClose, onLanguage, onLogout }) => {
   const { t } = useTranslation();
@@ -34,7 +34,7 @@ const SideMenu = ({ open, onClose, onLanguage, onLogout }) => {
   return (
     <Drawer anchor="left" open={open} onClose={onClose}>
       <List sx={{ width: 250, marginTop: 8 }}>
-        {menuItems
+        {mainMenuItems
           .filter((item) => item.show(user))
           .map((item) => (
             <ListItem

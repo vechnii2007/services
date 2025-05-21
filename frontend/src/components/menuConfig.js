@@ -1,16 +1,17 @@
 import {
   LocalOffer as OfferIcon,
-  AccountCircle,
   FavoriteBorder as FavoriteBorderIcon,
   Message as MessageIcon,
   AddBox as AddBoxIcon,
   ListAlt as ListAltIcon,
+  AccountCircle,
   AdminPanelSettings as AdminPanelSettingsIcon,
   Notifications as NotificationsIcon,
   Logout as LogoutIcon,
 } from "@mui/icons-material";
 
-export const menuItems = [
+// Сервисные пункты (левое меню)
+export const mainMenuItems = [
   {
     key: "offers",
     label: "offers",
@@ -53,6 +54,17 @@ export const menuItems = [
     icon: <ListAltIcon />,
     show: (user) => !!user,
   },
+];
+
+// Пользовательское меню (Drawer/аватар)
+export const userMenuItems = [
+  {
+    key: "profile",
+    label: "profile",
+    path: "/profile",
+    icon: <AccountCircle />,
+    show: (user) => !!user,
+  },
   {
     key: "admin_panel",
     label: "admin_panel",
@@ -65,16 +77,8 @@ export const menuItems = [
     label: "notifications",
     path: "/notifications",
     icon: <NotificationsIcon />,
-    show: () => true,
-  },
-  {
-    key: "profile",
-    label: "profile",
-    path: "/profile",
-    icon: <AccountCircle />,
     show: (user) => !!user,
   },
-
   {
     key: "logout",
     label: "logout",

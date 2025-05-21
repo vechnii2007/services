@@ -1376,14 +1376,6 @@ router.put("/offers/:id/status", auth, async (req, res) => {
       return res.status(403).json({ error: "Not authorized" });
     }
 
-    // Если предложение завершается, обновляем статистику провайдера
-    if (status === "completed" && offer.status !== "completed") {
-      const provider = await User.findById(offer.providerId);
-      if (provider) {
-        await provider.incrementCompletedOffers();
-      }
-    }
-
     // Обновляем статус
     offer.status = status;
     await offer.save();
@@ -1561,8 +1553,21 @@ router.put("/requests/:id/confirm", auth, async (req, res) => {
         .status(403)
         .json({ error: "Only customer can confirm completion" });
     }
-    request.customerConfirmed = true;
-    await request.save();
+    // Если уже подтверждено, не инкрементируем повторно
+    if (!request.customerConfirmed) {
+      request.customerConfirmed = true;
+      await request.save();
+      // Инкрементируем completedOffers у провайдера, если есть providerId
+      if (request.providerId) {
+        const provider = await User.findById(request.providerId);
+        if (provider) {
+          await provider.incrementCompletedOffers();
+        }
+      }
+    } else {
+      // Если уже подтверждено, просто возвращаем текущий статус
+      return res.json({ message: "Already confirmed", request });
+    }
     res.json({ message: "Request confirmed by customer", request });
   } catch (error) {
     res.status(500).json({ error: "Server error" });

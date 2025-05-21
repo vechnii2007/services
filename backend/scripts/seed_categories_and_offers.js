@@ -1,5 +1,5 @@
+require("dotenv").config({ path: __dirname + "/../.env" });
 const mongoose = require("mongoose");
-require("dotenv").config();
 
 const Category = require("../models/Category");
 const Offer = require("../models/Offer");
@@ -7,54 +7,68 @@ const User = require("../models/User");
 
 const CATEGORIES = [
   {
-    name: "translation",
-    label: "Translation",
-    image: "https://placehold.co/300x180/eee/333?text=Translation",
-  },
-  {
-    name: "legal",
-    label: "Legal",
-    image: "https://placehold.co/300x180/eee/333?text=Legal",
-  },
-  {
-    name: "real_estate",
+    key: "real_estate",
+    name: { ru: "Недвижимость", uk: "Нерухомість", es: "Inmobiliaria" },
     label: "Real Estate",
     image: "https://placehold.co/300x180/eee/333?text=Real+Estate",
   },
   {
-    name: "healthcare",
-    label: "Healthcare",
-    image: "https://placehold.co/300x180/eee/333?text=Healthcare",
+    key: "auto",
+    name: { ru: "Авто", uk: "Авто", es: "Motor" },
+    label: "Auto",
+    image: "https://placehold.co/300x180/eee/333?text=Auto",
   },
   {
-    name: "education",
-    label: "Education",
-    image: "https://placehold.co/300x180/eee/333?text=Education",
+    key: "services",
+    name: { ru: "Услуги", uk: "Послуги", es: "Servicios" },
+    label: "Services",
+    image: "https://placehold.co/300x180/eee/333?text=Services",
   },
   {
-    name: "finance",
-    label: "Finance",
-    image: "https://placehold.co/300x180/eee/333?text=Finance",
+    key: "jobs",
+    name: { ru: "Работа", uk: "Робота", es: "Empleo" },
+    label: "Jobs",
+    image: "https://placehold.co/300x180/eee/333?text=Jobs",
   },
   {
-    name: "transport",
-    label: "Transport",
-    image: "https://placehold.co/300x180/eee/333?text=Transport",
+    key: "electronics",
+    name: { ru: "Электроника", uk: "Електроніка", es: "Electrónica" },
+    label: "Electronics",
+    image: "https://placehold.co/300x180/eee/333?text=Electronics",
   },
   {
-    name: "household",
-    label: "Household",
-    image: "https://placehold.co/300x180/eee/333?text=Household",
+    key: "fashion",
+    name: { ru: "Мода", uk: "Мода", es: "Moda" },
+    label: "Fashion",
+    image: "https://placehold.co/300x180/eee/333?text=Fashion",
   },
   {
-    name: "shopping",
-    label: "Shopping",
-    image: "https://placehold.co/300x180/eee/333?text=Shopping",
+    key: "home_garden",
+    name: { ru: "Дом и сад", uk: "Дім і сад", es: "Casa y Jardín" },
+    label: "Home & Garden",
+    image: "https://placehold.co/300x180/eee/333?text=Home+Garden",
   },
   {
-    name: "beauty",
-    label: "Beauty",
-    image: "https://placehold.co/300x180/eee/333?text=Beauty",
+    key: "hobby",
+    name: {
+      ru: "Хобби и отдых",
+      uk: "Хобі та відпочинок",
+      es: "Aficiones y Ocio",
+    },
+    label: "Hobby & Leisure",
+    image: "https://placehold.co/300x180/eee/333?text=Hobby",
+  },
+  {
+    key: "kids",
+    name: { ru: "Дети", uk: "Діти", es: "Bebés" },
+    label: "Kids",
+    image: "https://placehold.co/300x180/eee/333?text=Kids",
+  },
+  {
+    key: "pets",
+    name: { ru: "Животные", uk: "Тварини", es: "Mascotas" },
+    label: "Pets",
+    image: "https://placehold.co/300x180/eee/333?text=Pets",
   },
 ];
 
@@ -106,8 +120,8 @@ async function main() {
       offers.push({
         title: `${cat.label} Service #${i + 1}`,
         providerId: provider._id,
-        serviceType: cat.name,
-        category: cat.name,
+        serviceType: cat.key,
+        category: cat.key,
         location: getRandom(LOCATIONS),
         description: `Best ${cat.label.toLowerCase()} service in town!`,
         price: Math.floor(Math.random() * 100) + 20,

@@ -24,6 +24,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { SocketContext } from "../context/SocketContext";
 import useNotification from "../composables/useNotification";
 import api from "../middleware/api";
+import UniversalBreadcrumbs from "./Breadcrumbs/UniversalBreadcrumbs";
 
 // Избегаем частых ререндеров за счет мемоизации компонента
 const AppContent = () => {
@@ -50,6 +51,12 @@ const AppContent = () => {
   // Определяем, находимся ли на лендинге - мемоизируем для предотвращения лишних ререндеров
   const isLandingPage = useMemo(
     () => location.pathname === "/",
+    [location.pathname]
+  );
+
+  // Определяем, находимся ли на странице offers
+  const isOffersPage = useMemo(
+    () => location.pathname === "/offers",
     [location.pathname]
   );
 
@@ -216,13 +223,16 @@ const AppContent = () => {
     () => ({
       flexGrow: 1,
       p: isLandingPage ? 0 : 3, // Убираем отступы для лендинга
-      mt: isLandingPage ? 0 : { xs: 8, sm: 9 }, // Увеличен отступ от хедера
+      mt: 0, // Увеличен отступ от хедера
       width: "100%",
       maxWidth: "100%",
       overflowX: "hidden",
     }),
     [isLandingPage]
   );
+
+  // Отступ для хлебных крошек, чтобы не попадали под AppBar
+  const breadcrumbsMarginTop = isLandingPage ? 0 : { xs: 8, sm: 9 };
 
   if (loadingState) {
     return loadingState;
@@ -232,6 +242,13 @@ const AppContent = () => {
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       {/* Отображаем хедер только если не находимся на лендинге */}
       {header}
+
+      {/* Хлебные крошки под хедером, кроме лендинга и страницы offers */}
+      {!isLandingPage && !isOffersPage && (
+        <Box sx={{ px: { xs: 2, sm: 3 }, pt: 1, mt: breadcrumbsMarginTop }}>
+          <UniversalBreadcrumbs />
+        </Box>
+      )}
 
       <Box sx={{ display: "flex", flex: 1 }}>
         {/* Отображаем сайдбар только если не находимся на лендинге */}

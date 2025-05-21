@@ -14,7 +14,7 @@ export const NotificationService = {
   },
 
   markAllAsRead: async () => {
-    const response = await api.put(`/services/notifications/mark-all-read`);
+    const response = await api.put("/notifications/read/all");
     return response.data;
   },
 
@@ -141,6 +141,11 @@ export const NotificationService = {
         console.error("[NotificationService] Error during cleanup:", error);
       }
     };
+  },
+
+  getUnreadCount: async () => {
+    const response = await api.get("/notifications/unread/count");
+    return response.data.count;
   },
 };
 

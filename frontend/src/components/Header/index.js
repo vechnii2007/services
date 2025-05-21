@@ -27,9 +27,9 @@ import {
   LocalOffer as OfferIcon,
   Update as UpdateIcon,
   Delete as DeleteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
   Brightness4,
   Brightness7,
+  AccountCircle,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -42,7 +42,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../assets/images/logo.svg";
 import { useChatModal } from "../../context/ChatModalContext";
 import { SocketContext } from "../../context/SocketContext";
-import { menuItems } from "../menuConfig";
+import { menuItems, userMenuItems, mainMenuItems } from "../menuConfig";
 import SpainFlag from "../../assets/flags/es.svg";
 import UkraineFlag from "../../assets/flags/ua.svg";
 import RussiaFlag from "../../assets/flags/ru.svg";
@@ -186,8 +186,6 @@ const NotificationsPanel = ({
   onAction,
   onViewAll,
   t,
-  navigate,
-  handleNotificationsClose,
 }) => (
   <Box
     sx={{
@@ -286,10 +284,19 @@ const Header = ({ onDrawerToggle }) => {
   const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   // --- Состояния для Drawer уведомлений на мобиле ---
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
+  // --- state for auth menu ---
+  const [authMenuAnchor, setAuthMenuAnchor] = useState(null);
 
-  const handleLangMenu = (event) => setLangAnchorEl(event.currentTarget);
+  const handleLangMenu = (event) => {
+    setLangAnchorEl(event.currentTarget);
+  };
+
+  const handleLangClose = () => {
+    setLangAnchorEl(null);
+  };
 
   const handleNotificationsClick = async (event) => {
     if (!user) return;
@@ -303,7 +310,6 @@ const Header = ({ onDrawerToggle }) => {
     }
   };
 
-  const handleLangClose = () => setLangAnchorEl(null);
   const handleNotificationsClose = () => setNotificationsAnchor(null);
 
   // Настройка WebSocket для получения уведомлений в реальном времени
@@ -367,7 +373,6 @@ const Header = ({ onDrawerToggle }) => {
     socket.on("private_message", handleNewMessage);
 
     return () => {
-      // Дополнительная проверка, что notificationsCleanup - это функция
       if (notificationsCleanup && typeof notificationsCleanup === "function") {
         try {
           notificationsCleanup();
@@ -456,7 +461,6 @@ const Header = ({ onDrawerToggle }) => {
     navigate("/login");
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
   const unreadRequestsCount = notifications.filter(
     (n) => !n.read && n.type === "request"
   ).length;
@@ -487,12 +491,10 @@ const Header = ({ onDrawerToggle }) => {
       setDrawerOpen(false);
       return;
     }
-    // Если path — функция, вызываем с user
     const path = typeof item.path === "function" ? item.path(user) : item.path;
     if (path) {
       navigate(path);
       setDrawerOpen(false);
-      return;
     }
   };
 
@@ -519,13 +521,30 @@ const Header = ({ onDrawerToggle }) => {
       </Box>
       <Divider sx={{ mb: 1 }} />
       <List>
-        {menuItems
+        {mainMenuItems
           .filter((item) => item.show(user))
           .map((item) => (
             <ListItem
               button
               key={item.key}
               onClick={() => handleDrawerItemClick(item)}
+              component={item.path ? "div" : undefined}
+            >
+              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+              <ListItemText primary={t(item.label)} />
+            </ListItem>
+          ))}
+      </List>
+      <Divider sx={{ my: 1 }} />
+      <List>
+        {userMenuItems
+          .filter((item) => item.show(user))
+          .map((item) => (
+            <ListItem
+              button
+              key={item.key}
+              onClick={() => handleDrawerItemClick(item)}
+              component={item.path ? "div" : undefined}
             >
               {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
               <ListItemText primary={t(item.label)} />
@@ -562,10 +581,12 @@ const Header = ({ onDrawerToggle }) => {
     </Box>
   );
 
-  // Загружать уведомления при монтировании и при каждом логине
+  // Получаем количество непрочитанных уведомлений при монтировании и логине
   useEffect(() => {
     if (user) {
-      loadNotifications();
+      NotificationService.getUnreadCount()
+        .then((count) => setUnreadCount(count))
+        .catch(() => setUnreadCount(0));
     }
   }, [user]);
 
@@ -609,7 +630,7 @@ const Header = ({ onDrawerToggle }) => {
               {drawerContent}
             </Drawer>
             <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-              <IconButton color="inherit" onClick={handleLangMenu}>
+              <IconButton color="inherit" onClick={(e) => handleLangMenu(e)}>
                 <img
                   src={currentLanguage.flag}
                   alt={currentLanguage.code}
@@ -621,6 +642,32 @@ const Header = ({ onDrawerToggle }) => {
                   }}
                 />
               </IconButton>
+              <Menu
+                anchorEl={langAnchorEl}
+                open={Boolean(langAnchorEl)}
+                onClose={handleLangClose}
+              >
+                {languages.map((lang) => (
+                  <MenuItem
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    selected={i18n.language === lang.code}
+                    sx={{ py: 1, display: "flex", alignItems: "center" }}
+                  >
+                    <img
+                      src={lang.flag}
+                      alt={lang.name}
+                      style={{
+                        width: 24,
+                        height: 18,
+                        marginRight: 12,
+                        boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+                      }}
+                    />
+                    <Typography variant="body2">{lang.nativeName}</Typography>
+                  </MenuItem>
+                ))}
+              </Menu>
               {user && (
                 <IconButton color="inherit" onClick={handleNotificationsClick}>
                   <Badge badgeContent={unreadCount} color="error">
@@ -677,7 +724,6 @@ const Header = ({ onDrawerToggle }) => {
             <ThemeToggleButton />
           </>
         ) : (
-          // Десктопная версия (оставляем как есть)
           <>
             <IconButton
               edge="start"
@@ -703,7 +749,7 @@ const Header = ({ onDrawerToggle }) => {
             <Box sx={{ flexGrow: 1 }} />
             <ThemeToggleButton />
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <IconButton color="inherit" onClick={handleLangMenu}>
+              <IconButton color="inherit" onClick={(e) => handleLangMenu(e)}>
                 <img
                   src={currentLanguage.flag}
                   alt={currentLanguage.code}
@@ -741,6 +787,42 @@ const Header = ({ onDrawerToggle }) => {
                   </MenuItem>
                 ))}
               </Menu>
+              {/* Аватар пользователя и Drawer */}
+              {!user && (
+                <>
+                  <IconButton
+                    color="inherit"
+                    onClick={(e) => setAuthMenuAnchor(e.currentTarget)}
+                    sx={{ ml: 1 }}
+                  >
+                    <AccountCircle fontSize="large" />
+                  </IconButton>
+                  <Menu
+                    anchorEl={authMenuAnchor}
+                    open={Boolean(authMenuAnchor)}
+                    onClose={() => setAuthMenuAnchor(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  >
+                    <MenuItem
+                      onClick={() => {
+                        setAuthMenuAnchor(null);
+                        navigate("/login");
+                      }}
+                    >
+                      {t("login")}
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        setAuthMenuAnchor(null);
+                        navigate("/register");
+                      }}
+                    >
+                      {t("register")}
+                    </MenuItem>
+                  </Menu>
+                </>
+              )}
               {user && (
                 <IconButton color="inherit" onClick={handleNotificationsClick}>
                   <Badge badgeContent={unreadCount} color="error">
@@ -756,6 +838,58 @@ const Header = ({ onDrawerToggle }) => {
                     </Badge>
                   )}
                 </IconButton>
+              )}
+              {user && (
+                <>
+                  <IconButton
+                    color="inherit"
+                    onClick={() => setDrawerOpen(true)}
+                  >
+                    <Avatar src={user.avatar} alt={user.name} />
+                  </IconButton>
+                  <Drawer
+                    anchor="right"
+                    open={drawerOpen}
+                    onClose={() => setDrawerOpen(false)}
+                  >
+                    <Box sx={{ width: 260, p: 2, pt: { xs: 7, sm: 8 } }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
+                      >
+                        <Avatar
+                          src={user.avatar}
+                          alt={user.name}
+                          sx={{ mr: 1 }}
+                        />
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={600}>
+                            {user.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {user.email}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Divider sx={{ mb: 1 }} />
+                      <List>
+                        {userMenuItems
+                          .filter((item) => item.show(user))
+                          .map((item) => (
+                            <ListItem
+                              button
+                              key={item.key}
+                              onClick={() => handleDrawerItemClick(item)}
+                            >
+                              {item.icon && (
+                                <ListItemIcon>{item.icon}</ListItemIcon>
+                              )}
+                              <ListItemText primary={t(item.label)} />
+                            </ListItem>
+                          ))}
+                      </List>
+                    </Box>
+                  </Drawer>
+                </>
               )}
               <Popover
                 open={Boolean(notificationsAnchor)}

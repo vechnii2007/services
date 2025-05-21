@@ -83,8 +83,10 @@ const CreateOrderModal = ({ open, onClose, offer, onOrderCreated }) => {
         </Box>
         <DateTimePicker
           label={t("date")}
+          sx={{ mb: 2 }}
           value={dateTime}
           onChange={setDateTime}
+          minDateTime={new Date()}
           renderInput={(params) => (
             <TextField {...params} fullWidth sx={{ mb: 2 }} />
           )}

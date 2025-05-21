@@ -442,7 +442,7 @@
   "error_loading_messages": "Не удалось загрузить сообщения",
   "connection_error": "Ошибка соединения",
   "view_all": "Показать все",
-  "mark_all_read": "Отметить все прочитанными",
+  "mark_all_read": "Отметить все как прочитанные",
   "notification_mark_read_success": "Уведомление отмечено как прочитанное",
   "notification_mark_read_error": "Ошибка при отметке уведомления",
   "notification_delete_success": "Уведомление удалено",
@@ -495,5 +495,8 @@
   "open_chat": "Открыть чат",
   "contact": "Связаться",
   "complete_order": "Завершить заказ",
-  "confirm_completion": "Подтвердить выполнение"
+  "confirm_completion": "Подтвердить выполнение",
+  "select_all": "Выбрать все",
+  "deselect_all": "Снять выделение",
+  "mark_selected_read": "Отметить выбранные как прочитанные"
 }

@@ -32,7 +32,6 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import CloseIcon from "@mui/icons-material/Close";
 
-// Оборачиваем Card в motion компонент
 const MotionCard = motion(Card);
 
 const PromoteButton = styled(IconButton)(({ theme }) => ({
@@ -131,7 +130,6 @@ const OfferCard = memo(
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
 
-    // Безопасный доступ к свойствам
     const safeOfferId = offer?._id || "";
     const safeOfferTitle = offer?.title || "";
     const safeOfferDescription = offer?.description || "";
@@ -220,13 +218,11 @@ const OfferCard = memo(
       }
     };
 
-    // Добавляем промо-статус для отображения в карточке
     const isPromoted =
       promotionStatus?.isPromoted ||
       (offer?.promoted?.isPromoted &&
         new Date(offer.promoted.promotedUntil) > new Date());
 
-    // Если нет ID, показываем пустую карточку
     if (!safeOfferId) {
       console.warn("OfferCard received offer without ID:", offer);
       return <EmptyOfferCard />;

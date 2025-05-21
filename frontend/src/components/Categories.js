@@ -54,13 +54,13 @@ const Categories = ({
               sm={6}
               md={4}
               lg={3}
-              key={category.name || category._id}
+              key={category.key || category._id}
             >
               <CategoryCard
                 category={category}
-                selected={selectedCategory === category.name}
+                selected={selectedCategory === category.key}
                 onClick={() => onCategorySelect(category)}
-                count={counts[category.name] || 0}
+                count={counts[category.key] || 0}
               />
             </Grid>
           ))}

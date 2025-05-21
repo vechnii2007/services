@@ -11,7 +11,8 @@ const CategoriesTab = () => {
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState({
-    name: "",
+    key: "",
+    name: { ru: "", uk: "", es: "" },
     label: "",
     image: null,
   });
@@ -32,8 +33,17 @@ const CategoriesTab = () => {
     setEditingCategory(category);
     setNewCategory(
       category
-        ? { name: category.name, label: category.label, image: null }
-        : { name: "", label: "", image: null }
+        ? {
+            key: category.key || "",
+            name: {
+              ru: category.name?.ru || "",
+              uk: category.name?.uk || "",
+              es: category.name?.es || "",
+            },
+            label: category.label,
+            image: null,
+          }
+        : { key: "", name: { ru: "", uk: "", es: "" }, label: "", image: null }
     );
     setOpenCategoryDialog(true);
   };
@@ -41,12 +51,25 @@ const CategoriesTab = () => {
   const handleCloseCategoryDialog = () => {
     setOpenCategoryDialog(false);
     setEditingCategory(null);
-    setNewCategory({ name: "", label: "", image: null });
+    setNewCategory({
+      key: "",
+      name: { ru: "", uk: "", es: "" },
+      label: "",
+      image: null,
+    });
   };
 
   const handleCategoryChange = (e) => {
     const { name, value } = e.target;
-    setNewCategory({ ...newCategory, [name]: value });
+    if (name.startsWith("name.")) {
+      const lang = name.split(".")[1];
+      setNewCategory((prev) => ({
+        ...prev,
+        name: { ...prev.name, [lang]: value },
+      }));
+    } else {
+      setNewCategory({ ...newCategory, [name]: value });
+    }
   };
 
   const handleImageChange = (e) => {
@@ -56,7 +79,8 @@ const CategoriesTab = () => {
   const handleSaveCategory = async () => {
     try {
       const formData = new FormData();
-      formData.append("name", newCategory.name);
+      formData.append("key", newCategory.key);
+      formData.append("name", JSON.stringify(newCategory.name));
       formData.append("label", newCategory.label);
       if (newCategory.image) {
         formData.append("image", newCategory.image);
@@ -100,6 +124,7 @@ const CategoriesTab = () => {
 
   const headers = [
     "ID",
+    t("key"),
     t("name"),
     t("label"),
     t("image"),
@@ -110,7 +135,10 @@ const CategoriesTab = () => {
   const renderRow = (category) => (
     <TableRow key={category._id}>
       <TableCell>{category._id}</TableCell>
-      <TableCell>{category.name}</TableCell>
+      <TableCell>{category.key}</TableCell>
+      <TableCell>
+        {category.name?.ru || Object.values(category.name || {})[0] || ""}
+      </TableCell>
       <TableCell>{category.label}</TableCell>
       <TableCell>
         {category.image ? (

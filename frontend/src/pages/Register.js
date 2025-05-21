@@ -114,10 +114,31 @@ const Register = () => {
     }));
   };
 
+  const handleRoleChange = (e) => {
+    const newRole = e.target.value;
+    if (newRole === "user") {
+      setValues((prev) => ({
+        ...prev,
+        role: "user",
+        phone: "",
+        address: "",
+        providerInfo: undefined,
+      }));
+    } else {
+      handleChange(e);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post("/users/register", values);
+      const payload = { ...values };
+      if (payload.role === "user") {
+        delete payload.providerInfo;
+        delete payload.phone;
+        delete payload.address;
+      }
+      const res = await api.post("/users/register", payload);
       setMessage(res.data.message);
       setTimeout(() => navigate("/login"), 2000);
     } catch (error) {
@@ -200,7 +221,7 @@ const Register = () => {
                     <Select
                       name="role"
                       value={values.role}
-                      onChange={handleChange}
+                      onChange={handleRoleChange}
                       label={t("role")}
                     >
                       <MenuItem value="user">{t("user")}</MenuItem>
@@ -225,16 +246,18 @@ const Register = () => {
                         fullWidth
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <AddressAutocomplete
-                        value={values.address}
-                        onChange={handleChange}
-                        name="address"
-                        label={t("address")}
-                        required
-                        fullWidth
-                      />
-                    </Grid>
+                    {values.role === "provider" && (
+                      <Grid item xs={12} sm={6}>
+                        <AddressAutocomplete
+                          value={values.address}
+                          onChange={handleChange}
+                          name="address"
+                          label={t("address")}
+                          required
+                          fullWidth
+                        />
+                      </Grid>
+                    )}
                     <Grid item xs={12}>
                       <TextField
                         label={t("description")}
@@ -362,7 +385,25 @@ const Register = () => {
                 type="submit"
                 variant="contained"
                 color="primary"
-                sx={{ mt: 2 }}
+                sx={{
+                  mt: 2,
+                  fontWeight: 700,
+                  fontSize: 18,
+                  borderRadius: 2,
+                  color: "#fff",
+                  boxShadow: "0 2px 8px rgba(60,64,67,.12)",
+                  background: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.primary.main
+                      : theme.palette.primary.main,
+                  "&:hover": {
+                    background: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? theme.palette.primary.light
+                        : theme.palette.primary.dark,
+                  },
+                  transition: "background 0.2s, color 0.2s",
+                }}
               >
                 {t("register_button")}
               </Button>

@@ -60,7 +60,9 @@ const OnlineBadge = styled(Badge)(({ theme }) => ({
 
 const RatingWrapper = styled(Box)(({ theme }) => ({
   display: "flex",
+  flexDirection: "column",
   alignItems: "center",
+  gap: theme.spacing(0.5),
   "& .MuiRating-root": {
     color: theme.palette.warning.main,
   },
@@ -157,7 +159,7 @@ const ProviderInfo = memo(
             </Tooltip>
           )}
         </Box>
-        <Stack spacing={0.5} sx={{ ml: 1 }}>
+        <Stack spacing={0.5} sx={{ ml: 'auto'}}>
           {variant === "full" ? (
             <>
               <RatingWrapper>

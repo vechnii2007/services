@@ -494,5 +494,9 @@
   "open_chat": "Abrir chat",
   "contact": "Contactar",
   "complete_order": "Completar pedido",
-  "confirm_completion": "Confirmar finalización"
+  "confirm_completion": "Confirmar finalización",
+  "select_all": "Seleccionar todo",
+  "deselect_all": "Deseleccionar todo",
+  "mark_selected_read": "Marcar seleccionados como leídos",
+  "select_notification": "Seleccionar notificación"
 }

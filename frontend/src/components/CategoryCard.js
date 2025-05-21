@@ -161,8 +161,21 @@ const CategoryTitle = styled(Typography)(({ theme }) => ({
   },
 }));
 
+const getCategoryName = (category, lang = "ru") => {
+  if (!category?.name) return "";
+  return (
+    category.name[lang] ||
+    category.name["ru"] ||
+    category.name["uk"] ||
+    category.name["es"] ||
+    Object.values(category.name)[0] ||
+    ""
+  );
+};
+
 const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language?.split("-")[0] || "ru";
 
   const getFallbackImageUrl = (categoryName) =>
     `https://placehold.co/300x180/e0e0e0/808080?text=${encodeURIComponent(
@@ -174,7 +187,7 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
       ? category.image
       : category.image && category.image.startsWith("/")
       ? `${process.env.REACT_APP_API_URL}${category.image}`
-      : getFallbackImageUrl(category.name);
+      : getFallbackImageUrl(getCategoryName(category, lang));
 
   return (
     <Tooltip title={t(category.description || "")} enterDelay={700}>
@@ -183,16 +196,18 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
         <CategoryCardWrapper selected={selected} onClick={onClick}>
           <CategoryImage
             src={imageUrl}
-            alt={category.label || t(category.name)}
+            alt={getCategoryName(category, lang)}
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = getFallbackImageUrl(category.name);
+              e.target.src = getFallbackImageUrl(
+                getCategoryName(category, lang)
+              );
             }}
           />
           <CategoryCountBadge>{count}</CategoryCountBadge>
           <CategoryTitleBar>
             <CategoryTitle variant="subtitle1">
-              {t(category.label || category.name)}
+              {getCategoryName(category, lang)}
             </CategoryTitle>
           </CategoryTitleBar>
         </CategoryCardWrapper>
@@ -202,17 +217,19 @@ const CategoryCard = ({ category, selected, onClick, count = 0 }) => {
           <MobileImageWrapper>
             <MobileImage
               src={imageUrl}
-              alt={category.label || t(category.name)}
+              alt={getCategoryName(category, lang)}
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = getFallbackImageUrl(category.name);
+                e.target.src = getFallbackImageUrl(
+                  getCategoryName(category, lang)
+                );
               }}
             />
             <MobileCountBadge>{count}</MobileCountBadge>
           </MobileImageWrapper>
           <CategoryTitleBar>
             <CategoryTitle variant="subtitle1">
-              {t(category.label || category.name)}
+              {getCategoryName(category, lang)}
             </CategoryTitle>
           </CategoryTitleBar>{" "}
         </MobileCategoryCard>

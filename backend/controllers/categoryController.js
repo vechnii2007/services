@@ -42,11 +42,26 @@ class CategoryController {
   // Создание новой категории
   async createCategory(req, res, next) {
     try {
-      const { name, label } = req.body;
+      let { name, label } = req.body;
       if (!name || !label || !req.file) {
         return next(new ApiError(400, "Name, label, and image are required"));
       }
-
+      // Парсим name если строка (приходит из form-data)
+      if (typeof name === "string") {
+        try {
+          name = JSON.parse(name);
+        } catch (e) {
+          return next(
+            new ApiError(400, "Invalid name format (should be JSON object)")
+          );
+        }
+      }
+      // Валидация: хотя бы один язык заполнен
+      if (!Object.values(name).some((v) => v && v.trim())) {
+        return next(
+          new ApiError(400, "At least one language for name is required")
+        );
+      }
       const category = new Category({
         name,
         label,
@@ -67,14 +82,28 @@ class CategoryController {
       if (!category) {
         return next(new ApiError(404, "Category not found"));
       }
-
-      const { name, label } = req.body;
-      if (name) category.name = name;
+      let { name, label } = req.body;
+      if (name) {
+        if (typeof name === "string") {
+          try {
+            name = JSON.parse(name);
+          } catch (e) {
+            return next(
+              new ApiError(400, "Invalid name format (should be JSON object)")
+            );
+          }
+        }
+        if (!Object.values(name).some((v) => v && v.trim())) {
+          return next(
+            new ApiError(400, "At least one language for name is required")
+          );
+        }
+        category.name = name;
+      }
       if (label) category.label = label;
       if (req.file) {
         category.image = req.file.path; // Cloudinary возвращает URL в path
       }
-
       await category.save();
       res.json(category);
     } catch (error) {
@@ -149,11 +178,18 @@ class CategoryController {
 
       // Создаем расширенную статистику
       const stats = categories.map((category) => {
+        const displayName =
+          category.name?.ru ||
+          category.name?.uk ||
+          category.name?.es ||
+          Object.values(category.name || {})[0] ||
+          "";
         return {
           id: category._id,
           name: category.name,
+          displayName,
           label: category.label,
-          count: counts[category.name] || 0,
+          count: counts[category.key] || 0,
           hasImage: !!category.image,
           imageUrl: category.image ? category.image : null,
         };
@@ -210,11 +246,18 @@ class CategoryController {
 
       // Создаем расширенную статистику с подсчетом
       const stats = categories.map((category) => {
+        const displayName =
+          category.name?.ru ||
+          category.name?.uk ||
+          category.name?.es ||
+          Object.values(category.name || {})[0] ||
+          "";
         return {
           id: category._id,
           name: category.name,
+          displayName,
           label: category.label,
-          count: counts[category.name] || 0,
+          count: counts[category.key] || 0,
           hasImage: !!category.image,
           imageUrl: category.image ? category.image : null,
         };
@@ -228,7 +271,7 @@ class CategoryController {
 
       console.log(
         `[${requestId}] Top ${topCategories.length} categories prepared:`,
-        topCategories.map((cat) => `${cat.name}: ${cat.count}`)
+        topCategories.map((cat) => `${cat.displayName}: ${cat.count}`)
       );
 
       res.json({

@@ -23,6 +23,7 @@
     "framer-motion": "^12.7.4",
     "i18next": "^22.5.1",
     "i18next-browser-languagedetector": "^7.1.0",
+    "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-dropzone": "^14.3.8",

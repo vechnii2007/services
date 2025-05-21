@@ -44,18 +44,21 @@ class CategoryStatsService {
   // Полное обновление статистики
   async fullSync() {
     const startTime = Date.now();
-
     try {
       const categories = await Category.find();
       const updates = [];
-
+      let totalOffers = 0;
       for (const category of categories) {
         const count = await Offer.countDocuments({
-          serviceType: category.name,
+          serviceType: category.key,
         });
+        totalOffers += count;
+        console.log(
+          `[CategoryStatsService] Категория: ${category.key}, предложений: ${count}`
+        );
         updates.push({
           updateOne: {
-            filter: { category: category.name },
+            filter: { category: category.key },
             update: {
               $set: {
                 count,
@@ -66,10 +69,16 @@ class CategoryStatsService {
           },
         });
       }
-
       if (updates.length > 0) {
         await CategoryStats.bulkWrite(updates);
       }
+      console.log(
+        `[CategoryStatsService] Обработано категорий: ${
+          categories.length
+        }, всего предложений: ${totalOffers}, время: ${
+          Date.now() - startTime
+        }мс`
+      );
     } catch (error) {
       console.error("[CategoryStatsService] Error during full sync:", error);
     }
@@ -80,9 +89,14 @@ class CategoryStatsService {
     try {
       const stats = await CategoryStats.find();
       const counts = {};
+      let totalOffers = 0;
       stats.forEach((stat) => {
         counts[stat.category] = stat.count;
+        totalOffers += stat.count;
       });
+      console.log(
+        `[CategoryStatsService] Всего категорий: ${stats.length}, всего предложений: ${totalOffers}`
+      );
       return counts;
     } catch (error) {
       console.error(

@@ -1,20 +1,18 @@
-import React, { useState, useEffect, useCallback, forwardRef } from "react";
+import React, {forwardRef, useCallback} from "react";
 import PropTypes from "prop-types";
-import { Box, Typography, CircularProgress, Button } from "@mui/material";
+import {Box, Button, CircularProgress, Typography} from "@mui/material";
 import OfferCard from "./OfferCard";
 import OfferCardSkeleton from "./OfferCardSkeleton";
 import styled from "@emotion/styled";
-import { useTranslation } from "react-i18next";
-import { PAGINATION } from "../config";
-import { motion } from "framer-motion";
+import {useTranslation} from "react-i18next";
+import {PAGINATION} from "../config";
+import {motion} from "framer-motion";
 
 const WINDOW_SIZE = PAGINATION.OFFERS_PER_PAGE;
 
 const OfferListContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(2),
   marginTop: theme.spacing(2),
-  backgroundColor: theme.palette.background.paper,
-  boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
   width: "100%",
   marginLeft: "auto",
   marginRight: "auto",
@@ -104,8 +102,7 @@ const OfferList = forwardRef(
 
     // Добавляем скелетоны только если loadingMore
     if (loadingMore) {
-      const skeletonCount = WINDOW_SIZE;
-      for (let i = 0; i < skeletonCount; i++) {
+      for (let i = 0; i < WINDOW_SIZE; i++) {
         items.push(
           <Box key={`skeleton-${i}`} sx={{ minWidth: 320, maxWidth: 360 }}>
             <OfferCardSkeleton />
@@ -173,5 +170,4 @@ OfferList.defaultProps = {
   onLoadMore: null,
 };
 
-// Оборачиваем в memo для предотвращения ненужных ререндеров
 export default React.memo(OfferList);

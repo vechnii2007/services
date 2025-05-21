@@ -14,6 +14,9 @@ import {
   Alert,
   Container,
   ListItemButton,
+  Checkbox,
+  Button,
+  Stack,
 } from "@mui/material";
 import {
   Notifications as NotificationsIcon,
@@ -122,6 +125,7 @@ const Notifications = () => {
   const [hasMore, setHasMore] = useState(true);
   const { socket } = useContext(SocketContext);
   const navigate = useNavigate();
+  const [selected, setSelected] = useState([]);
 
   useEffect(() => {
     loadNotifications(1, true);
@@ -233,6 +237,48 @@ const Notifications = () => {
     }
   };
 
+  const handleSelect = (id) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selected.length === notifications.length) {
+      setSelected([]);
+    } else {
+      setSelected(notifications.map((n) => n._id));
+    }
+  };
+
+  const handleMarkSelectedAsRead = async () => {
+    try {
+      await Promise.all(
+        selected.map((id) => NotificationService.markAsRead(id))
+      );
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          selected.includes(notif._id) ? { ...notif, read: true } : notif
+        )
+      );
+      setSelected([]);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await NotificationService.markAllAsRead();
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, read: true }))
+      );
+      setSelected([]);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const unreadCount = notifications
     ? notifications.filter((n) => !n.read).length
     : 0;
@@ -242,6 +288,35 @@ const Notifications = () => {
       <Typography variant="h4" gutterBottom>
         {t("notifications")}
       </Typography>
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleSelectAll}
+          disabled={notifications.length === 0}
+        >
+          {selected.length === notifications.length && notifications.length > 0
+            ? t("deselect_all")
+            : t("select_all")}
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={handleMarkSelectedAsRead}
+          disabled={selected.length === 0}
+        >
+          {t("mark_selected_read")}
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          color="success"
+          onClick={handleMarkAllAsRead}
+          disabled={notifications.every((n) => n.read)}
+        >
+          {t("mark_all_read")}
+        </Button>
+      </Stack>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -257,6 +332,15 @@ const Notifications = () => {
             <ListItem
               key={notif._id || notif.id}
               divider
+              secondaryAction={
+                <Checkbox
+                  edge="end"
+                  checked={selected.includes(notif._id)}
+                  onChange={() => handleSelect(notif._id)}
+                  tabIndex={-1}
+                  inputProps={{ "aria-label": t("select_notification") }}
+                />
+              }
               button
               onClick={() => handleMarkAsReadAndNavigate(notif)}
               sx={{ cursor: "pointer" }}
