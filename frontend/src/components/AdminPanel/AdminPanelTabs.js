@@ -6,6 +6,8 @@ import RequestsTab from "./RequestsTab";
 import OffersTab from "./OffersTab";
 import CategoriesTab from "./CategoriesTab";
 import AdminService from "../../services/AdminService";
+import TariffsTab from "./TariffsTab";
+import PaymentsTab from "./PaymentsTab";
 
 const AdminPanelTabs = () => {
   const { t } = useTranslation();
@@ -51,12 +53,16 @@ const AdminPanelTabs = () => {
         <Tab label={t("requests")} />
         <Tab label={t("offers")} />
         <Tab label={t("categories")} />
+        <Tab label={t("tariffs")} />
+        <Tab label={t("payments")} />
       </Tabs>
 
       {tabValue === 0 && <UsersTab />}
       {tabValue === 1 && <RequestsTab />}
       {tabValue === 2 && <OffersTab />}
       {tabValue === 3 && <CategoriesTab />}
+      {tabValue === 4 && <TariffsTab />}
+      {tabValue === 5 && <PaymentsTab />}
 
       <Snackbar
         open={cacheCleared}

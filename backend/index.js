@@ -16,6 +16,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const searchRoutes = require("./routes/search");
 const reviewRoutes = require("./routes/reviewRoutes");
+const tariffRoutes = require("./routes/tariffRoutes");
 const { UPLOADS_DIR, UPLOADS_PATH } = require("./config/uploadConfig");
 const passport = require("./config/passport");
 
@@ -110,6 +111,9 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/services", serviceRoutes);
+app.use("/api/tariffs", tariffRoutes);
+app.use("/api/payments", require("./routes/paymentRoutes"));
+app.use("/api/subscriptions", require("./routes/subscriptionRoutes"));
 console.log("Routes registered successfully");
 
 // Добавляем обратную совместимость для старых маршрутов

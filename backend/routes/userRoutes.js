@@ -7,6 +7,7 @@ const auth = require("../middleware/auth");
 const passport = require("../config/passport");
 require("dotenv").config();
 const { isValidObjectId } = require("../utils/validation");
+const subscriptionController = require("../controllers/subscriptionController");
 
 // Регистрация пользователя
 router.post("/register", async (req, res) => {

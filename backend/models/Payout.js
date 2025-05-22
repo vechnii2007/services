@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
-const paymentSchema = new mongoose.Schema(
+const payoutSchema = new mongoose.Schema(
   {
-    userId: {
+    providerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -12,19 +12,14 @@ const paymentSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    type: {
-      type: String,
-      enum: ["subscription", "one-time"],
-      required: true,
-    },
     status: {
       type: String,
-      enum: ["pending", "paid", "failed", "refunded"],
+      enum: ["pending", "processing", "completed", "failed"],
       default: "pending",
     },
-    tariffId: {
+    orderId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Tariff",
+      ref: "Order",
       required: true,
     },
     transactionId: {
@@ -36,16 +31,27 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    bankDetails: {
+      accountNumber: String,
+      bankName: String,
+      swiftCode: String,
+    },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
+    },
+    processedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
     },
   },
   { timestamps: true }
 );
 
-paymentSchema.index({ userId: 1, createdAt: -1 });
-paymentSchema.index({ status: 1 });
-paymentSchema.index({ transactionId: 1 });
+// Индексы для быстрого поиска
+payoutSchema.index({ providerId: 1, createdAt: -1 });
+payoutSchema.index({ status: 1 });
+payoutSchema.index({ transactionId: 1 });
 
-module.exports = mongoose.model("Payment", paymentSchema);
+module.exports = mongoose.model("Payout", payoutSchema);

@@ -149,8 +149,8 @@ class OfferService extends BaseService {
     }
   }
 
-  async promoteOffer(offerId, promotionType) {
-    return this.post(`/offers/${offerId}/promote`, { promotionType });
+  async promoteOffer(offerId, tariffId) {
+    return this.post(`/offers/${offerId}/promote`, { tariffId });
   }
 
   async getPromotionStatus(offerId) {
@@ -256,6 +256,19 @@ class OfferService extends BaseService {
         totalCategories: 5,
         timestamp: new Date().toISOString(),
       };
+    }
+  }
+
+  async getPromotedOffersByUser(userId) {
+    if (!userId) return [];
+    try {
+      const response = await this.get("/offers", {
+        providerId: userId,
+        promoted: true,
+      });
+      return response;
+    } catch (error) {
+      return [];
     }
   }
 }

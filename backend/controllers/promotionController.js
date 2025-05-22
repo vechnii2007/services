@@ -1,21 +1,31 @@
 const PromotionService = require("../services/promotionService");
-const { validateObjectId } = require("../utils/validation");
+const { isValidObjectId } = require("../utils/validation");
 const { ApiError } = require("../utils/errors");
+const Tariff = require("../models/Tariff");
 
 class PromotionController {
   async promoteOffer(req, res, next) {
     try {
-      const { offerId } = req.params;
-      const { promotionType } = req.body;
+      const { id } = req.params;
+      const offerId = id;
+      const { tariffId } = req.body;
       const userId = req.user.id;
 
-      if (!validateObjectId(offerId)) {
+      if (!isValidObjectId(offerId)) {
         throw new ApiError(400, "Invalid offer ID format");
       }
+      if (!isValidObjectId(tariffId)) {
+        throw new ApiError(400, "Invalid tariff ID format");
+      }
 
-      const result = await PromotionService.promoteOffer(
+      const tariff = await Tariff.findById(tariffId);
+      if (!tariff || tariff.type !== "promotion" || !tariff.isActive) {
+        throw new ApiError(400, "Invalid or inactive promotion tariff");
+      }
+
+      const result = await PromotionService.promoteOfferWithTariff(
         offerId,
-        promotionType,
+        tariff,
         userId
       );
       res.json(result);
@@ -26,9 +36,10 @@ class PromotionController {
 
   async checkPromotionStatus(req, res, next) {
     try {
-      const { offerId } = req.params;
+      const { id } = req.params;
+      const offerId = id;
 
-      if (!validateObjectId(offerId)) {
+      if (!isValidObjectId(offerId)) {
         throw new ApiError(400, "Invalid offer ID format");
       }
 

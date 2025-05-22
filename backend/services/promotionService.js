@@ -222,6 +222,60 @@ class PromotionService {
   async getPromotionPrices() {
     return PromotionService.PROMOTION_PRICES;
   }
+
+  async promoteOfferWithTariff(offerId, tariff, userId) {
+    const offer = await Offer.findById(offerId);
+
+    if (!offer) {
+      throw new ApiError(404, "Offer not found");
+    }
+
+    if (offer.providerId.toString() !== userId) {
+      throw new ApiError(403, "You can only promote your own offers");
+    }
+
+    const now = new Date();
+    const startDate =
+      offer.promoted?.promotedUntil && offer.promoted.promotedUntil > now
+        ? offer.promoted.promotedUntil
+        : now;
+
+    // Продолжительность в днях из тарифа
+    const durationMs = (tariff.period || 1) * 24 * 60 * 60 * 1000;
+    const promotedUntil = new Date(startDate.getTime() + durationMs);
+
+    offer.promoted = {
+      isPromoted: true,
+      promotedUntil: promotedUntil,
+      lastPromotedAt: now,
+      promotionType: tariff.name, // или tariff._id, если нужно
+    };
+
+    await offer.save();
+
+    // (уведомления и прочее — по желанию)
+    try {
+      await NotificationService.sendNotification(offer.providerId, {
+        type: "OFFER_PROMOTED",
+        message: `Your offer "${
+          offer.title
+        }" has been promoted until ${promotedUntil.toLocaleDateString()}`,
+        relatedId: offer._id,
+      });
+      console.log("[PromotionService] Notification sent successfully");
+    } catch (notificationError) {
+      console.error("[PromotionService] Error sending notification:", {
+        error: notificationError.message,
+      });
+    }
+
+    return {
+      success: true,
+      promotedUntil,
+      price: tariff.price,
+      tariffId: tariff._id,
+    };
+  }
 }
 
 module.exports = new PromotionService();

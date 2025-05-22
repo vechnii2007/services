@@ -17,6 +17,8 @@ import {
 } from "@mui/material";
 import NotificationSettings from "../components/Header/NotificationSettings";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import UserSubscriptionTab from "../components/Profile/UserSubscriptionTab";
+import UserPromotedOffersTab from "../components/Profile/UserPromotedOffersTab";
 
 const TabPanel = (props) => {
   const { children, value, index, ...other } = props;
@@ -72,7 +74,7 @@ const Profile = () => {
     }
   };
 
-  const handleTabChange = (newValue) => {
+  const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
 
@@ -87,6 +89,9 @@ const Profile = () => {
       </Typography>
     );
   }
+
+  // Определяем количество вкладок
+  const isProvider = values.role === "provider";
 
   return (
     <Container maxWidth="md" sx={{ paddingY: 4 }}>
@@ -116,11 +121,25 @@ const Profile = () => {
                 id="profile-tab-0"
                 aria-controls="profile-tabpanel-0"
               />
-              {/* <Tab
-                label={t("notifications")}
+              <Tab
+                label={t("my_subscription")}
                 id="profile-tab-1"
                 aria-controls="profile-tabpanel-1"
-              /> */}
+              />
+              {isProvider && (
+                <Tab
+                  label={t("my_offers")}
+                  id="profile-tab-2"
+                  aria-controls="profile-tabpanel-2"
+                />
+              )}
+              {isProvider && (
+                <Tab
+                  label={t("promoted_offers")}
+                  id="profile-tab-3"
+                  aria-controls="profile-tabpanel-3"
+                />
+              )}
             </Tabs>
           </Box>
 
@@ -181,8 +200,19 @@ const Profile = () => {
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
-            <NotificationSettings />
+            <UserSubscriptionTab userId={user._id} />
           </TabPanel>
+
+          {isProvider && (
+            <TabPanel value={tabValue} index={2}>
+              <Typography>Provider Offers Component</Typography>
+            </TabPanel>
+          )}
+          {isProvider && (
+            <TabPanel value={tabValue} index={3}>
+              <UserPromotedOffersTab userId={user._id} />
+            </TabPanel>
+          )}
         </>
       )}
     </Container>

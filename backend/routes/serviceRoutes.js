@@ -21,6 +21,7 @@ const NotificationService = require("../services/NotificationService");
 const Review = require("../models/Review");
 const { UPLOADS_PATH } = require("../config/uploadConfig");
 const { isValidObjectId } = require("../utils/validation");
+const promotionController = require("../controllers/promotionController");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -1242,65 +1243,7 @@ router.get("/categories/stats", categoryController.getCategoryStats);
 router.get("/categories/top", categoryController.getTopCategories);
 
 // Поднятие объявления в топ
-router.post("/offers/:id/promote", auth, async (req, res) => {
-  try {
-    const { promotionType } = req.body;
-    const offerId = req.params.id;
-
-    // Проверяем валидность ObjectId
-    if (!isValidObjectId(offerId)) {
-      return res.status(400).json({ error: "Invalid offer ID format" });
-    }
-
-    // Валидация типа поднятия
-    if (!promotionType || !["DAY", "WEEK"].includes(promotionType)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid promotion type. Must be 'DAY' or 'WEEK'" });
-    }
-
-    // Проверяем существование предложения
-    const offer = await Offer.findById(offerId).lean();
-    if (!offer) {
-      return res.status(404).json({ error: "Offer not found" });
-    }
-
-    // Проверяем права доступа
-    if (offer.providerId.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ error: "You can only promote your own offers" });
-    }
-
-    // Вызываем сервис для продвижения
-    const result = await promotionService.promoteOffer(
-      offerId,
-      promotionType,
-      req.user.id
-    );
-
-    res.json(result);
-  } catch (error) {
-    // Если это ошибка валидации, возвращаем детали
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        error: "Validation error",
-        details: error.errors,
-      });
-    }
-
-    // Если это наша ApiError, используем её статус
-    if (error.status) {
-      return res.status(error.status).json({ error: error.message });
-    }
-
-    // Для всех остальных ошибок
-    res.status(500).json({
-      error: "Internal server error",
-      message: error.message,
-    });
-  }
-});
+router.post("/offers/:id/promote", auth, promotionController.promoteOffer);
 
 // Проверка статуса поднятия
 router.get("/offers/:id/promotion-status", async (req, res) => {
