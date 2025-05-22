@@ -14,7 +14,7 @@ const paymentSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["subscription", "one-time"],
+      enum: ["subscription", "one-time", "promotion"],
       required: true,
     },
     status: {

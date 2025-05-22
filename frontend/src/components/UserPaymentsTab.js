@@ -49,7 +49,7 @@ const UserPaymentsTab = ({ userId }) => {
         page: page + 1,
         limit: rowsPerPage,
       });
-      setPayments(Array.isArray(response.data) ? response.data : []);
+      setPayments(Array.isArray(response.payments) ? response.payments : []);
       setTotal(typeof response.total === "number" ? response.total : 0);
     } catch (e) {
       console.error("Error fetching payments:", e);
@@ -117,10 +117,27 @@ const UserPaymentsTab = ({ userId }) => {
             {payments.map((payment) => (
               <TableRow key={payment._id}>
                 <TableCell>
-                  {new Date(payment.createdAt).toLocaleDateString()}
+                  {new Date(payment.createdAt).toLocaleString("ru-RU", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </TableCell>
-                <TableCell>{payment.tariff?.name || "-"}</TableCell>
-                <TableCell>{t(payment.type)}</TableCell>
+                <TableCell>
+                  {payment.tariffId?.name || payment.tariff?.name || "-"}
+                </TableCell>
+                <TableCell>
+                  {t(
+                    payment.tariffId?.type ||
+                      payment.tariff?.type ||
+                      payment.type
+                  ) ||
+                    payment.tariffId?.type ||
+                    payment.tariff?.type ||
+                    payment.type}
+                </TableCell>
                 <TableCell align="right">
                   {new Intl.NumberFormat("ru-RU", {
                     style: "currency",
