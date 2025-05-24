@@ -9,29 +9,29 @@ import PropTypes from "prop-types";
 const InfoContainer = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  gap: theme.spacing(1.5),
+  gap: theme.spacing(0.7),
 }));
 
 const PriceTypography = styled(Typography)(({ theme }) => ({
   color: theme.palette.primary.main,
   fontWeight: theme.typography.fontWeightBold,
-  fontSize: "1.35rem",
+  fontSize: "1.15rem",
   background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   display: "inline-block",
   letterSpacing: "-0.5px",
-  marginTop: theme.spacing(0.5),
-  marginBottom: theme.spacing(0.5),
+  marginTop: theme.spacing(0.2),
+  marginBottom: theme.spacing(0.2),
 }));
 
 const MetaInfo = styled(Box)(({ theme }) => ({
   display: "flex",
   alignItems: "center",
-  gap: theme.spacing(0.5),
+  gap: theme.spacing(0.2),
   color: theme.palette.text.secondary,
   "& .MuiSvgIcon-root": {
-    fontSize: "1rem",
+    fontSize: "0.95rem",
   },
 }));
 
@@ -54,7 +54,7 @@ const OfferInfo = memo(
 
     return (
       <InfoContainer>
-        <Stack spacing={1}>
+        <Stack spacing={0.5}>
           <Tooltip title={title} enterDelay={700}>
             <Typography
               variant="subtitle1"
@@ -66,9 +66,9 @@ const OfferInfo = memo(
                 display: "-webkit-box",
                 WebkitLineClamp: 1,
                 WebkitBoxOrient: "vertical",
-                lineHeight: 1.2,
+                lineHeight: 1.1,
                 cursor: "default",
-                fontSize: "1.15rem",
+                fontSize: "1.02rem",
                 letterSpacing: "-0.5px",
               })}
             >
@@ -86,9 +86,10 @@ const OfferInfo = memo(
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
-                minHeight: "2.4em",
-                lineHeight: 1.2,
+                minHeight: "1.8em",
+                lineHeight: 1.1,
                 cursor: "default",
+                fontSize: "0.93rem",
               })}
             >
               {description}
@@ -98,7 +99,7 @@ const OfferInfo = memo(
 
         <PriceTypography>{priceDisplay}</PriceTypography>
 
-        <Stack spacing={0.5} sx={{ mt: "auto" }}>
+        <Stack spacing={0.2} sx={{ mt: "auto" }}>
           {location && (
             <Tooltip title={location} enterDelay={700}>
               <MetaInfo>
@@ -110,6 +111,7 @@ const OfferInfo = memo(
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                     cursor: "default",
+                    fontSize: "0.93rem",
                   }}
                 >
                   {location}
@@ -124,6 +126,7 @@ const OfferInfo = memo(
               variant="caption"
               sx={(theme) => ({
                 color: theme.palette.text.secondary,
+                fontSize: "0.85rem",
               })}
             >
               {formatDate(createdAt)}

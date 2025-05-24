@@ -42,9 +42,11 @@ class CategoryController {
   // Создание новой категории
   async createCategory(req, res, next) {
     try {
-      let { name, label } = req.body;
-      if (!name || !label || !req.file) {
-        return next(new ApiError(400, "Name, label, and image are required"));
+      let { name, label, key } = req.body;
+      if (!name || !label || !key || !req.file) {
+        return next(
+          new ApiError(400, "Name, label, key, and image are required")
+        );
       }
       // Парсим name если строка (приходит из form-data)
       if (typeof name === "string") {
@@ -63,6 +65,7 @@ class CategoryController {
         );
       }
       const category = new Category({
+        key,
         name,
         label,
         image: req.file.path, // Cloudinary возвращает URL в path
