@@ -500,5 +500,32 @@
   "mark_selected_read": "Marcar seleccionados como leídos",
   "select_notification": "Seleccionar notificación",
   "paid": "Pagado",
-  "status_paid": "Pagado"
+  "status_paid": "Pagado",
+  "limit_exceeded": {
+    "title": "Límite excedido",
+    "message": "Ha alcanzado el límite de su tarifa. Suscríbase para ampliar las posibilidades.",
+    "subscribe_button": "Suscribirse"
+  },
+  "top": "TOP",
+  "promoted": "Promocionado",
+  "not_promoted": "Normal",
+  "promote_to_top": "Promocionar a TOP",
+  "offer_promoted_successfully": "¡Oferta promocionada exitosamente!",
+  "error_promoting_offer": "Error al promocionar la oferta",
+  "category": "Categoría",
+  "title": "Título",
+  "my_subscription": "Mi suscripción",
+  "limit_exceeded_top_offers": "Se ha alcanzado el límite de anuncios TOP según su tarifa",
+  "approve_payment": "Aprobar pago",
+  "cancel_payment": "Rechazar pago",
+  "confirm_cancel_payment_title": "¿Rechazar el pago?",
+  "confirm_cancel_payment_text": "¿Estás seguro de que deseas rechazar este pago? Esta acción no se puede deshacer.",
+  "confirm": "Confirmar",
+  "open_offer": "Abrir oferta",
+  "open_subscription": "Abrir suscripción",
+  "open_transaction": "Abrir transacción",
+  "refund_payment": "Reembolsar pago",
+  "confirm_refund_payment_title": "¿Reembolsar pago?",
+  "confirm_refund_payment_text": "¿Estás seguro de que deseas reembolsar este pago? Esta acción no se puede deshacer.",
+  "remove_from_top": "Quitar del TOP"
 }

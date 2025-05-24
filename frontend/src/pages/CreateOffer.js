@@ -28,6 +28,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import { useDropzone } from "react-dropzone";
 import OfferService from "../services/OfferService";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import LimitExceededModal from "../components/LimitExceededModal";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -116,6 +117,8 @@ const CreateOffer = () => {
   const [errors] = useState({});
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
 
   useEffect(() => {
     const fetchUserRoleAndProviders = async () => {
@@ -316,6 +319,14 @@ const CreateOffer = () => {
       setTimeout(() => navigate("/offers"), 2000);
     } catch (error) {
       if (error.response) {
+        if (
+          error.response.status === 403 &&
+          error.response.data?.error?.includes("лимит")
+        ) {
+          setLimitMessage(error.response.data.error);
+          setLimitModalOpen(true);
+          return;
+        }
         setMessage(
           "Error: " + (error.response.data.error || t("something_went_wrong"))
         );
@@ -706,6 +717,12 @@ const CreateOffer = () => {
       )}
 
       {renderForm()}
+
+      <LimitExceededModal
+        open={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        message={limitMessage}
+      />
     </Box>
   );
 };

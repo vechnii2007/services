@@ -340,6 +340,15 @@ router.get("/my-offers", auth, async (req, res) => {
       } else {
         offerData.images = [];
       }
+      // --- ГАРАНТИРУЕМ ПОЛЕ promoted ---
+      if (!offerData.promoted) {
+        offerData.promoted = {
+          isPromoted: false,
+          promotedUntil: null,
+          promotionType: null,
+          lastPromotedAt: null,
+        };
+      }
       return offerData;
     });
 
@@ -1512,6 +1521,26 @@ router.put("/requests/:id/confirm", auth, async (req, res) => {
       return res.json({ message: "Already confirmed", request });
     }
     res.json({ message: "Request confirmed by customer", request });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Снять продвижение с предложения
+router.post("/offers/:id/demote", async (req, res) => {
+  try {
+    const offer = await Offer.findById(req.params.id);
+    if (!offer) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+    if (offer.promoted) {
+      offer.promoted.isPromoted = false;
+      offer.promoted.promotedUntil = null;
+      offer.promoted.lastPromotedAt = null;
+      offer.promoted.promotionType = null;
+    }
+    await offer.save();
+    res.json(offer);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }

@@ -53,9 +53,6 @@ class CategoryStatsService {
           serviceType: category.key,
         });
         totalOffers += count;
-        console.log(
-          `[CategoryStatsService] Категория: ${category.key}, предложений: ${count}`
-        );
         updates.push({
           updateOne: {
             filter: { category: category.key },
@@ -72,13 +69,6 @@ class CategoryStatsService {
       if (updates.length > 0) {
         await CategoryStats.bulkWrite(updates);
       }
-      console.log(
-        `[CategoryStatsService] Обработано категорий: ${
-          categories.length
-        }, всего предложений: ${totalOffers}, время: ${
-          Date.now() - startTime
-        }мс`
-      );
     } catch (error) {
       console.error("[CategoryStatsService] Error during full sync:", error);
     }
@@ -94,9 +84,6 @@ class CategoryStatsService {
         counts[stat.category] = stat.count;
         totalOffers += stat.count;
       });
-      console.log(
-        `[CategoryStatsService] Всего категорий: ${stats.length}, всего предложений: ${totalOffers}`
-      );
       return counts;
     } catch (error) {
       console.error(

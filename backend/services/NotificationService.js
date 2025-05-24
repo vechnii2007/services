@@ -76,6 +76,7 @@ class NotificationService {
       case "request":
         return "ServiceRequest";
       case "offer":
+      case "OFFER_PROMOTED":
         return "Offer";
       default:
         return null;
@@ -90,6 +91,8 @@ class NotificationService {
         return "Новый запрос";
       case "offer":
         return "Новое предложение";
+      case "OFFER_PROMOTED":
+        return "Оффер продвинут";
       case "system":
         return "Системное уведомление";
       default:
@@ -104,6 +107,7 @@ class NotificationService {
       case "request":
         return `/requests/${notification.relatedId}`;
       case "offer":
+      case "OFFER_PROMOTED":
         return `/offers/${notification.relatedId}`;
       default:
         return "/notifications";

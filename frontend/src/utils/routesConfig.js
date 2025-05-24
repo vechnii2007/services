@@ -1,6 +1,7 @@
 import React, { useContext, lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import AdminUserProfilePage from "../components/AdminPanel/AdminUserProfilePage";
 
 // Ленивая загрузка компонентов
 const Offers = lazy(() => import("../pages/Offers"));
@@ -151,5 +152,10 @@ export const routesConfig = [
     path: "/oauth-success",
     element: withSuspense(OauthSuccess),
     requiredRole: null,
+  },
+  {
+    path: "/admin/users/:id",
+    element: <AdminUserProfilePage />,
+    requiredRole: "admin",
   },
 ];

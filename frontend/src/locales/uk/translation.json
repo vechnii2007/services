@@ -544,5 +544,31 @@
   "error_cancelling_subscription": "Помилка при скасуванні підписки",
   "error_renewing_subscription": "Помилка при продовженні підписки",
   "paid": "Оплачено",
-  "status_paid": "Оплачено"
+  "status_paid": "Оплачено",
+  "limit_exceeded": {
+    "title": "Перевищено ліміт",
+    "message": "Ви досягли ліміту за вашим тарифом. Оформіть підписку для розширення можливостей.",
+    "subscribe_button": "Оформити підписку"
+  },
+  "top": "ТОП",
+  "promoted": "Просувається",
+  "not_promoted": "Звичайна",
+  "promote_to_top": "Підняти в ТОП",
+  "offer_promoted_successfully": "Пропозицію успішно просунуто!",
+  "error_promoting_offer": "Помилка при просуванні пропозиції",
+  "category": "Категорія",
+  "title": "Назва",
+  "limit_exceeded_top_offers": "Досягнуто ліміт топ-оголошень за вашим тарифом",
+  "approve_payment": "Підтвердити платіж",
+  "cancel_payment": "Відхилити платіж",
+  "confirm_cancel_payment_title": "Відхилити платіж?",
+  "confirm_cancel_payment_text": "Ви впевнені, що хочете відхилити цей платіж? Цю дію не можна скасувати.",
+  "confirm": "Підтвердити",
+  "open_offer": "Відкрити пропозицію",
+  "open_subscription": "Відкрити підписку",
+  "open_transaction": "Відкрити транзакцію",
+  "refund_payment": "Повернути кошти",
+  "confirm_refund_payment_title": "Повернути кошти?",
+  "confirm_refund_payment_text": "Ви впевнені, що хочете повернути кошти за цим платежем? Цю дію не можна скасувати.",
+  "remove_from_top": "Видалити з ТОП"
 }

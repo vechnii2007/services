@@ -40,9 +40,11 @@ const PromoteOfferModal = ({ open, onClose, offerId, onSuccess }) => {
   const [selectedTariffId, setSelectedTariffId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (open) {
+      setErrorMessage("");
       TariffService.getPromotionTariffs().then((tariffs) => {
         setPromotionTariffs(tariffs);
         if (tariffs.length > 0) setSelectedTariffId(tariffs[0]._id);
@@ -57,13 +59,26 @@ const PromoteOfferModal = ({ open, onClose, offerId, onSuccess }) => {
   const handlePaymentSuccess = async () => {
     try {
       setLoading(true);
+      setErrorMessage("");
       await OfferService.promoteOffer(offerId, selectedTariffId);
       toast.success(t("offer.promotion_success"));
       onSuccess?.();
       setPaymentOpen(false);
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.error || t("common.error"));
+      let msg =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        t("common.error");
+      if (msg === "Something broke!") {
+        msg = t("limit_exceeded_top_offers");
+      } else if (/лимит|limit/i.test(msg)) {
+        // оставить как есть
+      } else if (!msg || msg === t("common.error")) {
+        msg = t("something_went_wrong");
+      }
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -81,6 +96,11 @@ const PromoteOfferModal = ({ open, onClose, offerId, onSuccess }) => {
           <Typography variant="body1" gutterBottom>
             {t("offer.promote_description")}
           </Typography>
+          {errorMessage && (
+            <Typography color="error" sx={{ mb: 2 }}>
+              {errorMessage}
+            </Typography>
+          )}
 
           <RadioGroup
             value={selectedTariffId || ""}

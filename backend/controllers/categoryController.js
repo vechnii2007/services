@@ -138,14 +138,12 @@ class CategoryController {
 
       // Получаем статистику
       const counts = await categoryStatsService.getCategoryCounts();
-      console.log(`[${requestId}] Category counts retrieved:`, counts);
 
       // Если статистика пуста, делаем полную синхронизацию
       if (Object.keys(counts).length === 0) {
         console.log(`[${requestId}] No counts found, running full sync`);
         await categoryStatsService.fullSync();
         const updatedCounts = await categoryStatsService.getCategoryCounts();
-        console.log(`[${requestId}] Updated counts after sync:`, updatedCounts);
         return res.json(updatedCounts);
       }
 

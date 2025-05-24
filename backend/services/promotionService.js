@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 const NotificationService = require("./NotificationService");
 const Review = require("../models/Review");
+const RoleLimit = require("../models/RoleLimit");
 
 class PromotionService {
   // Длительность поднятия в днях
@@ -36,7 +37,28 @@ class PromotionService {
       throw new ApiError(400, "Invalid promotion type");
     }
 
+    // Проверка лимита топ-объявлений
+    const user = await User.findById(offer.providerId);
+    const userRole = user.role || "provider";
+    // Получаем лимит для роли (и типа тарифа, если есть)
+    const roleLimit = await RoleLimit.findOne({
+      role: userRole,
+      type: /free|premium|.*/,
+    });
+    const maxTopOffers = roleLimit?.limits?.maxTopOffers || 1;
     const now = new Date();
+    const activeTopOffers = await Offer.countDocuments({
+      providerId: offer.providerId,
+      "promoted.isPromoted": true,
+      "promoted.promotedUntil": { $gt: now },
+      _id: { $ne: offer._id }, // не считаем текущий оффер, если он уже топ
+    });
+    if (activeTopOffers >= maxTopOffers) {
+      throw new ApiError(
+        400,
+        `Достигнут лимит топ-объявлений: ${maxTopOffers}`
+      );
+    }
 
     // If offer is already promoted, extend from current end date
     const startDate =
@@ -234,7 +256,29 @@ class PromotionService {
       throw new ApiError(403, "You can only promote your own offers");
     }
 
+    // Проверка лимита топ-объявлений
+    const user = await User.findById(offer.providerId);
+    const userRole = user.role || "provider";
+    // Получаем лимит для роли (и типа тарифа, если есть)
+    const roleLimit = await RoleLimit.findOne({
+      role: userRole,
+      type: /free|premium|.*/,
+    });
+    const maxTopOffers = roleLimit?.limits?.maxTopOffers || 1;
     const now = new Date();
+    const activeTopOffers = await Offer.countDocuments({
+      providerId: offer.providerId,
+      "promoted.isPromoted": true,
+      "promoted.promotedUntil": { $gt: now },
+      _id: { $ne: offer._id }, // не считаем текущий оффер, если он уже топ
+    });
+    if (activeTopOffers >= maxTopOffers) {
+      throw new ApiError(
+        400,
+        `Достигнут лимит топ-объявлений: ${maxTopOffers}`
+      );
+    }
+
     const startDate =
       offer.promoted?.promotedUntil && offer.promoted.promotedUntil > now
         ? offer.promoted.promotedUntil

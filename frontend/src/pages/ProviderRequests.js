@@ -53,6 +53,10 @@ const ProviderRequests = () => {
         setRequests(res.data);
         setMessage(t("requests_loaded"));
       } catch (error) {
+        if (axios.isCancel && axios.isCancel(error)) {
+          // Игнорируем отмену дублирующегося запроса
+          return;
+        }
         if (error.response) {
           setMessage(
             "Error: " + (error.response.data.error || t("something_went_wrong"))
@@ -122,6 +126,10 @@ const ProviderRequests = () => {
         [requestId]: { message: "", price: "" }, // Сбрасываем форму для данного requestId
       }));
     } catch (error) {
+      if (axios.isCancel && axios.isCancel(error)) {
+        // Игнорируем отмену дублирующегося запроса
+        return;
+      }
       if (error.response) {
         setMessage(
           "Error: " + (error.response.data.error || t("something_went_wrong"))

@@ -10,12 +10,20 @@ import {
   MenuItem,
   CircularProgress,
   Box,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import GenericTable from "./GenericTable";
 import FilterControls from "./FilterControls";
 import CreateUserDialog from "./CreateUserDialog";
 import EditUserDialog from "./EditUserDialog";
 import { Snackbar, Alert } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import BlockIcon from "@mui/icons-material/Block";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 const UsersTab = () => {
   const { t } = useTranslation();
@@ -35,6 +43,7 @@ const UsersTab = () => {
   });
 
   const limit = 10;
+  const navigate = useNavigate();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -139,7 +148,16 @@ const UsersTab = () => {
   ];
 
   const renderRow = (user) => (
-    <TableRow key={user._id}>
+    <TableRow
+      key={user._id}
+      hover
+      sx={{ cursor: "pointer" }}
+      onClick={(e) => {
+        // Не реагировать на клик по иконкам действий
+        if (e.target.closest(".actions-cell")) return;
+        navigate(`/admin/users/${user._id}`);
+      }}
+    >
       <TableCell>{user._id}</TableCell>
       <TableCell>{user.name}</TableCell>
       <TableCell>{user.email}</TableCell>
@@ -147,6 +165,7 @@ const UsersTab = () => {
         <Select
           value={user.role}
           onChange={(e) => handleChangeRole(user._id, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
         >
           <MenuItem value="user">{t("user")}</MenuItem>
           <MenuItem value="provider">{t("provider")}</MenuItem>
@@ -155,33 +174,41 @@ const UsersTab = () => {
       </TableCell>
       <TableCell>{user.accountStatus}</TableCell>
       <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-      <TableCell>
-        <Button
-          variant="contained"
-          color={user.accountStatus === "active" ? "error" : "success"}
-          onClick={() => handleBlockUser(user._id)}
-          sx={{ marginRight: 1 }}
+      <TableCell className="actions-cell" onClick={(e) => e.stopPropagation()}>
+        <Tooltip title={t("profile", "Профиль")}>
+          <IconButton
+            color="info"
+            onClick={() => navigate(`/admin/users/${user._id}`)}
+          >
+            <AccountCircleIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip
+          title={user.accountStatus === "active" ? t("block") : t("unblock")}
         >
-          {user.accountStatus === "active" ? t("block") : t("unblock")}
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => {
-            setSelectedUserId(user._id);
-            setOpenEditDialog(true);
-          }}
-          sx={{ marginRight: 1 }}
-        >
-          {t("edit")}
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => handleDeleteUser(user._id)}
-        >
-          {t("delete")}
-        </Button>
+          <IconButton
+            color={user.accountStatus === "active" ? "error" : "success"}
+            onClick={() => handleBlockUser(user._id)}
+          >
+            {user.accountStatus === "active" ? <BlockIcon /> : <LockOpenIcon />}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={t("edit")}>
+          <IconButton
+            color="primary"
+            onClick={() => {
+              setSelectedUserId(user._id);
+              setOpenEditDialog(true);
+            }}
+          >
+            <EditIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={t("delete")}>
+          <IconButton color="error" onClick={() => handleDeleteUser(user._id)}>
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
       </TableCell>
     </TableRow>
   );

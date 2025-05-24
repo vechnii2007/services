@@ -15,10 +15,9 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import NotificationSettings from "../components/Header/NotificationSettings";
 import AddressAutocomplete from "../components/AddressAutocomplete";
 import UserSubscriptionTab from "../components/Profile/UserSubscriptionTab";
-import UserPromotedOffersTab from "../components/Profile/UserPromotedOffersTab";
+import UserOffersTableTab from "../components/Profile/UserOffersTableTab";
 
 const TabPanel = (props) => {
   const { children, value, index, ...other } = props;
@@ -58,7 +57,6 @@ const Profile = () => {
         address: user.address || "",
         role: user.role || "user",
       });
-      setMessage(t("profile_loaded"));
     }
   }, [user, t, setValues]);
 
@@ -74,7 +72,7 @@ const Profile = () => {
     }
   };
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (_, newValue) => {
     setTabValue(newValue);
   };
 
@@ -94,7 +92,7 @@ const Profile = () => {
   const isProvider = values.role === "provider";
 
   return (
-    <Container maxWidth="md" sx={{ paddingY: 4 }}>
+    <Container maxWidth="lg" sx={{ paddingY: 4 }}>
       <Typography variant="h4" gutterBottom>
         {t("profile")}
       </Typography>
@@ -131,13 +129,6 @@ const Profile = () => {
                   label={t("my_offers")}
                   id="profile-tab-2"
                   aria-controls="profile-tabpanel-2"
-                />
-              )}
-              {isProvider && (
-                <Tab
-                  label={t("promoted_offers")}
-                  id="profile-tab-3"
-                  aria-controls="profile-tabpanel-3"
                 />
               )}
             </Tabs>
@@ -182,10 +173,10 @@ const Profile = () => {
                 margin="normal"
               />
               <FormControl fullWidth margin="normal">
-                <InputLabel>Роль</InputLabel>
+                <InputLabel>{t("role")}</InputLabel>
                 <Select name="role" value={values.role} onChange={handleChange}>
-                  <MenuItem value="user">Пользователь</MenuItem>
-                  <MenuItem value="provider">Провайдер</MenuItem>
+                  <MenuItem value="user">{t("user")}</MenuItem>
+                  <MenuItem value="provider">{t("provider")}</MenuItem>
                 </Select>
               </FormControl>
               <Button
@@ -205,12 +196,7 @@ const Profile = () => {
 
           {isProvider && (
             <TabPanel value={tabValue} index={2}>
-              <Typography>Provider Offers Component</Typography>
-            </TabPanel>
-          )}
-          {isProvider && (
-            <TabPanel value={tabValue} index={3}>
-              <UserPromotedOffersTab userId={user._id} />
+              <UserOffersTableTab userId={user._id} />
             </TabPanel>
           )}
         </>

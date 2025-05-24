@@ -20,6 +20,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import MuiAutocomplete from "@mui/material/Autocomplete";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import LimitExceededModal from "../components/LimitExceededModal";
 
 const containerStyle = {
   width: "100%",
@@ -47,6 +48,8 @@ const ServiceRequestForm = () => {
   const navigate = useNavigate();
   const [providers, setProviders] = useState([]);
   const [providerId, setProviderId] = useState("");
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
 
   useEffect(() => {
     api
@@ -117,8 +120,17 @@ const ServiceRequestForm = () => {
       setShowMap(false);
       navigate("/my-requests");
     } catch (error) {
-      console.error("Error creating request:", error);
-      setError(error.message);
+      if (
+        error.response &&
+        error.response.status === 403 &&
+        error.response.data?.error?.includes("лимит")
+      ) {
+        setLimitMessage(error.response.data.error);
+        setLimitModalOpen(true);
+      } else {
+        console.error("Error creating request:", error);
+        setError(error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -255,6 +267,11 @@ const ServiceRequestForm = () => {
               </Button>
             </Box>
           </form>
+          <LimitExceededModal
+            open={limitModalOpen}
+            onClose={() => setLimitModalOpen(false)}
+            message={limitMessage}
+          />
         </CardContent>
       </Card>
     </Box>

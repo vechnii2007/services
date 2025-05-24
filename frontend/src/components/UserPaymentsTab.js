@@ -14,8 +14,17 @@ import {
   CircularProgress,
   Alert,
   TablePagination,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
 import PaymentService from "../services/PaymentService";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 
 const PaymentStatusChip = ({ status }) => {
   const { t } = useTranslation();
@@ -40,6 +49,11 @@ const UserPaymentsTab = ({ userId }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    payment: null,
+  });
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -70,6 +84,32 @@ const UserPaymentsTab = ({ userId }) => {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleApprove = async (paymentId) => {
+    setActionLoading(paymentId);
+    try {
+      await PaymentService.updateStatus(paymentId, "paid");
+      fetchPayments();
+    } catch (e) {
+      setError(e.response?.data?.message || t("something_went_wrong"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!confirmDialog.payment) return;
+    setActionLoading(confirmDialog.payment._id);
+    try {
+      await PaymentService.updateStatus(confirmDialog.payment._id, "failed");
+      setConfirmDialog({ open: false, payment: null });
+      fetchPayments();
+    } catch (e) {
+      setError(e.response?.data?.message || t("something_went_wrong"));
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (loading && !payments.length) {
@@ -111,6 +151,7 @@ const UserPaymentsTab = ({ userId }) => {
               <TableCell>{t("type")}</TableCell>
               <TableCell align="right">{t("amount")}</TableCell>
               <TableCell>{t("status")}</TableCell>
+              <TableCell>{t("actions")}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -147,6 +188,42 @@ const UserPaymentsTab = ({ userId }) => {
                 <TableCell>
                   <PaymentStatusChip status={payment.status} />
                 </TableCell>
+                <TableCell>
+                  {payment.status === "pending" ? (
+                    <>
+                      <Tooltip title={t("approve_payment") || "Подтвердить"}>
+                        <span>
+                          <IconButton
+                            color="success"
+                            size="small"
+                            disabled={!!actionLoading}
+                            onClick={() => handleApprove(payment._id)}
+                          >
+                            {actionLoading === payment._id ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <CheckIcon />
+                            )}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title={t("cancel_payment") || "Отклонить"}>
+                        <span>
+                          <IconButton
+                            color="error"
+                            size="small"
+                            disabled={!!actionLoading}
+                            onClick={() =>
+                              setConfirmDialog({ open: true, payment })
+                            }
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </>
+                  ) : null}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -162,6 +239,29 @@ const UserPaymentsTab = ({ userId }) => {
         onRowsPerPageChange={handleChangeRowsPerPage}
         labelRowsPerPage={t("rows_per_page")}
       />
+
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() => setConfirmDialog({ open: false, payment: null })}
+      >
+        <DialogTitle>{t("confirm_cancel_payment_title")}</DialogTitle>
+        <DialogContent>{t("confirm_cancel_payment_text")}</DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmDialog({ open: false, payment: null })}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            onClick={handleCancel}
+            color="error"
+            variant="contained"
+            disabled={!!actionLoading}
+          >
+            {actionLoading ? <CircularProgress size={20} /> : t("confirm")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

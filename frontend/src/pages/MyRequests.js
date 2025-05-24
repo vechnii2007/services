@@ -90,6 +90,10 @@ const MyRequests = () => {
         }
         setError("");
       } catch (error) {
+        if (axios.isCancel && axios.isCancel(error)) {
+          // Игнорируем отмену дублирующегося запроса
+          return;
+        }
         setError(
           t("error_fetching_requests") +
             ": " +

@@ -11,6 +11,11 @@ const { upload } = require("../config/cloudinaryConfig");
 const path = require("path");
 const categoryController = require("../controllers/categoryController");
 const { emitClearCache } = require("../socket");
+const Payment = require("../models/Payment");
+const Subscription = require("../models/Subscription");
+const Review = require("../models/Review");
+const adminRoleLimitRoutes = require("./adminRoleLimitRoutes");
+const RoleLimit = require("../models/RoleLimit");
 
 // Получение списка пользователей с фильтрацией и пагинацией
 router.get("/users", auth, isAdmin, async (req, res) => {
@@ -127,10 +132,10 @@ router.delete("/users/:id", auth, isAdmin, async (req, res) => {
 // Получение списка запросов с фильтрацией и пагинацией
 router.get("/requests", auth, isAdmin, async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, userId, page = 1, limit = 10 } = req.query;
     const query = {};
     if (status) query.status = status;
-
+    if (userId) query.userId = userId;
     const requests = await ServiceRequest.find(query)
       .populate("userId", "name email")
       .skip((page - 1) * limit)
@@ -157,6 +162,25 @@ router.post("/requests", auth, isAdmin, async (req, res) => {
         .status(400)
         .json({ error: "All fields except coordinates are required" });
     }
+    // --- Проверка лимита активных заявок ---
+    const user = await User.findById(userId);
+    const subscriptionType = user?.subscriptionType || "free";
+    const roleLimit = await RoleLimit.findOne({
+      role: "user",
+      type: subscriptionType,
+    });
+    if (roleLimit) {
+      const activeRequestsCount = await ServiceRequest.countDocuments({
+        userId,
+        status: { $in: ["pending", "active"] },
+      });
+      if (activeRequestsCount >= (roleLimit.limits.maxActiveRequests || 0)) {
+        return res.status(403).json({
+          error: `Лимит активных заявок (${roleLimit.limits.maxActiveRequests}) для вашей подписки исчерпан. Оформите подписку для расширения лимита.`,
+        });
+      }
+    }
+    // --- конец проверки лимита ---
     const request = new ServiceRequest({
       userId,
       serviceType,
@@ -260,43 +284,20 @@ router.get("/test-offers", async (req, res) => {
 // Получение списка предложений с фильтрацией и пагинацией
 router.get("/offers", auth, isAdmin, async (req, res) => {
   try {
-    // Добавляем заголовки для предотвращения кеширования
-    res.setHeader(
-      "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate"
-    );
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-    res.setHeader("Surrogate-Control", "no-store");
-
-    const { status, page = 1, limit = 10 } = req.query;
-    const pageNumber = parseInt(page);
-    const limitNumber = parseInt(limit);
-    const skip = (pageNumber - 1) * limitNumber;
-
-    // Построение запроса
+    const { status, userId, page = 1, limit = 10 } = req.query;
     const query = {};
     if (status) query.status = status;
-
-    // Получаем данные только из коллекции Offer
-    const [offers, offersCount] = await Promise.all([
-      Offer.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNumber)
-        .populate("providerId", "name email"),
-      Offer.countDocuments(query),
-    ]);
-
-    // Подготавливаем ответ
-    const total = offersCount;
-    const pages = Math.ceil(total / limitNumber);
-
+    if (userId) query.providerId = userId;
+    const offers = await Offer.find(query)
+      .populate("providerId", "name email")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    const total = await Offer.countDocuments(query);
     res.json({
-      offers: offers.map((offer) => ({ ...offer._doc, type: "Offer" })),
+      offers,
       total,
-      page: pageNumber,
-      pages,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -370,6 +371,27 @@ router.post(
       ) {
         return res.status(400).json({ error: "All fields are required" });
       }
+
+      // --- Проверка лимита активных объявлений ---
+      // 1. Определяем тип подписки провайдера (здесь предполагаем, что есть поле subscriptionType, иначе по умолчанию 'free')
+      const provider = await User.findById(providerId);
+      const subscriptionType = provider?.subscriptionType || "free";
+      const roleLimit = await RoleLimit.findOne({
+        role: "provider",
+        type: subscriptionType,
+      });
+      if (roleLimit) {
+        const activeOffersCount = await Offer.countDocuments({
+          providerId,
+          status: { $in: ["active", "pending"] },
+        });
+        if (activeOffersCount >= (roleLimit.limits.maxActiveOffers || 0)) {
+          return res.status(403).json({
+            error: `Лимит активных объявлений (${roleLimit.limits.maxActiveOffers}) для вашей подписки исчерпан. Оформите подписку для расширения лимита.`,
+          });
+        }
+      }
+      // --- конец проверки лимита ---
 
       const images = req.files.map((file) => `/images/${file.filename}`);
       const offer = new Offer({
@@ -458,6 +480,15 @@ router.patch("/offers/:id/status", auth, isAdmin, async (req, res) => {
         return res.status(400).json({ error: "Invalid status for Offer" });
       }
       item = await Offer.findById(req.params.id);
+      // --- СБРОС ПРОДВИЖЕНИЯ ---
+      if (item && ["pending", "rejected"].includes(status)) {
+        if (item.promoted) {
+          item.promoted.isPromoted = false;
+          item.promoted.promotedUntil = null;
+          item.promoted.lastPromotedAt = null;
+          item.promoted.promotionType = null;
+        }
+      }
     } else {
       return res.status(400).json({ error: "Invalid type" });
     }
@@ -529,5 +560,86 @@ router.post("/clear-cache", auth, isAdmin, (req, res) => {
   emitClearCache();
   res.json({ success: true });
 });
+
+// --- Платежи пользователя ---
+router.get("/payments", auth, isAdmin, async (req, res) => {
+  try {
+    const { userId, page = 1, limit = 10 } = req.query;
+    const query = {};
+    if (userId) query.userId = userId;
+    const payments = await Payment.find(query)
+      .populate("tariffId")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    const total = await Payment.countDocuments(query);
+    res.json({
+      payments,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// --- Подписки пользователя ---
+router.get("/subscriptions", auth, isAdmin, async (req, res) => {
+  try {
+    const { userId, page = 1, limit = 10 } = req.query;
+    const query = {};
+    if (userId) query.userId = userId;
+    const subscriptions = await Subscription.find(query)
+      .populate("tariffId")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    const total = await Subscription.countDocuments(query);
+    res.json({
+      subscriptions,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// --- Отзывы пользователя ---
+router.get("/reviews", auth, isAdmin, async (req, res) => {
+  try {
+    const { userId, page = 1, limit = 10 } = req.query;
+    const query = {};
+    if (userId) query.userId = userId;
+    const reviews = await Review.find(query)
+      .populate("author", "name email")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    const total = await Review.countDocuments(query);
+    res.json({
+      reviews,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Получение профиля пользователя по id
+router.get("/users/:id", auth, isAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.use("/role-limits", adminRoleLimitRoutes);
 
 module.exports = router;

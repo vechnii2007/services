@@ -44,6 +44,10 @@ const RequestsTab = () => {
       setRequests(res.data.requests);
       setTotalPages(res.data.pages);
     } catch (error) {
+      if (axios.isCancel && axios.isCancel(error)) {
+        // Игнорируем отмену дублирующегося запроса
+        return;
+      }
       setSnackbar({
         open: true,
         message: "Error fetching requests",

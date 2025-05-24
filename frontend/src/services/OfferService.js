@@ -271,6 +271,10 @@ class OfferService extends BaseService {
       return [];
     }
   }
+
+  async removePromotion(offerId) {
+    return this.post(`/offers/${offerId}/demote`);
+  }
 }
 
 export default new OfferService();

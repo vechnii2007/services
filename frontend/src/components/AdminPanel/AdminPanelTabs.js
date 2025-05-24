@@ -8,6 +8,7 @@ import CategoriesTab from "./CategoriesTab";
 import AdminService from "../../services/AdminService";
 import TariffsTab from "./TariffsTab";
 import PaymentsTab from "./PaymentsTab";
+import AdminRoleLimitsTab from "./AdminRoleLimitsTab";
 
 const AdminPanelTabs = () => {
   const { t } = useTranslation();
@@ -55,6 +56,7 @@ const AdminPanelTabs = () => {
         <Tab label={t("categories")} />
         <Tab label={t("tariffs")} />
         <Tab label={t("payments")} />
+        <Tab label={t("limits", "Лимиты")} />
       </Tabs>
 
       {tabValue === 0 && <UsersTab />}
@@ -63,6 +65,7 @@ const AdminPanelTabs = () => {
       {tabValue === 3 && <CategoriesTab />}
       {tabValue === 4 && <TariffsTab />}
       {tabValue === 5 && <PaymentsTab />}
+      {tabValue === 6 && <AdminRoleLimitsTab />}
 
       <Snackbar
         open={cacheCleared}
