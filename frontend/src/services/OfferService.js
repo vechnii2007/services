@@ -275,6 +275,16 @@ class OfferService extends BaseService {
   async removePromotion(offerId) {
     return this.post(`/offers/${offerId}/demote`);
   }
+
+  async batchPromotionStatuses(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return {};
+    try {
+      const response = await this.post("/offers/promotion-statuses", { ids });
+      return response.statuses || {};
+    } catch (error) {
+      return {};
+    }
+  }
 }
 
 export default new OfferService();

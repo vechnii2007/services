@@ -1,9 +1,82 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "../../utils/axiosConfig";
-import { Typography, Button, TableRow, TableCell, Box } from "@mui/material";
+import {
+  Typography,
+  Button,
+  TableRow,
+  TableCell,
+  Box,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  Divider,
+  IconButton,
+} from "@mui/material";
 import GenericTable from "./GenericTable";
 import CategoryDialog from "./CategoryDialog";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+const CategoryCardMobile = ({ category, t, onEdit, onDelete }) => (
+  <Card sx={{ mb: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="subtitle2" color="text.secondary">
+          {category._id}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {category.createdAt
+            ? new Date(category.createdAt).toLocaleDateString()
+            : "N/A"}
+        </Typography>
+      </Stack>
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
+        {category.label}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {category.key}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        {category.name?.ru || Object.values(category.name || {})[0] || ""}
+      </Typography>
+      {category.image && (
+        <Box sx={{ mt: 1, mb: 1 }}>
+          <img
+            src={category.image}
+            alt={category.label}
+            style={{
+              width: 60,
+              height: 60,
+              objectFit: "cover",
+              borderRadius: 8,
+            }}
+            onError={(e) => {
+              e.target.alt = "Image not found";
+              e.target.style.display = "none";
+            }}
+          />
+        </Box>
+      )}
+    </CardContent>
+    <Divider />
+    <CardActions sx={{ justifyContent: "flex-end" }}>
+      <IconButton color="primary" onClick={onEdit} size="large">
+        <EditIcon />
+      </IconButton>
+      <IconButton color="error" onClick={onDelete} size="large">
+        <DeleteIcon />
+      </IconButton>
+    </CardActions>
+  </Card>
+);
 
 const CategoriesTab = () => {
   const { t } = useTranslation();
@@ -16,6 +89,7 @@ const CategoriesTab = () => {
     label: "",
     image: null,
   });
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -185,15 +259,42 @@ const CategoriesTab = () => {
       <Typography variant="h6" gutterBottom>
         {t("categories")}
       </Typography>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => handleOpenCategoryDialog()}
-        sx={{ marginBottom: 2 }}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: 2,
+          mb: 2,
+        }}
       >
-        {t("add_category")}
-      </Button>
-      <GenericTable headers={headers} rows={categories} renderRow={renderRow} />
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => handleOpenCategoryDialog()}
+          sx={isMobile ? { mb: 2 } : {}}
+        >
+          {t("add_category")}
+        </Button>
+      </Box>
+      {isMobile ? (
+        <Box>
+          {categories.map((category) => (
+            <CategoryCardMobile
+              key={category._id}
+              category={category}
+              t={t}
+              onEdit={() => handleOpenCategoryDialog(category)}
+              onDelete={() => handleDeleteCategory(category._id)}
+            />
+          ))}
+        </Box>
+      ) : (
+        <GenericTable
+          headers={headers}
+          rows={categories}
+          renderRow={renderRow}
+        />
+      )}
       <CategoryDialog
         open={openCategoryDialog}
         onClose={handleCloseCategoryDialog}

@@ -19,6 +19,12 @@ import {
   Checkbox,
   FormControlLabel,
   IconButton,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Divider,
+  Stack,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -37,12 +43,62 @@ const defaultLimit = {
   description: "",
 };
 
+const LimitCardMobile = ({ lim, onEdit, onDelete }) => (
+  <Card sx={{ mb: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="subtitle2" color="text.secondary">
+          {lim.role} / {lim.type}
+        </Typography>
+      </Stack>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <b>Активных объявлений:</b> {lim.limits.maxActiveOffers}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <b>Топ-объявлений:</b> {lim.limits.maxTopOffers}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <b>Активных заявок:</b> {lim.limits.maxActiveRequests}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <b>Аналитика:</b> {lim.limits.analytics ? "Да" : "Нет"}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <b>Бейдж:</b> {lim.limits.premiumBadge ? "Да" : "Нет"}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <b>Приоритет:</b> {lim.limits.prioritySupport ? "Да" : "Нет"}
+      </Typography>
+      {lim.description && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          {lim.description}
+        </Typography>
+      )}
+    </CardContent>
+    <Divider />
+    <CardActions sx={{ justifyContent: "flex-end" }}>
+      <IconButton color="primary" onClick={() => onEdit(lim)} size="large">
+        <EditIcon />
+      </IconButton>
+      <IconButton color="error" onClick={() => onDelete(lim._id)} size="large">
+        <DeleteIcon />
+      </IconButton>
+    </CardActions>
+  </Card>
+);
+
 const AdminRoleLimitsTab = () => {
   const [limits, setLimits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(defaultLimit);
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   const fetchLimits = async () => {
     setLoading(true);
@@ -105,53 +161,71 @@ const AdminRoleLimitsTab = () => {
         variant="contained"
         color="primary"
         onClick={() => handleOpenDialog()}
-        sx={{ mb: 2 }}
+        sx={isMobile ? { mb: 2, width: "100%" } : { mb: 2 }}
       >
         Создать лимит
       </Button>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Роль</TableCell>
-            <TableCell>Тип</TableCell>
-            <TableCell>Активных объявлений</TableCell>
-            <TableCell>Топ-объявлений</TableCell>
-            <TableCell>Активных заявок</TableCell>
-            <TableCell>Аналитика</TableCell>
-            <TableCell>Бейдж</TableCell>
-            <TableCell>Приоритет</TableCell>
-            <TableCell>Описание</TableCell>
-            <TableCell>Действия</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
+      {isMobile ? (
+        <Box>
           {limits.map((lim) => (
-            <TableRow key={lim._id}>
-              <TableCell>{lim.role}</TableCell>
-              <TableCell>{lim.type}</TableCell>
-              <TableCell>{lim.limits.maxActiveOffers}</TableCell>
-              <TableCell>{lim.limits.maxTopOffers}</TableCell>
-              <TableCell>{lim.limits.maxActiveRequests}</TableCell>
-              <TableCell>{lim.limits.analytics ? "Да" : "Нет"}</TableCell>
-              <TableCell>{lim.limits.premiumBadge ? "Да" : "Нет"}</TableCell>
-              <TableCell>{lim.limits.prioritySupport ? "Да" : "Нет"}</TableCell>
-              <TableCell>{lim.description}</TableCell>
-              <TableCell>
-                <IconButton onClick={() => handleOpenDialog(lim)} size="small">
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  onClick={() => handleDelete(lim._id)}
-                  size="small"
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </TableCell>
-            </TableRow>
+            <LimitCardMobile
+              key={lim._id}
+              lim={lim}
+              onEdit={handleOpenDialog}
+              onDelete={handleDelete}
+            />
           ))}
-        </TableBody>
-      </Table>
+        </Box>
+      ) : (
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Роль</TableCell>
+              <TableCell>Тип</TableCell>
+              <TableCell>Активных объявлений</TableCell>
+              <TableCell>Топ-объявлений</TableCell>
+              <TableCell>Активных заявок</TableCell>
+              <TableCell>Аналитика</TableCell>
+              <TableCell>Бейдж</TableCell>
+              <TableCell>Приоритет</TableCell>
+              <TableCell>Описание</TableCell>
+              <TableCell>Действия</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {limits.map((lim) => (
+              <TableRow key={lim._id}>
+                <TableCell>{lim.role}</TableCell>
+                <TableCell>{lim.type}</TableCell>
+                <TableCell>{lim.limits.maxActiveOffers}</TableCell>
+                <TableCell>{lim.limits.maxTopOffers}</TableCell>
+                <TableCell>{lim.limits.maxActiveRequests}</TableCell>
+                <TableCell>{lim.limits.analytics ? "Да" : "Нет"}</TableCell>
+                <TableCell>{lim.limits.premiumBadge ? "Да" : "Нет"}</TableCell>
+                <TableCell>
+                  {lim.limits.prioritySupport ? "Да" : "Нет"}
+                </TableCell>
+                <TableCell>{lim.description}</TableCell>
+                <TableCell>
+                  <IconButton
+                    onClick={() => handleOpenDialog(lim)}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => handleDelete(lim._id)}
+                    size="small"
+                    color="error"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
           {editId ? "Редактировать лимит" : "Создать лимит"}

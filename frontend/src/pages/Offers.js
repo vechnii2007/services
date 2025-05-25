@@ -88,6 +88,7 @@ const Offers = () => {
     locations,
     popularSearches,
     filteredOffers,
+    promotionStatuses,
 
     // Методы
     handleSearchQueryChange,
@@ -159,6 +160,7 @@ const Offers = () => {
       hasMore,
       loadingMore,
       onLoadMore: handleLoadMore,
+      promotionStatuses,
     }),
     [
       filteredOffers,
@@ -170,6 +172,7 @@ const Offers = () => {
       hasMore,
       loadingMore,
       handleLoadMore,
+      promotionStatuses,
     ]
   );
 

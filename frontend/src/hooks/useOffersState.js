@@ -66,6 +66,7 @@ const useOffersState = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [promotionStatuses, setPromotionStatuses] = useState({});
 
   const listRef = useRef();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -185,13 +186,20 @@ const useOffersState = () => {
           response = await OfferService.getAll(params);
         }
         if (cancelled) return;
-        setOffers((prev) =>
+        const newOffers =
           page === 1
             ? response.offers || []
-            : [...prev, ...(response.offers || [])]
-        );
+            : [...offers, ...(response.offers || [])];
+        setOffers(newOffers);
         setTotalPages(response.pages || 1);
         setHasMore(page < (response.pages || 1));
+        // --- batch promotion statuses ---
+        const ids = (response.offers || []).map((o) => o._id);
+        if (ids.length > 0) {
+          const statuses = await OfferService.batchPromotionStatuses(ids);
+          if (!cancelled)
+            setPromotionStatuses((prev) => ({ ...prev, ...statuses }));
+        }
       } catch (error) {
         if (!cancelled) setHasMore(false);
       } finally {
@@ -207,12 +215,12 @@ const useOffersState = () => {
     };
   }, [
     page,
-    debouncedSearchQuery,
     debouncedMinPrice,
     debouncedMaxPrice,
     debouncedLocationFilter,
     debouncedSelectedCategory,
-    location.search, // теперь зависим от location.search
+    debouncedSearchQuery,
+    location.search,
   ]);
 
   // --- Фильтры и обработчики ---
@@ -384,6 +392,7 @@ const useOffersState = () => {
     handleLoadMore,
     toggleFavorite,
     clearProviderFilter,
+    promotionStatuses,
   };
 };
 

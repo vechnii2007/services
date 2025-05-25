@@ -285,7 +285,17 @@ class PromotionService {
         : now;
 
     // Продолжительность в днях из тарифа
-    const durationMs = (tariff.period || 1) * 24 * 60 * 60 * 1000;
+    if (
+      !tariff.period ||
+      typeof tariff.period !== "number" ||
+      tariff.period < 1
+    ) {
+      throw new ApiError(
+        400,
+        "Promotion tariff must have a valid period (days > 0)"
+      );
+    }
+    const durationMs = tariff.period * 24 * 60 * 60 * 1000;
     const promotedUntil = new Date(startDate.getTime() + durationMs);
 
     offer.promoted = {

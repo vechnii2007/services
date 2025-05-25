@@ -10,12 +10,67 @@ import {
   MenuItem,
   CircularProgress,
   Box,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  Divider,
+  IconButton,
 } from "@mui/material";
 import GenericTable from "./GenericTable";
 import FilterControls from "./FilterControls";
 import CreateRequestDialog from "./CreateRequestDialog";
 import EditRequestDialog from "./EditRequestDialog";
 import { Snackbar, Alert } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+const RequestCardMobile = ({ request, t, onEdit, onDelete }) => (
+  <Card sx={{ mb: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="subtitle2" color="text.secondary">
+          {request._id}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {new Date(request.createdAt).toLocaleDateString()}
+        </Typography>
+      </Stack>
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
+        {request.userId?.name || "N/A"}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {t(request.serviceType)}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        {request.description}
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ mb: 0.5 }}>
+        <Typography variant="body2" color="primary.main">
+          {request.location || "-"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {t(request.status)}
+        </Typography>
+      </Stack>
+    </CardContent>
+    <Divider />
+    <CardActions sx={{ justifyContent: "flex-end" }}>
+      <IconButton color="primary" onClick={onEdit} size="large">
+        <EditIcon />
+      </IconButton>
+      <IconButton color="error" onClick={onDelete} size="large">
+        <DeleteIcon />
+      </IconButton>
+    </CardActions>
+  </Card>
+);
 
 const RequestsTab = () => {
   const { t } = useTranslation();
@@ -32,6 +87,7 @@ const RequestsTab = () => {
     message: "",
     severity: "info",
   });
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   const limit = 10;
 
@@ -182,7 +238,14 @@ const RequestsTab = () => {
       <Typography variant="h6" gutterBottom>
         {t("requests")}
       </Typography>
-      <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: 2,
+          mb: 2,
+        }}
+      >
         <FilterControls
           selectLabel="status"
           selectValue={requestStatusFilter}
@@ -196,6 +259,7 @@ const RequestsTab = () => {
           variant="contained"
           color="primary"
           onClick={() => setOpenCreateDialog(true)}
+          sx={isMobile ? { mt: 2 } : {}}
         >
           {t("create_request")}
         </Button>
@@ -204,23 +268,36 @@ const RequestsTab = () => {
         <Box sx={{ display: "flex", justifyContent: "center", padding: 2 }}>
           <CircularProgress />
         </Box>
+      ) : isMobile ? (
+        <Box>
+          {requests.map((request) => (
+            <RequestCardMobile
+              key={request._id}
+              request={request}
+              t={t}
+              onEdit={() => {
+                setSelectedRequestId(request._id);
+                setOpenEditDialog(true);
+              }}
+              onDelete={() => handleDeleteRequest(request._id)}
+            />
+          ))}
+        </Box>
       ) : (
-        <>
-          <GenericTable
-            headers={headers}
-            rows={requests}
-            renderRow={renderRow}
-            isPaginationEnabled={true}
-            page={page - 1} // MUI uses 0-based indexing, our API uses 1-based
-            rowsPerPage={limit}
-            count={totalPages * limit} // Approximate count based on total pages
-            onPageChange={(e, newPage) => setPage(newPage + 1)} // Convert back to 1-based for API
-            onRowsPerPageChange={(e) => {
-              // If rowsPerPage functionality needed, implement here
-              // This would require API endpoint supporting variable limit
-            }}
-          />
-        </>
+        <GenericTable
+          headers={headers}
+          rows={requests}
+          renderRow={renderRow}
+          isPaginationEnabled={true}
+          page={page - 1}
+          rowsPerPage={limit}
+          count={totalPages * limit}
+          onPageChange={(e, newPage) => setPage(newPage + 1)}
+          onRowsPerPageChange={(e) => {
+            // If rowsPerPage functionality needed, implement here
+            // This would require API endpoint supporting variable limit
+          }}
+        />
       )}
       <CreateRequestDialog
         open={openCreateDialog}

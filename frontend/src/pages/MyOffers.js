@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Box, Typography, Grid } from "@mui/material";
+import { Box, Typography, Grid, CircularProgress } from "@mui/material";
 import OfferCard from "../components/OfferCard";
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
@@ -14,6 +14,7 @@ const MyOffers = () => {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [promotionStatuses, setPromotionStatuses] = useState({});
 
   const fetchMyOffers = useCallback(async () => {
     if (!isAuthenticated || !user?._id) {
@@ -25,6 +26,13 @@ const MyOffers = () => {
       const response = await OfferService.getMyOffers();
       setOffers(response);
       setMessage(t("offers_loaded"));
+      const ids = (response || []).map((o) => o._id);
+      if (ids.length > 0) {
+        const statuses = await OfferService.batchPromotionStatuses(ids);
+        setPromotionStatuses(statuses);
+      } else {
+        setPromotionStatuses({});
+      }
     } catch (error) {
       setMessage(
         "Error: " + (error.response?.data?.error || t("something_went_wrong"))
@@ -61,7 +69,18 @@ const MyOffers = () => {
   }
 
   if (loading) {
-    return <Typography>{t("loading")}</Typography>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: 200,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
@@ -95,6 +114,7 @@ const MyOffers = () => {
                   canPromote={isOwner && user?.role === "provider"}
                   userId={user?._id}
                   userRole={user?.role}
+                  promotionStatus={promotionStatuses[offer._id]}
                 />
               </Grid>
             );

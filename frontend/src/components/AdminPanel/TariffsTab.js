@@ -24,6 +24,11 @@ import {
   TextField,
   InputAdornment,
   Alert,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Divider,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -32,6 +37,68 @@ import SearchIcon from "@mui/icons-material/Search";
 import TariffService from "../../services/TariffService";
 import TariffFormDialog from "./TariffFormDialog";
 import { toast } from "react-hot-toast";
+
+const TariffCardMobile = ({
+  tariff,
+  t,
+  onEdit,
+  onDelete,
+  onToggleActive,
+  formatPrice,
+}) => (
+  <Card sx={{ mb: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="subtitle2" color="text.secondary">
+          {tariff._id}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {tariff.createdAt
+            ? new Date(tariff.createdAt).toLocaleDateString()
+            : "N/A"}
+        </Typography>
+      </Stack>
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
+        {tariff.name}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {tariff.description}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        {formatPrice(tariff.price)}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {t(tariff.type)}
+      </Typography>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 0.5 }}>
+        <Typography
+          variant="body2"
+          color={tariff.isActive ? "success.main" : "error.main"}
+        >
+          {tariff.isActive ? t("active") : t("inactive")}
+        </Typography>
+        <Switch
+          checked={tariff.isActive}
+          onChange={() => onToggleActive(tariff._id)}
+        />
+      </Stack>
+    </CardContent>
+    <Divider />
+    <CardActions sx={{ justifyContent: "flex-end" }}>
+      <IconButton color="primary" onClick={() => onEdit(tariff)} size="large">
+        <EditIcon />
+      </IconButton>
+      <IconButton color="error" onClick={() => onDelete(tariff)} size="large">
+        <DeleteIcon />
+      </IconButton>
+    </CardActions>
+  </Card>
+);
 
 const TariffsTab = () => {
   const { t } = useTranslation();
@@ -54,6 +121,8 @@ const TariffsTab = () => {
   // Фильтрация
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
+
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   const fetchTariffs = async () => {
     setLoading(true);
@@ -186,16 +255,18 @@ const TariffsTab = () => {
   return (
     <Box>
       <Stack
-        direction="row"
+        direction={isMobile ? "column" : "row"}
         justifyContent="space-between"
-        alignItems="center"
+        alignItems={isMobile ? "stretch" : "center"}
         mb={2}
+        gap={2}
       >
         <Typography variant="h5">{t("tariffs")}</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleOpenCreate}
+          sx={isMobile ? { width: "100%" } : {}}
         >
           {t("create_tariff")}
         </Button>
@@ -207,7 +278,7 @@ const TariffsTab = () => {
         </Alert>
       )}
 
-      <Stack direction="row" spacing={2} mb={2}>
+      <Stack direction={isMobile ? "column" : "row"} spacing={2} mb={2}>
         <TextField
           size="small"
           placeholder={t("search_tariffs")}
@@ -220,11 +291,26 @@ const TariffsTab = () => {
               </InputAdornment>
             ),
           }}
+          sx={isMobile ? { width: "100%" } : {}}
         />
       </Stack>
 
       {loading ? (
         <CircularProgress />
+      ) : isMobile ? (
+        <Box>
+          {paginatedTariffs.map((tariff) => (
+            <TariffCardMobile
+              key={tariff._id}
+              tariff={tariff}
+              t={t}
+              onEdit={handleOpenEdit}
+              onDelete={handleDeleteClick}
+              onToggleActive={handleToggleActive}
+              formatPrice={formatPrice}
+            />
+          ))}
+        </Box>
       ) : (
         <Paper>
           <TableContainer>
@@ -276,6 +362,11 @@ const TariffsTab = () => {
                       />
                     </TableCell>
                     <TableCell align="right">
+                      <Typography
+                        color={tariff.isActive ? "success.main" : "error.main"}
+                      >
+                        {tariff.isActive ? t("active") : t("inactive")}
+                      </Typography>
                       <IconButton
                         size="small"
                         onClick={() => handleOpenEdit(tariff)}
@@ -301,7 +392,7 @@ const TariffsTab = () => {
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage={t("rows_per_page")}
+            rowsPerPageOptions={[5, 10, 25]}
           />
         </Paper>
       )}

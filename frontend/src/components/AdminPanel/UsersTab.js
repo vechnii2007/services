@@ -12,6 +12,12 @@ import {
   Box,
   IconButton,
   Tooltip,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  Divider,
 } from "@mui/material";
 import GenericTable from "./GenericTable";
 import FilterControls from "./FilterControls";
@@ -24,6 +30,73 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import BlockIcon from "@mui/icons-material/Block";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
+
+const UserCardMobile = ({ user, t, onProfile, onBlock, onEdit, onDelete }) => (
+  <Card sx={{ mb: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="subtitle2" color="text.secondary">
+          {user._id}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {new Date(user.createdAt).toLocaleDateString()}
+        </Typography>
+      </Stack>
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
+        {user.name || t("no_name")}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {user.email}
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ mb: 0.5 }}>
+        <Typography variant="body2" color="primary.main">
+          {t(user.role)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {user.accountStatus}
+        </Typography>
+      </Stack>
+    </CardContent>
+    <Divider />
+    <CardActions sx={{ justifyContent: "flex-end" }}>
+      <Tooltip title={t("profile", "Профиль")}>
+        {" "}
+        <IconButton color="info" onClick={onProfile} size="large">
+          <AccountCircleIcon />
+        </IconButton>
+      </Tooltip>
+      <Tooltip
+        title={user.accountStatus === "active" ? t("block") : t("unblock")}
+      >
+        {" "}
+        <IconButton
+          color={user.accountStatus === "active" ? "error" : "success"}
+          onClick={onBlock}
+          size="large"
+        >
+          {user.accountStatus === "active" ? <BlockIcon /> : <LockOpenIcon />}
+        </IconButton>
+      </Tooltip>
+      <Tooltip title={t("edit")}>
+        {" "}
+        <IconButton color="primary" onClick={onEdit} size="large">
+          <EditIcon />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title={t("delete")}>
+        {" "}
+        <IconButton color="error" onClick={onDelete} size="large">
+          <DeleteIcon />
+        </IconButton>
+      </Tooltip>
+    </CardActions>
+  </Card>
+);
 
 const UsersTab = () => {
   const { t } = useTranslation();
@@ -44,6 +117,7 @@ const UsersTab = () => {
 
   const limit = 10;
   const navigate = useNavigate();
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -224,7 +298,14 @@ const UsersTab = () => {
       <Typography variant="h6" gutterBottom>
         {t("users")}
       </Typography>
-      <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: 2,
+          mb: 2,
+        }}
+      >
         <FilterControls
           searchLabel="search_by_name_or_email"
           searchValue={userFilter}
@@ -244,6 +325,7 @@ const UsersTab = () => {
           variant="contained"
           color="primary"
           onClick={() => setOpenCreateDialog(true)}
+          sx={isMobile ? { mt: 2 } : {}}
         >
           {t("create_user")}
         </Button>
@@ -252,23 +334,38 @@ const UsersTab = () => {
         <Box sx={{ display: "flex", justifyContent: "center", padding: 2 }}>
           <CircularProgress />
         </Box>
+      ) : isMobile ? (
+        <Box>
+          {users.map((user) => (
+            <UserCardMobile
+              key={user._id}
+              user={user}
+              t={t}
+              onProfile={() => navigate(`/admin/users/${user._id}`)}
+              onBlock={() => handleBlockUser(user._id)}
+              onEdit={() => {
+                setSelectedUserId(user._id);
+                setOpenEditDialog(true);
+              }}
+              onDelete={() => handleDeleteUser(user._id)}
+            />
+          ))}
+        </Box>
       ) : (
-        <>
-          <GenericTable
-            headers={headers}
-            rows={users}
-            renderRow={renderRow}
-            isPaginationEnabled={true}
-            page={page - 1}
-            rowsPerPage={limit}
-            count={totalPages * limit}
-            onPageChange={(e, newPage) => setPage(newPage + 1)}
-            onRowsPerPageChange={(e) => {
-              // If rowsPerPage functionality needed, implement here
-              // This would require API endpoint supporting variable limit
-            }}
-          />
-        </>
+        <GenericTable
+          headers={headers}
+          rows={users}
+          renderRow={renderRow}
+          isPaginationEnabled={true}
+          page={page - 1}
+          rowsPerPage={limit}
+          count={totalPages * limit}
+          onPageChange={(e, newPage) => setPage(newPage + 1)}
+          onRowsPerPageChange={(e) => {
+            // If rowsPerPage functionality needed, implement here
+            // This would require API endpoint supporting variable limit
+          }}
+        />
       )}
       <CreateUserDialog
         open={openCreateDialog}

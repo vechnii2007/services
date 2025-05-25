@@ -1,12 +1,12 @@
-import React, {forwardRef, useCallback} from "react";
+import React, { forwardRef, useCallback } from "react";
 import PropTypes from "prop-types";
-import {Box, Button, CircularProgress, Typography} from "@mui/material";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import OfferCard from "./OfferCard";
 import OfferCardSkeleton from "./OfferCardSkeleton";
 import styled from "@emotion/styled";
-import {useTranslation} from "react-i18next";
-import {PAGINATION} from "../config";
-import {motion} from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { PAGINATION } from "../config";
+import { motion } from "framer-motion";
 
 const WINDOW_SIZE = PAGINATION.OFFERS_PER_PAGE;
 
@@ -50,6 +50,7 @@ const OfferList = forwardRef(
       hasMore,
       loadingMore,
       onLoadMore,
+      promotionStatuses = {},
     },
     ref
   ) => {
@@ -96,6 +97,7 @@ const OfferList = forwardRef(
           offer={offer}
           isFavorite={favorites[offer._id]}
           onFavoriteClick={() => toggleFavorite(offer._id, offer.type)}
+          promotionStatus={promotionStatuses[offer._id]}
         />
       </motion.div>
     ));
@@ -158,6 +160,7 @@ OfferList.propTypes = {
   hasMore: PropTypes.bool,
   loadingMore: PropTypes.bool,
   onLoadMore: PropTypes.func,
+  promotionStatuses: PropTypes.object,
 };
 
 OfferList.defaultProps = {
@@ -168,6 +171,7 @@ OfferList.defaultProps = {
   loadingMore: false,
   toggleFavorite: () => {},
   onLoadMore: null,
+  promotionStatuses: {},
 };
 
 export default React.memo(OfferList);

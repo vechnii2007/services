@@ -15,11 +15,69 @@ import {
   Dialog,
   DialogTitle,
   DialogActions,
+  useMediaQuery,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  IconButton,
+  Divider,
 } from "@mui/material";
 import GenericTable from "./GenericTable";
 import FilterControls from "./FilterControls";
 import CreateOfferDialog from "./CreateOfferDialog";
 import EditOfferDialog from "./EditOfferDialog";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+const OfferCardMobile = ({ offer, onEdit, onDelete, t }) => (
+  <Card sx={{ mb: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="subtitle2" color="text.secondary">
+          {offer._id}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {new Date(offer.createdAt).toLocaleDateString()}
+        </Typography>
+      </Stack>
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
+        {offer.title || t("no_title")}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {t(offer.serviceType)}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        {offer.description}
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ mb: 0.5 }}>
+        <Typography variant="body2" color="primary.main">
+          {offer.price ? `${offer.price} €` : "N/A"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {offer.location || "-"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {t(offer.status)}
+        </Typography>
+      </Stack>
+    </CardContent>
+    <Divider />
+    <CardActions sx={{ justifyContent: "flex-end" }}>
+      <IconButton color="primary" onClick={onEdit} size="large">
+        <EditIcon />
+      </IconButton>
+      <IconButton color="error" onClick={onDelete} size="large">
+        <DeleteIcon />
+      </IconButton>
+    </CardActions>
+  </Card>
+);
 
 const OffersTab = () => {
   const { t } = useTranslation();
@@ -40,6 +98,7 @@ const OffersTab = () => {
     open: false,
     offer: null,
   });
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   const limit = 10;
 
@@ -218,7 +277,14 @@ const OffersTab = () => {
       <Typography variant="h6" gutterBottom>
         {t("offers")}
       </Typography>
-      <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: 2,
+          mb: 2,
+        }}
+      >
         <FilterControls
           selectLabel="status"
           selectValue={offerStatusFilter}
@@ -232,6 +298,7 @@ const OffersTab = () => {
           variant="contained"
           color="primary"
           onClick={() => setOpenCreateDialog(true)}
+          sx={isMobile ? { mt: 2 } : {}}
         >
           {t("create_offer")}
         </Button>
@@ -240,23 +307,36 @@ const OffersTab = () => {
         <Box sx={{ display: "flex", justifyContent: "center", padding: 2 }}>
           <CircularProgress />
         </Box>
+      ) : isMobile ? (
+        <Box>
+          {offers.map((offer) => (
+            <OfferCardMobile
+              key={offer._id}
+              offer={offer}
+              t={t}
+              onEdit={() => {
+                setSelectedOfferId(offer._id);
+                setOpenEditDialog(true);
+              }}
+              onDelete={() => setDeleteDialog({ open: true, offer })}
+            />
+          ))}
+        </Box>
       ) : (
-        <>
-          <GenericTable
-            headers={headers}
-            rows={offers}
-            renderRow={renderRow}
-            isPaginationEnabled={true}
-            page={page - 1}
-            rowsPerPage={limit}
-            count={totalPages * limit}
-            onPageChange={(e, newPage) => setPage(newPage + 1)}
-            onRowsPerPageChange={(e) => {
-              // If rowsPerPage functionality needed, implement here
-              // This would require API endpoint supporting variable limit
-            }}
-          />
-        </>
+        <GenericTable
+          headers={headers}
+          rows={offers}
+          renderRow={renderRow}
+          isPaginationEnabled={true}
+          page={page - 1}
+          rowsPerPage={limit}
+          count={totalPages * limit}
+          onPageChange={(e, newPage) => setPage(newPage + 1)}
+          onRowsPerPageChange={(e) => {
+            // If rowsPerPage functionality needed, implement here
+            // This would require API endpoint supporting variable limit
+          }}
+        />
       )}
       <CreateOfferDialog
         open={openCreateDialog}

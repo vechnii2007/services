@@ -73,6 +73,9 @@ const TariffFormDialog = ({
             message: t("required"),
           });
         }
+      } else {
+        // Для других типов: если period заполнен, то он уже провалидирован схемой
+        // Если не заполнен — не ошибка
       }
     });
 
@@ -105,10 +108,7 @@ const TariffFormDialog = ({
         initialValues={initialValues}
         validate={validate}
         onSubmit={async (values, { setSubmitting }) => {
-          if (values.type !== "subscription") {
-            values.period = undefined;
-          }
-          console.log("SUBMIT", values);
+          // Не сбрасываем period для других типов
           await onSubmit(values);
           setSubmitting(false);
         }}
@@ -238,35 +238,32 @@ const TariffFormDialog = ({
                   <MenuItem value="one-time">{t("one-time")}</MenuItem>
                   <MenuItem value="promotion">{t("promotion")}</MenuItem>
                 </TextField>
-                {values.type === "subscription" && (
-                  <TextField
-                    name="period"
-                    label={t("period_days")}
-                    type="number"
-                    value={values.period || ""}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={touched.period && Boolean(errors.period)}
-                    helperText={
-                      (touched.period && errors.period) ||
-                      t("period_helper_text")
-                    }
-                    fullWidth
-                    required
-                    inputProps={{ min: 1, max: 365 }}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Tooltip title={t("period_tooltip")}>
-                            <IconButton size="small">
-                              <HelpOutlineIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                )}
+                <TextField
+                  name="period"
+                  label={t("period_days")}
+                  type="number"
+                  value={values.period || ""}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  error={touched.period && Boolean(errors.period)}
+                  helperText={
+                    (touched.period && errors.period) || t("period_helper_text")
+                  }
+                  fullWidth
+                  required={values.type === "subscription"}
+                  inputProps={{ min: 1, max: 365 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title={t("period_tooltip")}>
+                          <IconButton size="small">
+                            <HelpOutlineIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
                 <FormControlLabel
                   control={
                     <Switch

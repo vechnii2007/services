@@ -49,6 +49,26 @@ class PromotionController {
       next(error);
     }
   }
+
+  async batchCheckPromotionStatuses(req, res, next) {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "No offer ids provided" });
+      }
+      const statuses = {};
+      for (const id of ids) {
+        try {
+          statuses[id] = await PromotionService.checkPromotionStatus(id);
+        } catch (e) {
+          statuses[id] = { isPromoted: false, error: e.message };
+        }
+      }
+      res.json({ statuses });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new PromotionController();

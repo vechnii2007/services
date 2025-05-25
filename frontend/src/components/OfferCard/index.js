@@ -121,12 +121,13 @@ const OfferCard = memo(
     userId,
     userRole,
     onUpdate,
+    promotionStatus: promotionStatusProp,
   }) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const auth = useAuth();
     const [promoteModalOpen, setPromoteModalOpen] = useState(false);
-    const [promotionStatus, setPromotionStatus] = useState(null);
+    const [promotionStatus, setPromotionStatus] = useState(promotionStatusProp);
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
 
@@ -147,24 +148,34 @@ const OfferCard = memo(
     const shouldShowPromoteButton = canPromote;
 
     useEffect(() => {
+      // Если проп promotionStatus передан — не делаем запрос
+      if (promotionStatusProp !== undefined) {
+        setPromotionStatus(promotionStatusProp);
+        return;
+      }
+      // Только если проп не передан и нужно показать кнопку продвижения — делаем запрос
       const checkPromotionStatus = async () => {
         try {
           if (!safeOfferId) {
             return;
           }
-
           const status = await OfferService.getPromotionStatus(safeOfferId);
           setPromotionStatus(status);
         } catch (error) {
-          // Устанавливаем статус в null при ошибке, но не блокируем отображение карточки
           setPromotionStatus(null);
         }
       };
-
       if (safeOfferId && shouldShowPromoteButton) {
         checkPromotionStatus();
       }
-    }, [safeOfferId, shouldShowPromoteButton, canPromote, isOwner, userRole]);
+    }, [
+      promotionStatusProp,
+      safeOfferId,
+      shouldShowPromoteButton,
+      canPromote,
+      isOwner,
+      userRole,
+    ]);
 
     const handleViewClick = (e) => {
       e.preventDefault();
@@ -218,10 +229,8 @@ const OfferCard = memo(
       }
     };
 
-    const isPromoted =
-      promotionStatus?.isPromoted ||
-      (offer?.promoted?.isPromoted &&
-        new Date(offer.promoted.promotedUntil) > new Date());
+    // Новый вариант: только по API
+    const isPromoted = promotionStatus?.isPromoted;
 
     if (!safeOfferId) {
       console.warn("OfferCard received offer without ID:", offer);
@@ -246,7 +255,11 @@ const OfferCard = memo(
             scale: { duration: 0.18 },
           }}
           sx={{
-            height: "100%",
+            width: 320,
+            minWidth: 320,
+            maxWidth: 320,
+            height: "auto",
+            minHeight: 420,
             display: "flex",
             flexDirection: "column",
             borderRadius: "20px",
@@ -268,7 +281,7 @@ const OfferCard = memo(
           }}
           onClick={handleViewClick}
         >
-          {(isPromoted || promotionStatus?.isPromoted) && (
+          {isPromoted && (
             <PromotedBadge>
               <TrendingUpIcon fontSize="small" />
               TOP
@@ -506,6 +519,7 @@ OfferCard.propTypes = {
   userId: PropTypes.string,
   userRole: PropTypes.string,
   onUpdate: PropTypes.func,
+  promotionStatus: PropTypes.object,
 };
 
 export default OfferCard;

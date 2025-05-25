@@ -165,6 +165,13 @@ router.get("/offers", async (req, res) => {
         } else {
           formattedOffer.images = [];
         }
+        // Корректно вычисляем isPromoted на лету
+        if (formattedOffer.promoted && formattedOffer.promoted.promotedUntil) {
+          formattedOffer.promoted.isPromoted =
+            new Date(formattedOffer.promoted.promotedUntil) > new Date();
+        } else if (formattedOffer.promoted) {
+          formattedOffer.promoted.isPromoted = false;
+        }
         return formattedOffer;
       })
     );
@@ -276,7 +283,13 @@ router.get("/offers/:id", async (req, res) => {
       } else {
         formattedOffer.images = [];
       }
-
+      // Корректно вычисляем isPromoted на лету
+      if (formattedOffer.promoted && formattedOffer.promoted.promotedUntil) {
+        formattedOffer.promoted.isPromoted =
+          new Date(formattedOffer.promoted.promotedUntil) > new Date();
+      } else if (formattedOffer.promoted) {
+        formattedOffer.promoted.isPromoted = false;
+      }
       return res.json(formattedOffer);
     }
 
@@ -348,6 +361,13 @@ router.get("/my-offers", auth, async (req, res) => {
           promotionType: null,
           lastPromotedAt: null,
         };
+      }
+      // Корректно вычисляем isPromoted на лету
+      if (offerData.promoted && offerData.promoted.promotedUntil) {
+        offerData.promoted.isPromoted =
+          new Date(offerData.promoted.promotedUntil) > new Date();
+      } else {
+        offerData.promoted.isPromoted = false;
       }
       return offerData;
     });
@@ -1545,5 +1565,11 @@ router.post("/offers/:id/demote", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+// Получение статусов продвижения для массива объявлений
+router.post(
+  "/offers/promotion-statuses",
+  promotionController.batchCheckPromotionStatuses
+);
 
 module.exports = router;

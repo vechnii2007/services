@@ -16,6 +16,7 @@ const Favorites = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [promotionStatuses, setPromotionStatuses] = useState({});
 
   // Загрузка избранных предложений
   useEffect(() => {
@@ -48,6 +49,15 @@ const Favorites = () => {
 
         if (!favoritesData || favoritesData.length === 0) {
           setMessage(t("no_favorites"));
+        }
+
+        // batch promotion statuses
+        const ids = (favoritesData || []).map((o) => o._id);
+        if (ids.length > 0) {
+          const statuses = await OfferService.batchPromotionStatuses(ids);
+          setPromotionStatuses(statuses);
+        } else {
+          setPromotionStatuses({});
         }
       } catch (error) {
         // Проверяем статус 401 для неавторизованных запросов
@@ -184,6 +194,7 @@ const Favorites = () => {
             onPageChange={handlePageChange}
             loading={loading}
             toggleFavorite={toggleFavorite}
+            promotionStatuses={promotionStatuses}
           />
 
           {message && favoriteOffers.length === 0 && !loading && (
