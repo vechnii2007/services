@@ -301,7 +301,10 @@ const AdminUserProfilePage = () => {
   const handleDeleteOffer = async () => {
     if (!deleteOfferDialog.offer) return;
     try {
-      await AdminUserService.deleteOffer(deleteOfferDialog.offer._id);
+      await AdminUserService.deleteOffer(
+        deleteOfferDialog.offer._id,
+        deleteOfferDialog.offer.type
+      );
       setDeleteOfferDialog({ open: false, offer: null });
       AdminUserService.getUserOffers(id).then((data) =>
         setOffers(Array.isArray(data) ? data : [])

@@ -10,12 +10,16 @@ import {
   MenuItem,
   CircularProgress,
   Box,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogActions,
 } from "@mui/material";
 import GenericTable from "./GenericTable";
 import FilterControls from "./FilterControls";
 import CreateOfferDialog from "./CreateOfferDialog";
 import EditOfferDialog from "./EditOfferDialog";
-import { Snackbar, Alert } from "@mui/material";
 
 const OffersTab = () => {
   const { t } = useTranslation();
@@ -31,6 +35,10 @@ const OffersTab = () => {
     open: false,
     message: "",
     severity: "info",
+  });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    offer: null,
   });
 
   const limit = 10;
@@ -82,23 +90,43 @@ const OffersTab = () => {
   };
 
   const handleDeleteOffer = async (offerId, type) => {
-    if (window.confirm(t("confirm_delete_offer"))) {
-      try {
-        await axios.delete(`/admin/offers/${offerId}`, { data: { type } });
-        setOffers(offers.filter((offer) => offer._id !== offerId));
-        setSnackbar({
-          open: true,
-          message: "Offer deleted",
-          severity: "success",
-        });
-      } catch (error) {
-        setSnackbar({
-          open: true,
-          message: "Error deleting offer",
-          severity: "error",
-        });
+    const offer = offers.find((o) => o._id === offerId);
+    console.log("Удаление предложения:", offerId, type, offer);
+    const validTypes = ["Offer", "ServiceOffer", "ServiceRequest"];
+    let actualType = type;
+    if (!validTypes.includes(type)) {
+      if (offer && validTypes.includes(offer.type)) {
+        actualType = offer.type;
+      } else {
+        actualType = "Offer";
       }
     }
+    if (!validTypes.includes(actualType)) {
+      setSnackbar({
+        open: true,
+        message: `Ошибка: некорректный тип предложения (${type})`,
+        severity: "error",
+      });
+      return;
+    }
+    try {
+      await axios.delete(`/admin/offers/${offerId}`, {
+        data: { type: actualType },
+      });
+      setOffers(offers.filter((offer) => offer._id !== offerId));
+      setSnackbar({
+        open: true,
+        message: "Offer deleted",
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Error deleting offer",
+        severity: "error",
+      });
+    }
+    setDeleteDialog({ open: false, offer: null });
   };
 
   const handleOfferCreated = () => {
@@ -170,7 +198,7 @@ const OffersTab = () => {
         <Button
           variant="contained"
           color="error"
-          onClick={() => handleDeleteOffer(offer._id, offer.type)}
+          onClick={() => setDeleteDialog({ open: true, offer })}
         >
           {t("delete")}
         </Button>
@@ -253,6 +281,31 @@ const OffersTab = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, offer: null })}
+      >
+        <DialogTitle>{t("confirm_delete_offer")}</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, offer: null })}>
+            {t("cancel")}
+          </Button>
+          <Button
+            onClick={() => {
+              if (deleteDialog.offer) {
+                handleDeleteOffer(
+                  deleteDialog.offer._id,
+                  deleteDialog.offer.type
+                );
+              }
+            }}
+            color="error"
+            variant="contained"
+          >
+            {t("delete")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
