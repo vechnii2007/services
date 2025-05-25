@@ -162,11 +162,20 @@ const Register = () => {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "calc(100vh - 64px)",
-        py: 4,
+        py: { xs: 1, sm: 4 },
+        px: { xs: 0, sm: 0 },
       }}
     >
-      <Card sx={{ width: "100%", maxWidth: 600, p: 3 }}>
-        <CardContent>
+      <Card
+        sx={{
+          width: { xs: "100%", sm: 500, md: 600 },
+          maxWidth: { xs: "100%", sm: 600 },
+          boxShadow: 3,
+          p: { xs: 1, sm: 3 },
+          mx: { xs: 0, sm: "auto" },
+        }}
+      >
+        <CardContent sx={{ p: { xs: 1, sm: 3 } }}>
           <Typography variant="h5" gutterBottom>
             {t("register")}
           </Typography>
@@ -181,8 +190,18 @@ const Register = () => {
             </Typography>
           )}
           <form onSubmit={handleSubmit}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <Grid container spacing={2}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: { xs: 1.5, sm: 2 },
+              }}
+            >
+              <Grid
+                container
+                spacing={{ xs: 1, sm: 2 }}
+                flexDirection={{ xs: "column", sm: "row" }}
+              >
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label={t("name")}
@@ -223,6 +242,7 @@ const Register = () => {
                       value={values.role}
                       onChange={handleRoleChange}
                       label={t("role")}
+                      fullWidth
                     >
                       <MenuItem value="user">{t("user")}</MenuItem>
                       <MenuItem value="provider">{t("provider")}</MenuItem>
@@ -236,7 +256,11 @@ const Register = () => {
                   <Typography variant="h6" gutterBottom>
                     {t("provider_details")}
                   </Typography>
-                  <Grid container spacing={2}>
+                  <Grid
+                    container
+                    spacing={{ xs: 1, sm: 2 }}
+                    flexDirection={{ xs: "column", sm: "row" }}
+                  >
                     <Grid item xs={12} sm={6}>
                       <TextField
                         label={t("phone")}
@@ -385,6 +409,7 @@ const Register = () => {
                 type="submit"
                 variant="contained"
                 color="primary"
+                fullWidth
                 sx={{
                   mt: 2,
                   fontWeight: 700,

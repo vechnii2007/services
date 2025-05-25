@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   CardContent,
+  useMediaQuery,
 } from "@mui/material";
 
 // Google SVG Icon
@@ -45,6 +46,7 @@ const Login = () => {
     password: "",
   });
   const [message, setMessage] = useState("");
+  const isMobile = useMediaQuery("(max-width:600px)");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -80,7 +82,15 @@ const Login = () => {
         minHeight: "80vh",
       }}
     >
-      <Card sx={{ maxWidth: 400, width: "100%", m: 2 }}>
+      <Card
+        sx={{
+          maxWidth: isMobile ? "100%" : 400,
+          width: "100%",
+          m: isMobile ? 0 : 2,
+          boxShadow: isMobile ? 0 : 3,
+          borderRadius: isMobile ? 0 : 3,
+        }}
+      >
         <CardContent>
           <Typography variant="h5" component="h1" gutterBottom align="center">
             {t("login")}
@@ -102,6 +112,7 @@ const Login = () => {
               autoFocus
               value={formData.email}
               onChange={handleChange}
+              sx={{ width: "100%" }}
             />
             <TextField
               margin="normal"
@@ -114,6 +125,7 @@ const Login = () => {
               autoComplete="current-password"
               value={formData.password}
               onChange={handleChange}
+              sx={{ width: "100%" }}
             />
             <Button
               type="submit"
@@ -142,6 +154,22 @@ const Login = () => {
               }}
             >
               {t("login")}
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="primary"
+              sx={{
+                mb: 2,
+                fontWeight: 600,
+                fontSize: 16,
+                borderRadius: 2,
+                textTransform: "none",
+                width: "100%",
+              }}
+              onClick={() => navigate("/register")}
+            >
+              {t("register", "Зарегистрироваться")}
             </Button>
             <Button
               fullWidth
