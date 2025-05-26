@@ -53,7 +53,11 @@ import {
   Edit as EditIcon,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatDate, formatPrice } from "../utils/formatters";
+import {
+  formatDate,
+  formatPrice,
+  getOfferPriceDisplay,
+} from "../utils/formatters";
 import api from "../middleware/api";
 import Reviews from "../components/Reviews";
 import { useChatModal } from "../context/ChatModalContext";
@@ -369,8 +373,19 @@ const OfferDetails = () => {
   const safeId = offer._id || id;
   const safeTitle = offer.title || "";
   const safeDescription = offer.description || "";
-  const safePrice = offer.price || 0;
-  const safeServiceType = offer.serviceType || "";
+  let safeServiceType = "";
+  if (typeof offer.category === "string" && offer.category) {
+    safeServiceType = offer.category;
+  } else if (typeof offer.category === "object" && offer.category !== null) {
+    safeServiceType =
+      offer.category?.label ||
+      offer.category?.name?.ru ||
+      offer.category?.name ||
+      offer.category?.title ||
+      "";
+  } else {
+    safeServiceType = "Без категории";
+  }
   const safeLocation = offer.location || "";
   const safeCreatedAt = offer.createdAt || "";
 
@@ -572,13 +587,26 @@ const OfferDetails = () => {
                 fontWeight="bold"
                 sx={{ mb: 2, fontSize: { xs: 20, sm: 24, md: 28 } }}
               >
-                {formatPrice(safePrice)}
+                {(() => {
+                  console.log("Offer price debug:", {
+                    price: offer.price,
+                    priceFrom: offer.priceFrom,
+                    priceTo: offer.priceTo,
+                    isPriceRange: offer.isPriceRange,
+                  });
+                  return getOfferPriceDisplay({
+                    price: offer.price,
+                    priceFrom: offer.priceFrom,
+                    priceTo: offer.priceTo,
+                    isPriceRange: offer.isPriceRange,
+                  });
+                })()}
               </Typography>
 
               <Box sx={{ mb: 3 }}>
                 <Chip
                   icon={<CategoryIcon />}
-                  label={t(safeServiceType)}
+                  label={safeServiceType}
                   variant="outlined"
                   sx={{ mr: 1, mb: 1 }}
                 />

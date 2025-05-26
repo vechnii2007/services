@@ -105,3 +105,43 @@ export const formatImagePaths = (images) => {
 
   return [];
 };
+
+/**
+ * Формирует строку для отображения цены или диапазона цен
+ * @param {Object} params
+ * @param {number} params.price - Обычная цена
+ * @param {number} params.priceFrom - Нижняя граница диапазона
+ * @param {number} params.priceTo - Верхняя граница диапазона
+ * @param {boolean} params.isPriceRange - Флаг диапазона цен
+ * @returns {string}
+ */
+export const getOfferPriceDisplay = ({
+  price,
+  priceFrom,
+  priceTo,
+  isPriceRange,
+}) => {
+  if (isPriceRange) {
+    // Если оба значения есть и валидны
+    if (
+      typeof priceFrom === "number" &&
+      !isNaN(priceFrom) &&
+      typeof priceTo === "number" &&
+      !isNaN(priceTo)
+    ) {
+      return `${formatPrice(priceFrom)} – ${formatPrice(priceTo)}`;
+    }
+    // Если только нижняя граница
+    if (typeof priceFrom === "number" && !isNaN(priceFrom)) {
+      return `${formatPrice(priceFrom)}+`;
+    }
+    // Если только верхняя граница
+    if (typeof priceTo === "number" && !isNaN(priceTo)) {
+      return `<${formatPrice(priceTo)}`;
+    }
+    // Если ничего нет
+    return "";
+  }
+  // Обычная цена
+  return formatPrice(price);
+};
