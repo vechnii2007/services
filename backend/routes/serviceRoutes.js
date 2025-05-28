@@ -26,15 +26,12 @@ const promotionController = require("../controllers/promotionController");
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
 
-console.log("=== serviceRoutes.js loaded ===");
-
 router.use((req, res, next) => {
   if (req.url.startsWith("/reviews")) {
     return next("route");
   }
   next();
 });
-
 // Получение всех категорий (доступно всем)
 router.get("/categories", categoryController.getAllCategories);
 
@@ -167,18 +164,6 @@ router.get("/offers", async (req, res) => {
         if (provider && provider._id) {
           formattedOffer.providerId = provider._id;
         }
-        // --- Исправление category ---
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[OFFER API] category RAW:", offer.category);
-          try {
-            console.log(
-              "[OFFER API] category FULL:",
-              JSON.stringify(offer.category, null, 2)
-            );
-          } catch (e) {
-            console.log("[OFFER API] category FULL: <unserializable>");
-          }
-        }
         if (
           formattedOffer.category &&
           typeof formattedOffer.category === "object"
@@ -191,24 +176,6 @@ router.get("/offers", async (req, res) => {
             formattedOffer.category._id ||
             JSON.stringify(formattedOffer.category);
         }
-        if (process.env.NODE_ENV !== "production") {
-          console.log(
-            "[OFFER API] category SERIALIZED:",
-            formattedOffer.category
-          );
-        }
-        // --- Исправление serviceType ---
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[OFFER API] serviceType RAW:", offer.serviceType);
-          try {
-            console.log(
-              "[OFFER API] serviceType FULL:",
-              JSON.stringify(offer.serviceType, null, 2)
-            );
-          } catch (e) {
-            console.log("[OFFER API] serviceType FULL: <unserializable>");
-          }
-        }
         if (
           formattedOffer.serviceType &&
           typeof formattedOffer.serviceType === "object"
@@ -220,12 +187,6 @@ router.get("/offers", async (req, res) => {
             formattedOffer.serviceType.title ||
             formattedOffer.serviceType._id ||
             JSON.stringify(formattedOffer.serviceType);
-        }
-        if (process.env.NODE_ENV !== "production") {
-          console.log(
-            "[OFFER API] serviceType SERIALIZED:",
-            formattedOffer.serviceType
-          );
         }
         // Преобразуем URL изображений
         if (offer.image) {
@@ -347,19 +308,6 @@ router.get("/offers/:id", async (req, res) => {
             }
           : null,
       };
-
-      // --- Исправление category ---
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[OFFER API] category RAW:", offer.category);
-        try {
-          console.log(
-            "[OFFER API] category FULL:",
-            JSON.stringify(offer.category, null, 2)
-          );
-        } catch (e) {
-          console.log("[OFFER API] category FULL: <unserializable>");
-        }
-      }
       if (
         formattedOffer.category &&
         typeof formattedOffer.category === "object"
@@ -372,24 +320,6 @@ router.get("/offers/:id", async (req, res) => {
           formattedOffer.category._id ||
           JSON.stringify(formattedOffer.category);
       }
-      if (process.env.NODE_ENV !== "production") {
-        console.log(
-          "[OFFER API] category SERIALIZED:",
-          formattedOffer.category
-        );
-      }
-      // --- Исправление serviceType ---
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[OFFER API] serviceType RAW:", offer.serviceType);
-        try {
-          console.log(
-            "[OFFER API] serviceType FULL:",
-            JSON.stringify(offer.serviceType, null, 2)
-          );
-        } catch (e) {
-          console.log("[OFFER API] serviceType FULL: <unserializable>");
-        }
-      }
       if (
         formattedOffer.serviceType &&
         typeof formattedOffer.serviceType === "object"
@@ -401,12 +331,6 @@ router.get("/offers/:id", async (req, res) => {
           formattedOffer.serviceType.title ||
           formattedOffer.serviceType._id ||
           JSON.stringify(formattedOffer.serviceType);
-      }
-      if (process.env.NODE_ENV !== "production") {
-        console.log(
-          "[OFFER API] serviceType SERIALIZED:",
-          formattedOffer.serviceType
-        );
       }
 
       // Добавляем URL для изображений
