@@ -151,7 +151,6 @@ const UserPaymentsTab = ({ userId }) => {
               <TableCell>{t("type")}</TableCell>
               <TableCell align="right">{t("amount")}</TableCell>
               <TableCell>{t("status")}</TableCell>
-              <TableCell>{t("actions")}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -187,42 +186,6 @@ const UserPaymentsTab = ({ userId }) => {
                 </TableCell>
                 <TableCell>
                   <PaymentStatusChip status={payment.status} />
-                </TableCell>
-                <TableCell>
-                  {payment.status === "pending" ? (
-                    <>
-                      <Tooltip title={t("approve_payment") || "Подтвердить"}>
-                        <span>
-                          <IconButton
-                            color="success"
-                            size="small"
-                            disabled={!!actionLoading}
-                            onClick={() => handleApprove(payment._id)}
-                          >
-                            {actionLoading === payment._id ? (
-                              <CircularProgress size={20} />
-                            ) : (
-                              <CheckIcon />
-                            )}
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title={t("cancel_payment") || "Отклонить"}>
-                        <span>
-                          <IconButton
-                            color="error"
-                            size="small"
-                            disabled={!!actionLoading}
-                            onClick={() =>
-                              setConfirmDialog({ open: true, payment })
-                            }
-                          >
-                            <CloseIcon />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </>
-                  ) : null}
                 </TableCell>
               </TableRow>
             ))}

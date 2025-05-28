@@ -12,20 +12,15 @@ const subscriptionController = require("../controllers/subscriptionController");
 // Регистрация пользователя
 router.post("/register", async (req, res) => {
   try {
-    console.log("Received registration request:", req.body);
-
     const { name, email, password, role, phone, address, providerInfo } =
       req.body;
 
     if (!name || !email || !password || !role) {
-      console.log("Validation failed: All fields are required");
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    console.log("Checking for existing user with email:", email);
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log("User already exists:", email);
       return res.status(400).json({ error: "User already exists" });
     }
 
@@ -59,11 +54,8 @@ router.post("/register", async (req, res) => {
 
     const user = new User(userData);
 
-    console.log("Saving user to database:", user);
     await user.save();
-    console.log("User saved successfully:", user._id);
 
-    console.log("Generating JWT token for user:", user._id);
     if (!process.env.JWT_SECRET) {
       console.error("JWT_SECRET is not defined");
       return res.status(500).json({
@@ -80,7 +72,6 @@ router.post("/register", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
-    console.log("JWT token generated:", token);
 
     res.status(201).json({ token });
   } catch (error) {
@@ -246,15 +237,12 @@ router.get(
   passport.authenticate("google", { session: false, failureRedirect: "/" }),
   (req, res) => {
     try {
-      console.log("[Google OAuth callback] req.user:", req.user);
       const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
         expiresIn: "7d",
       });
-      console.log("[Google OAuth callback] JWT token:", token);
       const redirectUrl = `${
         process.env.FRONTEND_URL || "http://localhost:3000"
       }/oauth-success?token=${token}`;
-      console.log("[Google OAuth callback] redirect to:", redirectUrl);
       res.redirect(redirectUrl);
     } catch (err) {
       console.error("[Google OAuth callback] Ошибка:", err);
@@ -277,7 +265,6 @@ router.put("/profile", auth, async (req, res) => {
     }
     // Разрешаем менять только name, phone, address, role (но не admin)
     const { name, phone, address, role, socialLogin } = req.body;
-    console.log("[PUT /users/profile] req.body:", req.body);
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (address) user.address = address;
@@ -286,13 +273,9 @@ router.put("/profile", auth, async (req, res) => {
     }
     if (socialLogin === false) {
       user.socialLogin = false;
-      console.log("[PUT /users/profile] user.socialLogin set to false");
     }
     await user.save();
-    console.log(
-      "[PUT /users/profile] saved user.socialLogin:",
-      user.socialLogin
-    );
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ error: "Server error" });

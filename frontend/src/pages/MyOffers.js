@@ -15,6 +15,8 @@ const MyOffers = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [promotionStatuses, setPromotionStatuses] = useState({});
+  const [activeTopOffers, setActiveTopOffers] = useState(0);
+  const topLimit = 1; // TODO: получать с бэка, если появится
 
   const fetchMyOffers = useCallback(async () => {
     if (!isAuthenticated || !user?._id) {
@@ -33,6 +35,15 @@ const MyOffers = () => {
       } else {
         setPromotionStatuses({});
       }
+      // Подсчёт активных топ-офферов
+      const now = new Date();
+      const count = (response || []).filter(
+        (o) =>
+          o.promoted &&
+          o.promoted.isPromoted &&
+          new Date(o.promoted.promotedUntil) > now
+      ).length;
+      setActiveTopOffers(count);
     } catch (error) {
       setMessage(
         "Error: " + (error.response?.data?.error || t("something_went_wrong"))
@@ -103,7 +114,18 @@ const MyOffers = () => {
         <Grid container spacing={3}>
           {offers.map((offer) => {
             const isOwner = offer.providerId === user?._id;
-
+            const isActive = offer.status === "active";
+            const isPromoted =
+              offer.promoted &&
+              offer.promoted.isPromoted &&
+              new Date(offer.promoted.promotedUntil) > new Date();
+            // Кнопка "Поднять в топ" доступна только если не превышен лимит и оффер не топовый
+            const canPromote =
+              isOwner &&
+              user?.role === "provider" &&
+              isActive &&
+              !isPromoted &&
+              activeTopOffers < topLimit;
             return (
               <Grid item xs={12} sm={6} md={4} key={offer._id}>
                 <OfferCard
@@ -111,10 +133,12 @@ const MyOffers = () => {
                   onUpdate={handleOfferUpdate}
                   onDelete={handleOfferDelete}
                   isOwner={isOwner}
-                  canPromote={isOwner && user?.role === "provider"}
+                  canPromote={canPromote}
                   userId={user?._id}
                   userRole={user?.role}
                   promotionStatus={promotionStatuses[offer._id]}
+                  activeTopOffers={activeTopOffers}
+                  topLimit={topLimit}
                 />
               </Grid>
             );

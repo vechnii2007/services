@@ -91,6 +91,7 @@ const OfferDetails = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [activeRequest, setActiveRequest] = useState(null);
   const theme = useTheme();
 
   useEffect(() => {
@@ -153,6 +154,46 @@ const OfferDetails = () => {
       socket.emit("leaveRoom", roomId);
     };
   }, [socket, offer?.providerId?._id, offer?._id]);
+
+  useEffect(() => {
+    const isValidObjectId = (id) =>
+      typeof id === "string" && id.length === 24 && /^[a-fA-F0-9]+$/.test(id);
+
+    const fetchActiveRequest = async () => {
+      if (!isAuthenticated || !user || !offer) return;
+
+      const userId = user._id;
+      const providerId = offer.providerId?._id;
+      const offerId = offer._id;
+
+      if (
+        !isValidObjectId(userId) ||
+        !isValidObjectId(providerId) ||
+        !isValidObjectId(offerId)
+      ) {
+        setActiveRequest(null);
+        return;
+      }
+
+      try {
+        const res = await api.get("/services/requests/find", {
+          params: {
+            userId,
+            providerId,
+            offerId,
+          },
+        });
+        if (res.data && res.data.status === "pending") {
+          setActiveRequest(res.data);
+        } else {
+          setActiveRequest(null);
+        }
+      } catch (e) {
+        setActiveRequest(null);
+      }
+    };
+    fetchActiveRequest();
+  }, [user, offer, isAuthenticated]);
 
   const handleFavoriteToggle = async () => {
     if (!isAuthenticated) {
@@ -588,12 +629,6 @@ const OfferDetails = () => {
                 sx={{ mb: 2, fontSize: { xs: 20, sm: 24, md: 28 } }}
               >
                 {(() => {
-                  console.log("Offer price debug:", {
-                    price: offer.price,
-                    priceFrom: offer.priceFrom,
-                    priceTo: offer.priceTo,
-                    isPriceRange: offer.isPriceRange,
-                  });
                   return getOfferPriceDisplay({
                     price: offer.price,
                     priceFrom: offer.priceFrom,
@@ -938,22 +973,26 @@ const OfferDetails = () => {
               >
                 {isAuthenticated &&
                   user?._id !== offer?.providerId?._id &&
-                  user?.role !== "admin" && (
+                  user?.role !== "admin" &&
+                  (activeRequest ? (
                     <Button
                       variant="contained"
                       color="success"
-                      size="large"
-                      sx={{
-                        borderRadius: 2,
-                        fontWeight: 600,
-                        fontSize: "1rem",
-                        px: 4,
-                      }}
-                      onClick={() => setOrderModalOpen(true)}
+                      onClick={() => navigate(`/requests/${activeRequest._id}`)}
+                      sx={{ mt: 2, mb: 2 }}
                     >
-                      {t("create_request")}
+                      {t("go_to_my_request", "Перейти к моему запросу")}
                     </Button>
-                  )}
+                  ) : (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => setOrderModalOpen(true)}
+                      sx={{ mt: 2, mb: 2 }}
+                    >
+                      {t("create_request", "Создать запрос")}
+                    </Button>
+                  ))}
               </Box>
               <CreateOrderModal
                 open={orderModalOpen}

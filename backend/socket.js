@@ -60,12 +60,6 @@ const initializeSocket = (server) => {
 
     socket.on("joinRoom", async (requestId) => {
       try {
-        console.log("Join room request:", {
-          userId,
-          userName: socket.user.name,
-          requestId,
-        });
-
         if (!requestId || typeof requestId !== "string") {
           throw new Error("Invalid requestId format");
         }
@@ -129,13 +123,6 @@ const initializeSocket = (server) => {
         // Присоединяемся к комнате
         socket.join(chatRoomId);
         socket.join(requestId); // Для обратной совместимости
-
-        console.log("User joined chat room:", {
-          userId,
-          userName: socket.user.name,
-          requestId,
-          chatRoomId,
-        });
       } catch (error) {
         console.error("Error joining room:", error);
         socket.emit("error", { message: error.message });
@@ -145,15 +132,6 @@ const initializeSocket = (server) => {
     socket.on("private_message", async (data) => {
       try {
         const { recipientId, message, requestId } = data;
-
-        console.log("[DIAG][private_message] Входящие данные:", {
-          from: userId,
-          to: recipientId,
-          requestId,
-          data,
-          userRole: socket.user.role,
-          userName: socket.user.name,
-        });
 
         if (!recipientId || !message) {
           console.error("[DIAG][private_message] Нет recipientId или message", {
@@ -175,14 +153,6 @@ const initializeSocket = (server) => {
           });
           throw new Error("Invalid recipient ID");
         }
-
-        console.log("New private message:", {
-          from: userId,
-          to: normalizedRecipientId,
-          requestId,
-          messagePreview: message.substring(0, 30),
-        });
-
         // Определяем chatRoomId
         let chatRoomId = requestId ? chatRooms.get(requestId) : null;
         if (!chatRoomId) {
@@ -206,13 +176,6 @@ const initializeSocket = (server) => {
           newMessage = await Message.create(messageData);
           await newMessage.populate("senderId", "name avatar role");
           await newMessage.populate("recipientId", "name avatar role");
-          console.log("[DIAG][private_message] Сообщение успешно создано:", {
-            _id: newMessage._id,
-            senderId: newMessage.senderId?._id,
-            recipientId: newMessage.recipientId?._id,
-            requestId: newMessage.requestId,
-            message: newMessage.message,
-          });
         } catch (err) {
           console.error(
             "[DIAG][private_message] Ошибка при создании сообщения:",
@@ -302,13 +265,6 @@ const initializeSocket = (server) => {
             userRooms.delete(userId);
           }
         }
-
-        console.log("User left chat room:", {
-          userId,
-          userName: socket.user.name,
-          roomId,
-          chatRoomId,
-        });
       } catch (error) {
         console.error("Error leaving room:", error);
         socket.emit("error", { message: error.message });

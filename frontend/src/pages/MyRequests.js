@@ -236,7 +236,39 @@ const MyRequests = () => {
       {tab === 0 ? (
         requests.length > 0 ? (
           <Grid container spacing={3}>
-            {requests.map((request) => renderRequestCard(request, false))}
+            {[...requests]
+              .sort((a, b) => {
+                // Сортируем: in_progress > pending > completed > confirmed > cancelled > остальные
+                const statusOrder = {
+                  in_progress: 0,
+                  pending: 1,
+                  completed: 2,
+                  confirmed: 3,
+                  cancelled: 4,
+                };
+                return (
+                  (statusOrder[a.status] ?? 99) -
+                    (statusOrder[b.status] ?? 99) ||
+                  new Date(b.createdAt) - new Date(a.createdAt)
+                );
+              })
+              .map((request) => (
+                <Grid item xs={12} sm={6} md={4} key={request._id}>
+                  <Card
+                    sx={[
+                      (request.status === "in_progress" ||
+                        request.status === "pending") && {
+                        border: "2px solid #1976d2",
+                        boxShadow: 4,
+                      },
+                    ]}
+                  >
+                    <CardContent>
+                      {renderRequestCard(request, false)}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
           </Grid>
         ) : (
           <Typography variant="body1" align="center">

@@ -26,6 +26,8 @@ const promotionController = require("../controllers/promotionController");
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
 
+console.log("=== serviceRoutes.js loaded ===");
+
 router.use((req, res, next) => {
   if (req.url.startsWith("/reviews")) {
     return next("route");
@@ -1274,28 +1276,68 @@ router.get("/categories/top", categoryController.getTopCategories);
 // Поднятие объявления в топ
 router.post("/offers/:id/promote", auth, promotionController.promoteOffer);
 
-// Проверка статуса поднятия
+// Получить статус продвижения одного оффера
 router.get("/offers/:id/promotion-status", async (req, res) => {
-  const id = req.params.id;
-
   try {
-    // Проверяем валидность ObjectId
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({
-        error: "Invalid offer ID format",
-        isPromoted: false,
-      });
+    const offer = await Offer.findById(req.params.id);
+    if (!offer) {
+      return res.status(404).json({ error: "Offer not found" });
     }
-
-    const status = await promotionService.checkPromotionStatus(id);
-    res.json(status);
-  } catch (error) {
-    // Отправляем корректный статус ошибки и объект с сообщением об ошибке
-    const statusCode = error.message.includes("not found") ? 404 : 500;
-    res.status(statusCode).json({
-      error: error.message,
-      isPromoted: false,
+    res.json({
+      isPromoted:
+        offer.promoted?.isPromoted &&
+        offer.promoted?.promotedUntil > new Date(),
+      promotedUntil: offer.promoted?.promotedUntil,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Получить статусы продвижения для списка офферов
+router.post("/offers/promotion-statuses", auth, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No offer ids provided" });
+    }
+    const offers = await Offer.find({ _id: { $in: ids } });
+    const statuses = {};
+    offers.forEach((offer) => {
+      statuses[offer._id] = {
+        isPromoted:
+          offer.promoted?.isPromoted &&
+          offer.promoted?.promotedUntil > new Date(),
+        promotedUntil: offer.promoted?.promotedUntil,
+      };
+    });
+    res.json({ statuses });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Снять продвижение с оффера
+router.post("/offers/:id/demote", auth, async (req, res) => {
+  try {
+    const offer = await Offer.findById(req.params.id);
+    if (!offer) {
+      return res.status(404).json({ error: "Offer not found" });
+    }
+    // Проверка прав пользователя (например, только владелец или админ)
+    // if (offer.providerId.toString() !== req.user.id && !req.user.isAdmin) {
+    //   return res.status(403).json({ error: "Forbidden" });
+    // }
+    offer.promoted = {
+      isPromoted: false,
+      promotedUntil: null,
+      lastPromotedAt: null,
+      promotionType: null,
+    };
+    await offer.save();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -1358,218 +1400,108 @@ router.put("/offers/:id/status", auth, async (req, res) => {
   }
 });
 
-// Получение запроса чата по ID
-router.get("/requests/:id", auth, async (req, res) => {
+// --- ДО ВСЕХ /requests/:id ---
+router.get("/requests/find", async (req, res) => {
+  const { userId, providerId, offerId } = req.query;
+  if (!userId || !providerId || !offerId) {
+    return res
+      .status(400)
+      .json({ error: "userId, providerId, offerId required" });
+  }
   try {
-    const requestId = req.params.id;
-    const userId = req.user.id;
-
-    // Проверка валидности ID
-    if (!isValidObjectId(requestId)) {
-      return res.status(400).json({ error: "Invalid request ID format" });
+    const request = await ServiceRequest.findOne({
+      userId,
+      providerId,
+      offerId,
+    });
+    if (request) {
+      return res.json(request);
     }
+    return res.status(404).json({ error: "Request not found" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+});
 
-    // Находим запрос
-    const request = await ServiceRequest.findById(requestId)
-      .populate("userId", "name _id email phone status")
-      .populate("providerId", "name _id email phone status")
+// Получение деталей запроса по ID
+router.get("/requests/:id", async (req, res) => {
+  try {
+    const request = await ServiceRequest.findById(req.params.id)
+      .populate("userId", "name email phone status")
+      .populate("providerId", "name email phone status")
       .populate({
         path: "offerId",
-        select: "title serviceType location price description images",
+        select: "title serviceType location description images",
       });
-
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
     }
-
-    // Безопасно получаем userId и providerId
-    const userIdObj =
-      request.userId && request.userId._id
-        ? request.userId._id.toString()
-        : null;
-    const providerIdObj =
-      request.providerId && request.providerId._id
-        ? request.providerId._id.toString()
-        : null;
-    const userIdStr = userId.toString();
-
-    // Проверяем права доступа (пользователь должен быть либо автором запроса, либо провайдером, если он есть)
-    if (
-      userIdStr !== userIdObj &&
-      providerIdObj &&
-      userIdStr !== providerIdObj
-    ) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-    if (req.user.role === "provider" && !providerIdObj) {
-      // Общий запрос — разрешаем доступ любому провайдеру
-    }
-
-    // Если дошли сюда, значит доступ разрешен
-    // Формируем объект с информацией о запросе, который будет совместим с ChatRequest
-    const chatRequestData = {
-      _id: request._id,
-      userId: request.userId || null,
-      providerId: request.providerId || null,
-      offerId: request.offerId,
-      serviceType: request.serviceType,
-      description: request.description,
-      status: request.status,
-      createdAt: request.createdAt,
-      // Добавляем поля, совместимые с форматом ChatRequest
-      service: request.offerId
-        ? {
-            title: request.offerId.title,
-            type: request.offerId.serviceType,
-          }
-        : {
-            title: request.description,
-            type: request.serviceType,
-          },
-    };
-
-    res.json(chatRequestData);
+    res.json(request);
   } catch (error) {
-    res.status(500).json({ error: "Server error", details: error.message });
+    res.status(500).json({ error: error.message || "Server error" });
   }
 });
 
-// Тестовый маршрут для загрузки изображений
-router.post("/img-upload", upload.single("image"), (req, res) => {
-  try {
-    if (
-      !process.env.CLOUDINARY_CLOUD_NAME ||
-      !process.env.CLOUDINARY_API_KEY ||
-      !process.env.CLOUDINARY_API_SECRET
-    ) {
-      return res
-        .status(500)
-        .json({ error: "Cloudinary is not configured on this server" });
-    }
-    if (!req.file) {
-      console.warn("[DIAG][img-upload] Нет файла в запросе");
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-    // Cloudinary URL
-    const url = req.file.path;
-    res.json({
-      success: true,
-      url,
-      file: {
-        filename: req.file.filename,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        cloudinaryData: req.file,
-      },
-    });
-  } catch (error) {
-    console.error("[DIAG][img-upload] Ошибка при загрузке:", error);
-    res.status(500).json({
-      error: "Failed to upload file",
-      details: error.message,
-      stack: error.stack,
-    });
-  }
-});
-
-// Публичный роут для получения информации о пользователе по id
-router.get("/users/:id", async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select(
-      "name email phone status providerInfo"
-    );
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// --- Смена статуса запроса (только provider или admin) ---
+// Обновление статуса заявки (ServiceRequest)
 router.put("/requests/:id/status", auth, async (req, res) => {
   try {
     const { status } = req.body;
+    const validStatuses = [
+      "pending",
+      "in_progress",
+      "completed",
+      "confirmed",
+      "cancelled",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
     const request = await ServiceRequest.findById(req.params.id);
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
     }
-    // Только исполнитель (provider) или admin может менять статус
+    // Проверка прав: только участники заявки или админ
     if (
       req.user.role !== "admin" &&
-      (!request.providerId || request.providerId.toString() !== req.user.id)
+      request.userId.toString() !== req.user.id &&
+      request.providerId.toString() !== req.user.id
     ) {
-      return res
-        .status(403)
-        .json({ error: "Only provider or admin can change status" });
+      return res.status(403).json({ error: "Not authorized" });
     }
     request.status = status;
     await request.save();
-    res.json({ message: "Status updated", request });
+    res.json({ message: "Status updated successfully", request });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// --- Подтверждение выполнения заказчиком (user) ---
+// Подтверждение выполнения заявки заказчиком
 router.put("/requests/:id/confirm", auth, async (req, res) => {
   try {
     const request = await ServiceRequest.findById(req.params.id);
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
     }
-    // Только заказчик (user) может подтверждать выполнение
-    if (request.userId.toString() !== req.user.id) {
+    // Только заказчик или админ может подтверждать
+    if (
+      request.userId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+    // Провайдер должен завершить заявку
+    if (request.status !== "completed") {
       return res
-        .status(403)
-        .json({ error: "Only customer can confirm completion" });
+        .status(400)
+        .json({ error: "Provider has not completed the request yet" });
     }
-    // Если уже подтверждено, не инкрементируем повторно
-    if (!request.customerConfirmed) {
-      request.customerConfirmed = true;
-      await request.save();
-      // Инкрементируем completedOffers у провайдера, если есть providerId
-      if (request.providerId) {
-        const provider = await User.findById(request.providerId);
-        if (provider) {
-          await provider.incrementCompletedOffers();
-        }
-      }
-    } else {
-      // Если уже подтверждено, просто возвращаем текущий статус
-      return res.json({ message: "Already confirmed", request });
-    }
-    res.json({ message: "Request confirmed by customer", request });
+    request.status = "confirmed";
+    await request.save();
+    res.json({ message: "Request confirmed by user", request });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-// Снять продвижение с предложения
-router.post("/offers/:id/demote", async (req, res) => {
-  try {
-    const offer = await Offer.findById(req.params.id);
-    if (!offer) {
-      return res.status(404).json({ error: "Offer not found" });
-    }
-    if (offer.promoted) {
-      offer.promoted.isPromoted = false;
-      offer.promoted.promotedUntil = null;
-      offer.promoted.lastPromotedAt = null;
-      offer.promoted.promotionType = null;
-    }
-    await offer.save();
-    res.json(offer);
-  } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Получение статусов продвижения для массива объявлений
-router.post(
-  "/offers/promotion-statuses",
-  promotionController.batchCheckPromotionStatuses
-);
 
 module.exports = router;

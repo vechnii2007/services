@@ -90,10 +90,12 @@ const RequestDetails = () => {
     );
   }
 
-  const isOwner = user && request.userId && user._id === request.userId._id;
-  const isProvider = user && user.role === "provider" && !isOwner;
-  const isRequestProvider =
-    user && request.providerId && user._id === request.providerId._id;
+  const getId = (val) =>
+    typeof val === "object" && val !== null ? val._id : val;
+  const isCustomer =
+    user && request.userId && user._id === getId(request.userId);
+  const isExecutor =
+    user && request.providerId && user._id === getId(request.providerId);
 
   const handleComplete = async () => {
     try {
@@ -130,6 +132,28 @@ const RequestDetails = () => {
       setSnackbar({
         open: true,
         message: err.response?.data?.error || "Ошибка при подтверждении",
+        severity: "error",
+      });
+    }
+  };
+
+  // Новый обработчик для взятия в работу
+  const handleTakeInWork = async () => {
+    try {
+      await api.put(`/services/requests/${request._id}/status`, {
+        status: "in_progress",
+      });
+      setSnackbar({
+        open: true,
+        message: "Заявка взята в работу",
+        severity: "success",
+      });
+      const res = await api.get(`/services/requests/${request._id}`);
+      setRequest(res.data);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Ошибка при взятии в работу",
         severity: "error",
       });
     }
@@ -181,8 +205,24 @@ const RequestDetails = () => {
             >
               <strong>{t("status", "Статус")}:</strong>
               <Chip
-                label={t(request.status)}
-                color={statusColor[request.status] || "default"}
+                label={
+                  request.status === "pending"
+                    ? isCustomer
+                      ? t("waiting_for_executor", "Ожидает исполнителя")
+                      : t(request.status)
+                    : request.status === "in_progress"
+                    ? isCustomer
+                      ? t("in_progress", "В работе")
+                      : t("in_progress", "В работе")
+                    : request.status === "confirmed"
+                    ? t("completed", "Завершен")
+                    : t(request.status)
+                }
+                color={
+                  request.status === "confirmed"
+                    ? "success"
+                    : statusColor[request.status] || "default"
+                }
                 size="small"
                 sx={{
                   color: (theme) =>
@@ -343,7 +383,93 @@ const RequestDetails = () => {
             alignItems="center"
             sx={{ mt: 3, flexWrap: "wrap" }}
           >
-            {(isOwner || isProvider) && (
+            {/* Если статус confirmed — обоим показываем лейбл 'Завершен' */}
+            {request.status === "confirmed" && (
+              <Chip
+                label={t("completed", "Завершено")}
+                color="success"
+                variant="filled"
+                sx={{
+                  fontSize: 18,
+                  px: 3,
+                  py: 1.5,
+                  borderRadius: 3,
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  height: 44,
+                  minWidth: 160,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              />
+            )}
+            {/* Кнопка 'Взять в работу' — только для исполнителя, только если статус pending */}
+            {isExecutor && request.status === "pending" && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleTakeInWork}
+                sx={{
+                  minWidth: 160,
+                  height: 44,
+                  borderRadius: 3,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 2,
+                  textTransform: "none",
+                }}
+              >
+                {t("take_in_work", "Взять в работу")}
+              </Button>
+            )}
+            {/* Кнопка завершения заказа — только для исполнителя, только если статус in_progress */}
+            {isExecutor && request.status === "in_progress" && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleComplete}
+                sx={{
+                  minWidth: 160,
+                  height: 44,
+                  borderRadius: 3,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 2,
+                  textTransform: "none",
+                }}
+              >
+                {t("complete_order", "Завершить заказ")}
+              </Button>
+            )}
+            {/* Кнопка подтверждения выполнения — только для заказчика, только если статус completed */}
+            {isCustomer && request.status === "completed" && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleConfirm}
+                startIcon={<CheckCircleIcon />}
+                sx={{
+                  minWidth: 160,
+                  height: 44,
+                  borderRadius: 3,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 2,
+                  textTransform: "none",
+                }}
+              >
+                {t("confirm_completion", "Подтвердить выполнение")}
+              </Button>
+            )}
+            {/* Остальные кнопки (чат, связаться, позвонить) оставляем как есть */}
+            {(isCustomer || isExecutor) && (
               <Button
                 variant="contained"
                 color="primary"
@@ -353,13 +479,10 @@ const RequestDetails = () => {
                   minWidth: 150,
                   mb: { xs: 1.5, sm: 0 },
                   width: { xs: "100%", sm: "auto" },
-                  background: (theme) => theme.palette.primary.main,
-                  color: (theme) => theme.palette.primary.contrastText,
-                  boxShadow: 2,
                   borderRadius: 3,
-                  "&:hover": {
-                    background: (theme) => theme.palette.primary.dark,
-                  },
+                  boxShadow: 2,
+                  fontSize: 16,
+                  py: 1.5,
                 }}
               >
                 {t("open_chat", "Открыть чат")}
@@ -375,12 +498,9 @@ const RequestDetails = () => {
                   minWidth: 150,
                   mb: { xs: 1.5, sm: 0 },
                   width: { xs: "100%", sm: "auto" },
-                  borderColor: (theme) => theme.palette.primary.main,
-                  color: (theme) => theme.palette.primary.main,
-                  "&:hover": {
-                    borderColor: (theme) => theme.palette.primary.dark,
-                    color: (theme) => theme.palette.primary.dark,
-                  },
+                  borderRadius: 3,
+                  fontSize: 16,
+                  py: 1.5,
                 }}
               >
                 {t("contact", "Связаться")}
@@ -396,74 +516,15 @@ const RequestDetails = () => {
                   minWidth: 150,
                   mb: { xs: 1.5, sm: 0 },
                   width: { xs: "100%", sm: "auto" },
-                  borderColor: (theme) => theme.palette.primary.main,
-                  color: (theme) => theme.palette.primary.main,
-                  "&:hover": {
-                    borderColor: (theme) => theme.palette.primary.dark,
-                    color: (theme) => theme.palette.primary.dark,
-                  },
+                  borderRadius: 3,
+                  fontSize: 16,
+                  py: 1.5,
                 }}
               >
                 {t("call", "Позвонить")}
               </Button>
             )}
-            {isRequestProvider && request.status !== "completed" && (
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleComplete}
-                sx={{
-                  minWidth: 180,
-                  mb: { xs: 1, sm: 0 },
-                  background: (theme) => theme.palette.success.main,
-                  color: (theme) => theme.palette.success.contrastText,
-                  boxShadow: 2,
-                  borderRadius: 3,
-                  "&:hover": {
-                    background: (theme) => theme.palette.success.dark,
-                  },
-                }}
-              >
-                {t("complete_order", "Завершить заказ")}
-              </Button>
-            )}
           </Stack>
-
-          {/* Кнопка подтверждения выполнения — отдельным блоком */}
-          {isOwner &&
-            request.status === "completed" &&
-            !request.customerConfirmed && (
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  mt: { xs: 2, sm: 2 },
-                }}
-              >
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleConfirm}
-                  startIcon={<CheckCircleIcon />}
-                  sx={{
-                    minWidth: 220,
-                    fontSize: 18,
-                    py: 1.5,
-                    width: { xs: "100%", sm: "auto" },
-                    maxWidth: 400,
-                    background: (theme) => theme.palette.success.main,
-                    color: (theme) => theme.palette.success.contrastText,
-                    boxShadow: 2,
-                    borderRadius: 3,
-                    "&:hover": {
-                      background: (theme) => theme.palette.success.dark,
-                    },
-                  }}
-                >
-                  {t("confirm_completion", "Подтвердить выполнение")}
-                </Button>
-              </Box>
-            )}
         </Stack>
       </Paper>
       <Snackbar
