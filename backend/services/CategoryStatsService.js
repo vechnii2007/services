@@ -50,12 +50,12 @@ class CategoryStatsService {
       let totalOffers = 0;
       for (const category of categories) {
         const count = await Offer.countDocuments({
-          serviceType: category.key,
+          serviceType: category._id,
         });
         totalOffers += count;
         updates.push({
           updateOne: {
-            filter: { category: category.key },
+            filter: { category: category._id },
             update: {
               $set: {
                 count,

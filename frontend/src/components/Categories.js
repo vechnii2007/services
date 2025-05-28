@@ -48,19 +48,12 @@ const Categories = ({
         <SectionTitle variant="h5">{t(title)}</SectionTitle>
         <Grid container spacing={3}>
           {categories.map((category) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
-              lg={3}
-              key={category.key || category._id}
-            >
+            <Grid item xs={12} sm={6} md={4} lg={3} key={category._id}>
               <CategoryCard
                 category={category}
-                selected={selectedCategory === category.key}
-                onClick={() => onCategorySelect(category)}
-                count={counts[category.key] || 0}
+                selected={selectedCategory === category._id}
+                onClick={() => onCategorySelect(category._id)}
+                count={counts[category._id] || 0}
               />
             </Grid>
           ))}

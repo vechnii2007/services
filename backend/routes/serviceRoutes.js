@@ -79,7 +79,27 @@ router.get("/offers", async (req, res) => {
 
   // Фильтрация по категории
   if (req.query.category) {
-    filter.serviceType = req.query.category;
+    // Если это ObjectId — фильтруем напрямую
+    if (/^[a-fA-F0-9]{24}$/.test(req.query.category)) {
+      filter.category = req.query.category;
+    } else {
+      // Иначе ищем категорию по ключу/label
+      const cat = await Category.findOne({
+        $or: [
+          { key: req.query.category },
+          { label: req.query.category },
+          { "name.ru": req.query.category },
+          { "name.uk": req.query.category },
+          { "name.es": req.query.category },
+        ],
+      });
+      if (cat) {
+        filter.category = cat._id;
+      } else {
+        // Если не нашли — заведомо пустой результат
+        filter.category = null;
+      }
+    }
   }
 
   // Поиск по текстовому запросу в заголовке и описании
@@ -120,6 +140,8 @@ router.get("/offers", async (req, res) => {
     // Получаем предложения с учетом фильтрации, пагинации и сортировки
     const offers = await Offer.find(filter)
       .populate("providerId", "name email phone address status")
+      .populate("category")
+      .populate("serviceType")
       .skip(skip)
       .limit(limit)
       .sort({ "promoted.isPromoted": -1, createdAt: -1 });
@@ -144,6 +166,66 @@ router.get("/offers", async (req, res) => {
         // Убедимся, что providerId правильно установлен
         if (provider && provider._id) {
           formattedOffer.providerId = provider._id;
+        }
+        // --- Исправление category ---
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[OFFER API] category RAW:", offer.category);
+          try {
+            console.log(
+              "[OFFER API] category FULL:",
+              JSON.stringify(offer.category, null, 2)
+            );
+          } catch (e) {
+            console.log("[OFFER API] category FULL: <unserializable>");
+          }
+        }
+        if (
+          formattedOffer.category &&
+          typeof formattedOffer.category === "object"
+        ) {
+          formattedOffer.category =
+            formattedOffer.category.label ||
+            formattedOffer.category.name?.ru ||
+            formattedOffer.category.name ||
+            formattedOffer.category.title ||
+            formattedOffer.category._id ||
+            JSON.stringify(formattedOffer.category);
+        }
+        if (process.env.NODE_ENV !== "production") {
+          console.log(
+            "[OFFER API] category SERIALIZED:",
+            formattedOffer.category
+          );
+        }
+        // --- Исправление serviceType ---
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[OFFER API] serviceType RAW:", offer.serviceType);
+          try {
+            console.log(
+              "[OFFER API] serviceType FULL:",
+              JSON.stringify(offer.serviceType, null, 2)
+            );
+          } catch (e) {
+            console.log("[OFFER API] serviceType FULL: <unserializable>");
+          }
+        }
+        if (
+          formattedOffer.serviceType &&
+          typeof formattedOffer.serviceType === "object"
+        ) {
+          formattedOffer.serviceType =
+            formattedOffer.serviceType.label ||
+            formattedOffer.serviceType.name?.ru ||
+            formattedOffer.serviceType.name ||
+            formattedOffer.serviceType.title ||
+            formattedOffer.serviceType._id ||
+            JSON.stringify(formattedOffer.serviceType);
+        }
+        if (process.env.NODE_ENV !== "production") {
+          console.log(
+            "[OFFER API] serviceType SERIALIZED:",
+            formattedOffer.serviceType
+          );
         }
         // Преобразуем URL изображений
         if (offer.image) {
@@ -235,10 +317,13 @@ router.get("/offers/:id", async (req, res) => {
       return res.json({ ...service._doc, type: "ServiceOffer" });
     }
 
-    const offer = await Offer.findById(req.params.id).populate({
-      path: "providerId",
-      select: "name email phone address status providerInfo createdAt",
-    });
+    const offer = await Offer.findById(req.params.id)
+      .populate({
+        path: "providerId",
+        select: "name email phone address status providerInfo createdAt",
+      })
+      .populate("category")
+      .populate("serviceType");
 
     if (offer) {
       // Получаем рейтинг и отзывы по предложению
@@ -262,6 +347,67 @@ router.get("/offers/:id", async (req, res) => {
             }
           : null,
       };
+
+      // --- Исправление category ---
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[OFFER API] category RAW:", offer.category);
+        try {
+          console.log(
+            "[OFFER API] category FULL:",
+            JSON.stringify(offer.category, null, 2)
+          );
+        } catch (e) {
+          console.log("[OFFER API] category FULL: <unserializable>");
+        }
+      }
+      if (
+        formattedOffer.category &&
+        typeof formattedOffer.category === "object"
+      ) {
+        formattedOffer.category =
+          formattedOffer.category.label ||
+          formattedOffer.category.name?.ru ||
+          formattedOffer.category.name ||
+          formattedOffer.category.title ||
+          formattedOffer.category._id ||
+          JSON.stringify(formattedOffer.category);
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          "[OFFER API] category SERIALIZED:",
+          formattedOffer.category
+        );
+      }
+      // --- Исправление serviceType ---
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[OFFER API] serviceType RAW:", offer.serviceType);
+        try {
+          console.log(
+            "[OFFER API] serviceType FULL:",
+            JSON.stringify(offer.serviceType, null, 2)
+          );
+        } catch (e) {
+          console.log("[OFFER API] serviceType FULL: <unserializable>");
+        }
+      }
+      if (
+        formattedOffer.serviceType &&
+        typeof formattedOffer.serviceType === "object"
+      ) {
+        formattedOffer.serviceType =
+          formattedOffer.serviceType.label ||
+          formattedOffer.serviceType.name?.ru ||
+          formattedOffer.serviceType.name ||
+          formattedOffer.serviceType.title ||
+          formattedOffer.serviceType._id ||
+          JSON.stringify(formattedOffer.serviceType);
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          "[OFFER API] serviceType SERIALIZED:",
+          formattedOffer.serviceType
+        );
+      }
 
       // Добавляем URL для изображений
       if (offer.image) {
@@ -1409,10 +1555,13 @@ router.get("/requests/find", async (req, res) => {
       .json({ error: "userId, providerId, offerId required" });
   }
   try {
+    // Только активные статусы
+    const activeStatuses = ["pending", "in_progress", "completed"];
     const request = await ServiceRequest.findOne({
       userId,
       providerId,
       offerId,
+      status: { $in: activeStatuses },
     });
     if (request) {
       return res.json(request);

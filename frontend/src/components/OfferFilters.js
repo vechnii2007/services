@@ -20,6 +20,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { motion, AnimatePresence } from "framer-motion";
 import { searchService } from "../services/searchService";
 import { useTheme } from "@mui/material/styles";
+import { getCategoryName } from "./CategoryCard";
 
 // Используем motion вместо устаревшего motion.create
 const MotionPaper = motion(Paper);
@@ -46,7 +47,7 @@ const OfferFilters = ({
   locations = [],
   popularSearches = [],
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const searchRef = useRef(null);
   const filtersRef = useRef(null);
@@ -375,21 +376,31 @@ const OfferFilters = ({
               exit={{ opacity: 0, height: 0 }}
               sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}
             >
-              {selectedCategories.map((category) => (
-                <Chip
-                  key={category}
-                  label={t(category)}
-                  onDelete={() => onCategoryChange(category)}
-                  color="primary"
-                  variant="outlined"
-                  sx={{
-                    "&:hover": {
-                      bgcolor: "primary.light",
-                      color: "primary.contrastText",
-                    },
-                  }}
-                />
-              ))}
+              {selectedCategories.map((categoryId) => {
+                const categoryObj = categories.find(
+                  (cat) => cat._id === categoryId
+                );
+                return (
+                  <Chip
+                    key={categoryId}
+                    label={
+                      getCategoryName(
+                        categoryObj,
+                        i18n.language?.split("-")[0] || "ru"
+                      ) || categoryId
+                    }
+                    onDelete={() => onCategoryChange(categoryId)}
+                    color="primary"
+                    variant="outlined"
+                    sx={{
+                      "&:hover": {
+                        bgcolor: "primary.light",
+                        color: "primary.contrastText",
+                      },
+                    }}
+                  />
+                );
+              })}
             </MotionBox>
           )}
         </AnimatePresence>

@@ -102,6 +102,9 @@ async function main() {
   await Category.insertMany(CATEGORIES);
   console.log(`Создано категорий: ${CATEGORIES.length}`);
 
+  // Получаем реальные объекты категорий с _id
+  const categories = await Category.find({});
+
   // 3. Находим всех провайдеров
   const providers = await User.find({ role: "provider" });
   if (!providers.length) {
@@ -113,15 +116,15 @@ async function main() {
 
   // 4. Для каждой категории создаём 2-3 предложения
   let offers = [];
-  for (const cat of CATEGORIES) {
+  for (const cat of categories) {
     const numOffers = Math.floor(Math.random() * 2) + 2; // 2 или 3
     for (let i = 0; i < numOffers; i++) {
       const provider = getRandom(providers);
       offers.push({
         title: `${cat.label} Service #${i + 1}`,
         providerId: provider._id,
-        serviceType: cat.key,
-        category: cat.key,
+        serviceType: cat._id,
+        category: cat._id,
         location: getRandom(LOCATIONS),
         description: `Best ${cat.label.toLowerCase()} service in town!`,
         price: Math.floor(Math.random() * 100) + 20,

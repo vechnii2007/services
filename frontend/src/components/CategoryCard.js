@@ -161,7 +161,7 @@ const CategoryTitle = styled(Typography)(({ theme }) => ({
   },
 }));
 
-const getCategoryName = (category, lang = "ru") => {
+export const getCategoryName = (category, lang = "ru") => {
   if (!category?.name) return "";
   return (
     category.name[lang] ||

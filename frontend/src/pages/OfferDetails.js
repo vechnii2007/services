@@ -183,7 +183,7 @@ const OfferDetails = () => {
             offerId,
           },
         });
-        if (res.data && res.data.status === "pending") {
+        if (res.data) {
           setActiveRequest(res.data);
         } else {
           setActiveRequest(null);
