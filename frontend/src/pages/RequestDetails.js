@@ -385,91 +385,6 @@ const RequestDetails = () => {
             alignItems="center"
             sx={{ mt: 3, flexWrap: "wrap" }}
           >
-            {/* Если статус confirmed — обоим показываем лейбл 'Завершен' */}
-            {request.status === "confirmed" && (
-              <Chip
-                label={t("completed", "Завершено")}
-                color="success"
-                variant="filled"
-                sx={{
-                  fontSize: 18,
-                  px: 3,
-                  py: 1.5,
-                  borderRadius: 3,
-                  fontWeight: 600,
-                  letterSpacing: 1,
-                  height: 44,
-                  minWidth: 160,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              />
-            )}
-            {/* Кнопка 'Взять в работу' — только для исполнителя, только если статус pending */}
-            {isExecutor && request.status === "pending" && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleTakeInWork}
-                sx={{
-                  minWidth: 160,
-                  height: 44,
-                  borderRadius: 3,
-                  fontSize: 16,
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                  boxShadow: 2,
-                  textTransform: "none",
-                }}
-              >
-                {t("take_in_work", "Взять в работу")}
-              </Button>
-            )}
-            {/* Кнопка завершения заказа — только для исполнителя, только если статус in_progress */}
-            {isExecutor && request.status === "in_progress" && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleComplete}
-                sx={{
-                  minWidth: 160,
-                  height: 44,
-                  borderRadius: 3,
-                  fontSize: 16,
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                  boxShadow: 2,
-                  textTransform: "none",
-                }}
-              >
-                {t("complete_order", "Завершить заказ")}
-              </Button>
-            )}
-            {/* Кнопка подтверждения выполнения — только для заказчика, только если статус completed */}
-            {isCustomer && request.status === "completed" && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleConfirm}
-                startIcon={<CheckCircleIcon />}
-                sx={{
-                  minWidth: 160,
-                  height: 44,
-                  borderRadius: 3,
-                  fontSize: 16,
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.5,
-                  boxShadow: 2,
-                  textTransform: "none",
-                }}
-              >
-                {t("confirm_completion", "Подтвердить выполнение")}
-              </Button>
-            )}
             {/* Остальные кнопки (чат, связаться, позвонить) оставляем как есть */}
             {(isCustomer || isExecutor) && (
               <Button
@@ -524,6 +439,103 @@ const RequestDetails = () => {
                 }}
               >
                 {t("call", "Позвонить")}
+              </Button>
+            )}
+          </Stack>
+          <Stack
+            direction="row"
+            justifyContent="center"
+            alignItems="center"
+            spacing={2}
+            sx={{ mt: 2, width: "100%" }}
+          >
+            {/* Если статус confirmed — обоим показываем лейбл 'Завершен' */}
+            {request.status === "confirmed" && (
+              <Chip
+                label={t("completed", "Завершено")}
+                color="success"
+                variant="filled"
+                sx={{
+                  fontSize: 18,
+                  px: 3,
+                  py: 1.5,
+                  borderRadius: 3,
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  height: 44,
+                  minWidth: 160,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              />
+            )}
+            {/* Кнопка 'Взять в работу' — только для исполнителя, только если статус pending */}
+            {isExecutor && request.status === "pending" && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleTakeInWork}
+                sx={{
+                  minWidth: 160,
+                  height: 44,
+                  borderRadius: 3,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 2,
+                  textTransform: "none",
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                {t("take_in_work", "Взять в работу")}
+              </Button>
+            )}
+            {/* Кнопка завершения заказа — только для исполнителя, только если статус in_progress */}
+            {isExecutor && request.status === "in_progress" && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleComplete}
+                sx={{
+                  minWidth: 160,
+                  height: 44,
+                  borderRadius: 3,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 2,
+                  textTransform: "none",
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                {t("complete_order", "Завершить заказ")}
+              </Button>
+            )}
+            {/* Кнопка подтверждения выполнения — только для заказчика, только если статус completed */}
+            {isCustomer && request.status === "completed" && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleConfirm}
+                startIcon={<CheckCircleIcon />}
+                sx={{
+                  minWidth: 160,
+                  height: 44,
+                  borderRadius: 3,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: 2,
+                  textTransform: "none",
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                {t("confirm_completion", "Подтвердить выполнение")}
               </Button>
             )}
           </Stack>
