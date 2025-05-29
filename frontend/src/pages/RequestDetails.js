@@ -22,6 +22,7 @@ import { useChatModal } from "../context/ChatModalContext";
 import MuiAlert from "@mui/material/Alert";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useTranslation } from "react-i18next";
+import { getCategoryDisplayName } from "../helpers/category";
 
 const statusColor = {
   pending: "warning",
@@ -43,7 +44,8 @@ const RequestDetails = () => {
     message: "",
     severity: "success",
   });
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language?.split("-")[0] || "ru";
 
   useEffect(() => {
     const fetchRequest = async () => {
@@ -183,7 +185,7 @@ const RequestDetails = () => {
               sx={{ color: (theme) => theme.palette.text.primary }}
             >
               <strong>{t("service_type", "Тип услуги")}:</strong>{" "}
-              {t(request.serviceType)}
+              {getCategoryDisplayName(request.serviceType, lang)}
             </Typography>
             <Typography
               variant="body1"
@@ -303,7 +305,7 @@ const RequestDetails = () => {
                 sx={{ color: (theme) => theme.palette.text.secondary }}
               >
                 <strong>{t("service_type", "Тип услуги")}:</strong>{" "}
-                {t(request.offerId.serviceType)}
+                {getCategoryDisplayName(request.offerId?.serviceType, lang)}
               </Typography>
               {request.offerId.location && (
                 <Typography

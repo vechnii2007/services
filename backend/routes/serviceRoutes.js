@@ -162,7 +162,11 @@ router.get("/offers", async (req, res) => {
         };
         // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
         let categoryObj = offer.category;
-        if (!categoryObj || typeof categoryObj === "string") {
+        if (
+          !categoryObj ||
+          typeof categoryObj === "string" ||
+          mongoose.isValidObjectId(categoryObj)
+        ) {
           let cat = null;
           if (typeof categoryObj === "string" && categoryObj) {
             cat = await Category.findOne({
@@ -173,14 +177,16 @@ router.get("/offers", async (req, res) => {
                 { "name.es": categoryObj },
               ],
             }).lean();
+          } else if (mongoose.isValidObjectId(categoryObj)) {
+            cat = await Category.findById(categoryObj).lean();
           }
           if (cat) {
             categoryObj = { _id: cat._id, name: cat.name, label: cat.label };
-          } else if (typeof categoryObj === "string" && categoryObj) {
+          } else if (categoryObj) {
             categoryObj = {
               _id: null,
-              name: { ru: categoryObj },
-              label: categoryObj,
+              name: { ru: String(categoryObj) },
+              label: String(categoryObj),
             };
           } else {
             categoryObj = null;
@@ -340,7 +346,11 @@ router.get("/offers/:id", async (req, res) => {
       };
       // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
       let categoryObj = offer.category;
-      if (!categoryObj || typeof categoryObj === "string") {
+      if (
+        !categoryObj ||
+        typeof categoryObj === "string" ||
+        mongoose.isValidObjectId(categoryObj)
+      ) {
         let cat = null;
         if (typeof categoryObj === "string" && categoryObj) {
           cat = await Category.findOne({
@@ -351,14 +361,16 @@ router.get("/offers/:id", async (req, res) => {
               { "name.es": categoryObj },
             ],
           }).lean();
+        } else if (mongoose.isValidObjectId(categoryObj)) {
+          cat = await Category.findById(categoryObj).lean();
         }
         if (cat) {
           categoryObj = { _id: cat._id, name: cat.name, label: cat.label };
-        } else if (typeof categoryObj === "string" && categoryObj) {
+        } else if (categoryObj) {
           categoryObj = {
             _id: null,
-            name: { ru: categoryObj },
-            label: categoryObj,
+            name: { ru: String(categoryObj) },
+            label: String(categoryObj),
           };
         } else {
           categoryObj = null;
@@ -449,59 +461,124 @@ router.get("/my-offers", auth, async (req, res) => {
     // Ищем предложения с любым из возможных идентификаторов пользователя
     const offers = await Offer.find({
       $or: [{ providerId: userId }, { providerId: userId.toString() }],
-    }).populate("providerId", "name email phone address status");
+    })
+      .populate("providerId", "name email phone address status")
+      .populate("category", "name label _id")
+      .populate("serviceType");
 
-    // Если предложений не найдено, проверим, есть ли вообще какие-то предложения в базе
-    if (offers.length === 0) {
-      const allOffers = await Offer.find({}).limit(5);
-    }
-
-    const formattedOffers = offers.map((offer) => {
-      const offerData = {
-        ...offer._doc,
-        providerId: userId, // Явно добавляем providerId
-      };
-
-      // Проверяем наличие изображений и форматируем их URL
-      if (offer.image) {
-        if (
-          offer.image.startsWith("http://") ||
-          offer.image.startsWith("https://")
-        ) {
-          offerData.image = offer.image;
-        } else {
-          offerData.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
-        }
-      }
-      if (Array.isArray(offer.images)) {
-        offerData.images = offer.images.map((image) =>
-          image
-            ? image.startsWith("http://") || image.startsWith("https://")
-              ? image
-              : `${BASE_URL}${UPLOADS_PATH}/${image}`
-            : "https://via.placeholder.com/150?text=Offer"
-        );
-      } else {
-        offerData.images = [];
-      }
-      // --- ГАРАНТИРУЕМ ПОЛЕ promoted ---
-      if (!offerData.promoted) {
-        offerData.promoted = {
-          isPromoted: false,
-          promotedUntil: null,
-          promotionType: null,
-          lastPromotedAt: null,
+    const formattedOffers = await Promise.all(
+      offers.map(async (offer) => {
+        const offerData = {
+          ...offer._doc,
+          providerId: userId, // Явно добавляем providerId
         };
-      }
-      // Корректно вычисляем isPromoted на лету
-      if (offerData.promoted && offerData.promoted.promotedUntil) {
-        offerData.promoted.isPromoted =
-          new Date(offerData.promoted.promotedUntil) > new Date();
-      } else {
-        offerData.promoted.isPromoted = false;
-      }
-      return offerData;
-    });
+        // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
+        let categoryObj = offer.category;
+        if (
+          !categoryObj ||
+          typeof categoryObj === "string" ||
+          mongoose.isValidObjectId(categoryObj)
+        ) {
+          let cat = null;
+          if (typeof categoryObj === "string" && categoryObj) {
+            cat = await Category.findOne({
+              $or: [
+                { label: categoryObj },
+                { "name.ru": categoryObj },
+                { "name.uk": categoryObj },
+                { "name.es": categoryObj },
+              ],
+            }).lean();
+          } else if (mongoose.isValidObjectId(categoryObj)) {
+            cat = await Category.findById(categoryObj).lean();
+          }
+          if (cat) {
+            categoryObj = { _id: cat._id, name: cat.name, label: cat.label };
+          } else if (categoryObj) {
+            categoryObj = {
+              _id: null,
+              name: { ru: String(categoryObj) },
+              label: String(categoryObj),
+            };
+          } else {
+            categoryObj = null;
+          }
+        }
+        offerData.category = categoryObj;
+        // --- ГАРАНТИРУЕМ ОБЪЕКТ SERVICE TYPE (если нужно) ---
+        let serviceTypeObj = offer.serviceType;
+        if (
+          !serviceTypeObj ||
+          typeof serviceTypeObj === "string" ||
+          mongoose.isValidObjectId(serviceTypeObj)
+        ) {
+          let cat = null;
+          if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+            cat = await Category.findOne({
+              $or: [
+                { label: serviceTypeObj },
+                { "name.ru": serviceTypeObj },
+                { "name.uk": serviceTypeObj },
+                { "name.es": serviceTypeObj },
+              ],
+            }).lean();
+          } else if (mongoose.isValidObjectId(serviceTypeObj)) {
+            cat = await Category.findById(serviceTypeObj).lean();
+          }
+          if (cat) {
+            serviceTypeObj = { _id: cat._id, name: cat.name, label: cat.label };
+          } else if (serviceTypeObj) {
+            serviceTypeObj = {
+              _id: null,
+              name: { ru: String(serviceTypeObj) },
+              label: String(serviceTypeObj),
+            };
+          } else {
+            serviceTypeObj = null;
+          }
+        }
+        offerData.serviceType = serviceTypeObj;
+        // Проверяем наличие изображений и форматируем их URL
+        if (offer.image) {
+          if (
+            offer.image.startsWith("http://") ||
+            offer.image.startsWith("https://")
+          ) {
+            offerData.image = offer.image;
+          } else {
+            offerData.image = `${BASE_URL}${UPLOADS_PATH}/${offer.image}`;
+          }
+        }
+        if (Array.isArray(offer.images)) {
+          offerData.images = offer.images.map((image) =>
+            image
+              ? image.startsWith("http://") || image.startsWith("https://")
+                ? image
+                : `${BASE_URL}${UPLOADS_PATH}/${image}`
+              : "https://via.placeholder.com/150?text=Offer"
+          );
+        } else {
+          offerData.images = [];
+        }
+        // --- ГАРАНТИРУЕМ ПОЛЕ promoted ---
+        if (!offerData.promoted) {
+          offerData.promoted = {
+            isPromoted: false,
+            promotedUntil: null,
+            promotionType: null,
+            lastPromotedAt: null,
+          };
+        }
+        // Корректно вычисляем isPromoted на лету
+        if (offerData.promoted && offerData.promoted.promotedUntil) {
+          offerData.promoted.isPromoted =
+            new Date(offerData.promoted.promotedUntil) > new Date();
+        } else {
+          offerData.promoted.isPromoted = false;
+        }
+        return offerData;
+      })
+    );
 
     res.json(formattedOffers);
   } catch (error) {
@@ -910,7 +987,43 @@ router.get("/requests", auth, async (req, res) => {
       .populate("providerId", "name email")
       .sort({ createdAt: -1 });
 
-    res.json(requests);
+    // Гарантируем объект serviceType
+    const result = [];
+    for (const reqItem of requests) {
+      let serviceTypeObj = reqItem.serviceType;
+      if (
+        !serviceTypeObj ||
+        typeof serviceTypeObj === "string" ||
+        mongoose.isValidObjectId(serviceTypeObj)
+      ) {
+        let cat = null;
+        if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+          cat = await Category.findOne({
+            $or: [
+              { label: serviceTypeObj },
+              { "name.ru": serviceTypeObj },
+              { "name.uk": serviceTypeObj },
+              { "name.es": serviceTypeObj },
+            ],
+          }).lean();
+        } else if (mongoose.isValidObjectId(serviceTypeObj)) {
+          cat = await Category.findById(serviceTypeObj).lean();
+        }
+        if (cat) {
+          serviceTypeObj = { _id: cat._id, name: cat.name, label: cat.label };
+        } else if (serviceTypeObj) {
+          serviceTypeObj = {
+            _id: null,
+            name: { ru: String(serviceTypeObj) },
+            label: String(serviceTypeObj),
+          };
+        } else {
+          serviceTypeObj = null;
+        }
+      }
+      result.push({ ...reqItem._doc, serviceType: serviceTypeObj });
+    }
+    res.json(result);
   } catch (error) {
     console.error("[/services/requests] Server error:", error);
     res.status(500).json({
@@ -930,7 +1043,43 @@ router.get("/my-requests", auth, async (req, res) => {
       .populate("userId", "name email phone address status")
       .populate("offerId", "title serviceType location")
       .sort({ createdAt: -1 });
-    res.json(requests);
+    // Гарантируем объект serviceType
+    const result = [];
+    for (const reqItem of requests) {
+      let serviceTypeObj = reqItem.serviceType;
+      if (
+        !serviceTypeObj ||
+        typeof serviceTypeObj === "string" ||
+        mongoose.isValidObjectId(serviceTypeObj)
+      ) {
+        let cat = null;
+        if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+          cat = await Category.findOne({
+            $or: [
+              { label: serviceTypeObj },
+              { "name.ru": serviceTypeObj },
+              { "name.uk": serviceTypeObj },
+              { "name.es": serviceTypeObj },
+            ],
+          }).lean();
+        } else if (mongoose.isValidObjectId(serviceTypeObj)) {
+          cat = await Category.findById(serviceTypeObj).lean();
+        }
+        if (cat) {
+          serviceTypeObj = { _id: cat._id, name: cat.name, label: cat.label };
+        } else if (serviceTypeObj) {
+          serviceTypeObj = {
+            _id: null,
+            name: { ru: String(serviceTypeObj) },
+            label: String(serviceTypeObj),
+          };
+        } else {
+          serviceTypeObj = null;
+        }
+      }
+      result.push({ ...reqItem._doc, serviceType: serviceTypeObj });
+    }
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
@@ -1185,11 +1334,48 @@ router.get("/favorites", auth, async (req, res) => {
 
     for (const favorite of favorites) {
       const Model = favorite.offerType === "Offer" ? Offer : ServiceOffer;
-      const offer = await Model.findById(favorite.offerId);
+      // Делаем populate категории и serviceType
+      const offer = await Model.findById(favorite.offerId)
+        .populate("category", "name label _id")
+        .populate("serviceType");
       if (offer && offer.status === "active") {
+        // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
+        let categoryObj = offer.category;
+        if (
+          !categoryObj ||
+          typeof categoryObj === "string" ||
+          mongoose.isValidObjectId(categoryObj)
+        ) {
+          let cat = null;
+          if (typeof categoryObj === "string" && categoryObj) {
+            cat = await Category.findOne({
+              $or: [
+                { label: categoryObj },
+                { "name.ru": categoryObj },
+                { "name.uk": categoryObj },
+                { "name.es": categoryObj },
+              ],
+            }).lean();
+          } else if (mongoose.isValidObjectId(categoryObj)) {
+            cat = await Category.findById(categoryObj).lean();
+          }
+          if (cat) {
+            categoryObj = { _id: cat._id, name: cat.name, label: cat.label };
+          } else if (categoryObj) {
+            categoryObj = {
+              _id: null,
+              name: { ru: String(categoryObj) },
+              label: String(categoryObj),
+            };
+          } else {
+            categoryObj = null;
+          }
+        }
+        // Аналогично для serviceType, если нужно
         favoriteOffers.push({
           ...offer._doc,
           type: favorite.offerType,
+          category: categoryObj,
         });
       }
     }
@@ -1564,11 +1750,44 @@ router.get("/requests/:id", async (req, res) => {
       .populate({
         path: "offerId",
         select: "title serviceType location description images",
+        populate: { path: "serviceType" },
       });
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
     }
-    res.json(request);
+    // Гарантируем объект serviceType
+    let serviceTypeObj = request.serviceType;
+    if (
+      !serviceTypeObj ||
+      typeof serviceTypeObj === "string" ||
+      mongoose.isValidObjectId(serviceTypeObj)
+    ) {
+      let cat = null;
+      if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+        cat = await Category.findOne({
+          $or: [
+            { label: serviceTypeObj },
+            { "name.ru": serviceTypeObj },
+            { "name.uk": serviceTypeObj },
+            { "name.es": serviceTypeObj },
+          ],
+        }).lean();
+      } else if (mongoose.isValidObjectId(serviceTypeObj)) {
+        cat = await Category.findById(serviceTypeObj).lean();
+      }
+      if (cat) {
+        serviceTypeObj = { _id: cat._id, name: cat.name, label: cat.label };
+      } else if (serviceTypeObj) {
+        serviceTypeObj = {
+          _id: null,
+          name: { ru: String(serviceTypeObj) },
+          label: String(serviceTypeObj),
+        };
+      } else {
+        serviceTypeObj = null;
+      }
+    }
+    res.json({ ...request._doc, serviceType: serviceTypeObj });
   } catch (error) {
     res.status(500).json({ error: error.message || "Server error" });
   }
@@ -1602,6 +1821,14 @@ router.put("/requests/:id/status", auth, async (req, res) => {
     }
     request.status = status;
     await request.save();
+
+    // Если статус стал "completed" — увеличиваем completedOffers у провайдера
+    if (status === "completed" && request.providerId) {
+      const provider = await User.findById(request.providerId);
+      if (provider && provider.role === "provider") {
+        await provider.incrementCompletedOffers();
+      }
+    }
     res.json({ message: "Status updated successfully", request });
   } catch (error) {
     res.status(500).json({ error: "Server error" });

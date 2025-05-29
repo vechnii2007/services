@@ -15,7 +15,8 @@ const serviceRequestSchema = new mongoose.Schema({
     ref: "Offer",
   },
   serviceType: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Category",
     required: true,
   },
   location: {

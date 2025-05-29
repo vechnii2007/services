@@ -17,10 +17,12 @@ import {
 import { useChatModal } from "../context/ChatModalContext";
 import ChatService from "../services/ChatService";
 import { useAuth } from "../hooks/useAuth";
+import { getCategoryName } from "../components/CategoryCard";
 
 const MyRequests = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language?.split("-")[0] || "ru";
   const { user } = useAuth();
   const [tab, setTab] = useState(0); // 0 - заказчик, 1 - исполнитель
   const [requests, setRequests] = useState([]); // мои заказы
@@ -126,6 +128,8 @@ const MyRequests = () => {
       request.offerId && typeof request.offerId === "object"
         ? request.offerId
         : null;
+    // Диагностика структуры serviceType
+    console.log("request.serviceType", request.serviceType);
     return (
       <Grid item xs={12} sm={6} md={4} key={request._id}>
         <Card>
@@ -142,7 +146,11 @@ const MyRequests = () => {
                   </Link>
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Тип услуги:</strong> {offer.serviceType}
+                  <strong>Тип услуги:</strong>{" "}
+                  {getCategoryName(offer.serviceType, lang) ||
+                    offer.serviceType?.label ||
+                    offer.serviceType?._id ||
+                    offer.serviceType}
                 </Typography>
                 {offer.location && (
                   <Typography variant="body2">
@@ -152,7 +160,11 @@ const MyRequests = () => {
               </>
             )}
             <Typography variant="body1">
-              <strong>{t("service_type")}:</strong> {t(request.serviceType)}
+              <strong>{t("service_type")}:</strong>{" "}
+              {getCategoryName(request.serviceType, lang) ||
+                request.serviceType?.label ||
+                request.serviceType?._id ||
+                request.serviceType}
             </Typography>
             <Typography variant="body1">
               <strong>{t("location")}:</strong> {request.location}
