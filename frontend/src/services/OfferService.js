@@ -30,8 +30,8 @@ class OfferService extends BaseService {
     return this.put(`/offers/${id}`, offerData);
   }
 
-  async delete(id) {
-    return this.delete(`/offers/${id}`);
+  async deleteOffer(id) {
+    return super.delete(`/offers/${id}`);
   }
 
   async uploadImage(id, imageFile) {

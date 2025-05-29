@@ -271,7 +271,7 @@ const CreateOffer = () => {
 
       const data = new FormData();
       data.append("title", formData.title);
-      data.append("category", formData.serviceType);
+      data.append("category", String(formData.serviceType));
       data.append("location", formData.location);
       data.append("description", formData.description);
 
@@ -365,7 +365,9 @@ const CreateOffer = () => {
         <Select
           name="serviceType"
           value={formData.serviceType}
-          onChange={handleChange}
+          onChange={(e) =>
+            setFormData({ ...formData, serviceType: String(e.target.value) })
+          }
           label={t("service_type")}
           required
           disabled={loading}
@@ -374,10 +376,7 @@ const CreateOffer = () => {
             <MenuItem disabled>{t("loading")}</MenuItem>
           ) : categories.length > 0 ? (
             categories.map((category) => (
-              <MenuItem
-                key={category._id || category.name}
-                value={category.name}
-              >
+              <MenuItem key={category._id} value={category._id}>
                 {category.label || t(category.name)}
               </MenuItem>
             ))

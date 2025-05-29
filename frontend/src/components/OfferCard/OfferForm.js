@@ -90,7 +90,10 @@ const OfferForm = ({
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     title: offer?.title || "",
-    serviceType: offer?.category || offer?.serviceType || "",
+    serviceType:
+      typeof offer?.category === "object"
+        ? offer?.category?._id || ""
+        : offer?.category || offer?.serviceType || "",
     location: offer?.location || "",
     description: offer?.description || "",
     price: offer?.price || "",
@@ -208,7 +211,7 @@ const OfferForm = ({
   };
 
   const handleCategoryChange = (e) => {
-    setFormData({ ...formData, serviceType: e.target.value });
+    setFormData({ ...formData, serviceType: String(e.target.value) });
   };
 
   const handleLocationChange = (e) => {
@@ -220,10 +223,15 @@ const OfferForm = ({
     setLoading(true);
     setMessage("");
     setErrors({});
+    console.log(
+      "[DEBUG] formData.serviceType:",
+      formData.serviceType,
+      typeof formData.serviceType
+    );
     try {
       const data = new FormData();
       data.append("title", formData.title);
-      data.append("category", formData.serviceType);
+      data.append("category", String(formData.serviceType));
       data.append("location", formData.location);
       data.append("description", formData.description);
       if (formData.priceFrom && formData.priceTo) {
@@ -312,7 +320,7 @@ const OfferForm = ({
             </MenuItem>
           ) : categories.length > 0 ? (
             categories.map((category) => (
-              <MenuItem key={category._id || category.key} value={category.key}>
+              <MenuItem key={category._id} value={category._id}>
                 {category.label || t(category.name)}
               </MenuItem>
             ))

@@ -67,6 +67,7 @@ import { useAuth } from "../hooks/useAuth";
 import OfferForm from "../components/OfferCard/OfferForm";
 import CreateOrderModal from "../components/OfferCard/CreateOrderModal";
 import { useTheme } from "@mui/material/styles";
+import { getCategoryName } from "../components/CategoryCard";
 
 // Оборачиваем компоненты в motion
 const MotionContainer = motion(Container);
@@ -75,7 +76,7 @@ const MotionPaper = motion(Paper);
 const MotionBox = motion(Box);
 
 const OfferDetails = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [offer, setOffer] = useState(null);
@@ -93,6 +94,7 @@ const OfferDetails = () => {
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [activeRequest, setActiveRequest] = useState(null);
   const theme = useTheme();
+  const lang = i18n.language?.split("-")[0] || "ru";
 
   useEffect(() => {
     let isMounted = true;
@@ -641,9 +643,19 @@ const OfferDetails = () => {
               <Box sx={{ mb: 3 }}>
                 <Chip
                   icon={<CategoryIcon />}
-                  label={safeServiceType}
-                  variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  label={
+                    getCategoryName(
+                      offer.categoryObj || offer.category,
+                      lang
+                    ) || t("category.unknown")
+                  }
+                  size="small"
+                  sx={{
+                    backgroundColor: (theme) => theme.palette.grey[200],
+                    color: (theme) => theme.palette.text.secondary,
+                    fontWeight: "medium",
+                    height: "24px",
+                  }}
                 />
                 <Chip
                   icon={<RoomIcon />}

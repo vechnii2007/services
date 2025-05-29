@@ -423,14 +423,17 @@ const UserOffersTableTab = ({ userId }) => {
     setDeleteLoading(offerId);
     setMessage("");
     try {
-      await OfferService.delete(offerId);
+      console.log("[Удаление оффера] id:", offerId);
+      const result = await OfferService.deleteOffer(offerId);
+      console.log("[Удаление оффера] результат:", result);
       fetchMyOffers();
       setMessage(t("offer_deleted") || "Предложение удалено");
     } catch (e) {
+      console.error("[Ошибка удаления оффера]", e, e?.response);
       setMessage(
         t("something_went_wrong") +
           ": " +
-          (e.response?.data?.error || t("something_went_wrong"))
+          (e?.response?.data?.error || e?.message || t("something_went_wrong"))
       );
     } finally {
       setDeleteLoading(null);

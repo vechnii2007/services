@@ -137,7 +137,7 @@ router.get("/offers", async (req, res) => {
     // Получаем предложения с учетом фильтрации, пагинации и сортировки
     const offers = await Offer.find(filter)
       .populate("providerId", "name email phone address status")
-      .populate("category")
+      .populate("category", "name label _id")
       .populate("serviceType")
       .skip(skip)
       .limit(limit)
@@ -160,33 +160,63 @@ router.get("/offers", async (req, res) => {
           reviewCount: offerRatingInfo.count,
           provider: provider ? { ...provider._doc } : null,
         };
+        // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
+        let categoryObj = offer.category;
+        if (!categoryObj || typeof categoryObj === "string") {
+          let cat = null;
+          if (typeof categoryObj === "string" && categoryObj) {
+            cat = await Category.findOne({
+              $or: [
+                { label: categoryObj },
+                { "name.ru": categoryObj },
+                { "name.uk": categoryObj },
+                { "name.es": categoryObj },
+              ],
+            }).lean();
+          }
+          if (cat) {
+            categoryObj = { _id: cat._id, name: cat.name, label: cat.label };
+          } else if (typeof categoryObj === "string" && categoryObj) {
+            categoryObj = {
+              _id: null,
+              name: { ru: categoryObj },
+              label: categoryObj,
+            };
+          } else {
+            categoryObj = null;
+          }
+        }
+        formattedOffer.category = categoryObj;
+        // --- ГАРАНТИРУЕМ ОБЪЕКТ SERVICE TYPE (если нужно) ---
+        let serviceTypeObj = offer.serviceType;
+        if (!serviceTypeObj || typeof serviceTypeObj === "string") {
+          let cat = null;
+          if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+            cat = await Category.findOne({
+              $or: [
+                { label: serviceTypeObj },
+                { "name.ru": serviceTypeObj },
+                { "name.uk": serviceTypeObj },
+                { "name.es": serviceTypeObj },
+              ],
+            }).lean();
+          }
+          if (cat) {
+            serviceTypeObj = { _id: cat._id, name: cat.name, label: cat.label };
+          } else if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+            serviceTypeObj = {
+              _id: null,
+              name: { ru: serviceTypeObj },
+              label: serviceTypeObj,
+            };
+          } else {
+            serviceTypeObj = null;
+          }
+        }
+        formattedOffer.serviceType = serviceTypeObj;
         // Убедимся, что providerId правильно установлен
         if (provider && provider._id) {
           formattedOffer.providerId = provider._id;
-        }
-        if (
-          formattedOffer.category &&
-          typeof formattedOffer.category === "object"
-        ) {
-          formattedOffer.category =
-            formattedOffer.category.label ||
-            formattedOffer.category.name?.ru ||
-            formattedOffer.category.name ||
-            formattedOffer.category.title ||
-            formattedOffer.category._id ||
-            JSON.stringify(formattedOffer.category);
-        }
-        if (
-          formattedOffer.serviceType &&
-          typeof formattedOffer.serviceType === "object"
-        ) {
-          formattedOffer.serviceType =
-            formattedOffer.serviceType.label ||
-            formattedOffer.serviceType.name?.ru ||
-            formattedOffer.serviceType.name ||
-            formattedOffer.serviceType.title ||
-            formattedOffer.serviceType._id ||
-            JSON.stringify(formattedOffer.serviceType);
         }
         // Преобразуем URL изображений
         if (offer.image) {
@@ -283,7 +313,7 @@ router.get("/offers/:id", async (req, res) => {
         path: "providerId",
         select: "name email phone address status providerInfo createdAt",
       })
-      .populate("category")
+      .populate("category", "name label _id")
       .populate("serviceType");
 
     if (offer) {
@@ -308,31 +338,60 @@ router.get("/offers/:id", async (req, res) => {
             }
           : null,
       };
-      if (
-        formattedOffer.category &&
-        typeof formattedOffer.category === "object"
-      ) {
-        formattedOffer.category =
-          formattedOffer.category.label ||
-          formattedOffer.category.name?.ru ||
-          formattedOffer.category.name ||
-          formattedOffer.category.title ||
-          formattedOffer.category._id ||
-          JSON.stringify(formattedOffer.category);
+      // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
+      let categoryObj = offer.category;
+      if (!categoryObj || typeof categoryObj === "string") {
+        let cat = null;
+        if (typeof categoryObj === "string" && categoryObj) {
+          cat = await Category.findOne({
+            $or: [
+              { label: categoryObj },
+              { "name.ru": categoryObj },
+              { "name.uk": categoryObj },
+              { "name.es": categoryObj },
+            ],
+          }).lean();
+        }
+        if (cat) {
+          categoryObj = { _id: cat._id, name: cat.name, label: cat.label };
+        } else if (typeof categoryObj === "string" && categoryObj) {
+          categoryObj = {
+            _id: null,
+            name: { ru: categoryObj },
+            label: categoryObj,
+          };
+        } else {
+          categoryObj = null;
+        }
       }
-      if (
-        formattedOffer.serviceType &&
-        typeof formattedOffer.serviceType === "object"
-      ) {
-        formattedOffer.serviceType =
-          formattedOffer.serviceType.label ||
-          formattedOffer.serviceType.name?.ru ||
-          formattedOffer.serviceType.name ||
-          formattedOffer.serviceType.title ||
-          formattedOffer.serviceType._id ||
-          JSON.stringify(formattedOffer.serviceType);
+      formattedOffer.category = categoryObj;
+      // --- ГАРАНТИРУЕМ ОБЪЕКТ SERVICE TYPE (если нужно) ---
+      let serviceTypeObj = offer.serviceType;
+      if (!serviceTypeObj || typeof serviceTypeObj === "string") {
+        let cat = null;
+        if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+          cat = await Category.findOne({
+            $or: [
+              { label: serviceTypeObj },
+              { "name.ru": serviceTypeObj },
+              { "name.uk": serviceTypeObj },
+              { "name.es": serviceTypeObj },
+            ],
+          }).lean();
+        }
+        if (cat) {
+          serviceTypeObj = { _id: cat._id, name: cat.name, label: cat.label };
+        } else if (typeof serviceTypeObj === "string" && serviceTypeObj) {
+          serviceTypeObj = {
+            _id: null,
+            name: { ru: serviceTypeObj },
+            label: serviceTypeObj,
+          };
+        } else {
+          serviceTypeObj = null;
+        }
       }
-
+      formattedOffer.serviceType = serviceTypeObj;
       // Добавляем URL для изображений
       if (offer.image) {
         if (

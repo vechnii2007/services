@@ -31,6 +31,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import CloseIcon from "@mui/icons-material/Close";
+import { getCategoryName } from "../CategoryCard";
 
 const MotionCard = motion(Card);
 
@@ -124,12 +125,13 @@ const OfferCard = memo(
     promotionStatus: promotionStatusProp,
   }) => {
     const navigate = useNavigate();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const auth = useAuth();
     const [promoteModalOpen, setPromoteModalOpen] = useState(false);
     const [promotionStatus, setPromotionStatus] = useState(promotionStatusProp);
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
+    const lang = i18n.language?.split("-")[0] || "ru";
 
     const safeOfferId = offer?._id || "";
     const safeOfferTitle = offer?.title || "";
@@ -323,7 +325,10 @@ const OfferCard = memo(
             >
               <Chip
                 icon={<CategoryIcon />}
-                label={t(safeServiceType)}
+                label={
+                  getCategoryName(offer.categoryObj || offer.category, lang) ||
+                  t("category.unknown")
+                }
                 size="small"
                 sx={{
                   backgroundColor: (theme) => theme.palette.grey[200],
