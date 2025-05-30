@@ -141,10 +141,7 @@ app.use((err, req, res, next) => {
 
 // Проверка подключения к MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("Connected to MongoDB");
     // Логируем текущую базу данных

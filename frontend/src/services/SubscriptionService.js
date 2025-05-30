@@ -5,6 +5,11 @@ const SubscriptionService = {
     const response = await api.get(`/subscriptions/me`);
     return response.data;
   },
+
+  async getAllUserSubscriptions() {
+    const response = await api.get(`/subscriptions/my-all`);
+    return response.data;
+  },
 };
 
 export default SubscriptionService;

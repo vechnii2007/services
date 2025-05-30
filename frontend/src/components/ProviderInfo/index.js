@@ -14,6 +14,7 @@ import {
 import { styled } from "@mui/material/styles";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import StarIcon from "@mui/icons-material/Star";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 const StyledAvatar = styled(Avatar)(({ theme }) => ({
   width: 48,
@@ -153,13 +154,21 @@ const ProviderInfo = memo(
           >
             {name}
           </Typography>
+          {provider.hasPremium && (
+            <Tooltip title="Top Profile">
+              <EmojiEventsIcon
+                color="warning"
+                sx={{ ml: 0.5, fontSize: 20, verticalAlign: "middle" }}
+              />
+            </Tooltip>
+          )}
           {isVerified && (
             <Tooltip title="Проверенный поставщик">
               <VerifiedIcon color="primary" fontSize="small" />
             </Tooltip>
           )}
         </Box>
-        <Stack spacing={0.5} sx={{ ml: 'auto'}}>
+        <Stack spacing={0.5} sx={{ ml: "auto" }}>
           {variant === "full" ? (
             <>
               <RatingWrapper>

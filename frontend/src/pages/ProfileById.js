@@ -33,6 +33,8 @@ const ProfileById = () => {
   const [user, setUser] = useState(null);
   const [offers, setOffers] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [limits, setLimits] = useState(null);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
@@ -49,12 +51,14 @@ const ProfileById = () => {
       setLoading(true);
       setError("");
       try {
-        const [userData, offersData, reviewsData] = await Promise.all([
+        const [userResponse, offersData, reviewsData] = await Promise.all([
           UserService.getById(id),
           UserService.getOffersByUserId(id),
           UserService.getReviewsByProviderId(id),
         ]);
-        setUser(userData);
+        setUser(userResponse.user);
+        setLimits(userResponse.limits || null);
+        setSubscriptions(userResponse.subscriptions || []);
         setOffers(offersData.offers || []);
         setReviews(reviewsData.reviews || []);
         // Проверка избранного (можно доработать под свою логику)
@@ -179,6 +183,14 @@ const ProfileById = () => {
                 <Chip
                   label="Проверенный"
                   color="success"
+                  size="small"
+                  sx={{ ml: 1 }}
+                />
+              )}
+              {limits?.premiumBadge && (
+                <Chip
+                  label="Премиум профиль"
+                  color="warning"
                   size="small"
                   sx={{ ml: 1 }}
                 />

@@ -7,6 +7,7 @@ const Notification = require("../models/Notification");
 const NotificationService = require("./NotificationService");
 const Review = require("../models/Review");
 const RoleLimit = require("../models/RoleLimit");
+const Subscription = require("../models/Subscription");
 
 class PromotionService {
   // Длительность поднятия в днях
@@ -21,6 +22,23 @@ class PromotionService {
     WEEK: 500,
     MONTH: 1500,
   };
+
+  async getUserRoleLimit(userId) {
+    const user = await User.findById(userId);
+    const role = user.role || "provider";
+    const activeSubscription = await Subscription.findOne({
+      userId,
+      status: "active",
+      endDate: { $gt: new Date() },
+    }).populate("tariffId");
+    const type = activeSubscription?.tariffId?.type || "free";
+    const roleLimit = await RoleLimit.findOne({ role, type });
+    console.log(
+      `[LIMIT DEBUG] userId=${userId}, role=${role}, type=${type}, subscriptionId=${activeSubscription?._id}, tariffId=${activeSubscription?.tariffId?._id}, foundLimit=`,
+      roleLimit
+    );
+    return roleLimit;
+  }
 
   async promoteOffer(offerId, promotionType, userId) {
     const offer = await Offer.findById(offerId);
@@ -38,13 +56,7 @@ class PromotionService {
     }
 
     // Проверка лимита топ-объявлений
-    const user = await User.findById(offer.providerId);
-    const userRole = user.role || "provider";
-    // Получаем лимит для роли (и типа тарифа, если есть)
-    const roleLimit = await RoleLimit.findOne({
-      role: userRole,
-      type: /free|premium|.*/,
-    });
+    const roleLimit = await this.getUserRoleLimit(offer.providerId);
     const maxTopOffers = roleLimit?.limits?.maxTopOffers || 1;
     const now = new Date();
     const activeTopOffers = await Offer.countDocuments({
@@ -190,7 +202,8 @@ class PromotionService {
           .sort({ "promoted.promotedUntil": -1 })
           .skip(skip)
           .limit(limit)
-          .populate("providerId", "name avatar"),
+          .populate("providerId", "name avatar")
+          .populate("category", "name label _id"),
         Offer.countDocuments(query),
       ]);
 
@@ -200,6 +213,12 @@ class PromotionService {
           const ratingInfo = await Review.getAverageRatingByOffer(offer._id);
           let provider = null;
           if (offer.providerId && typeof offer.providerId === "object") {
+            // Проверяем наличие активной premium-подписки
+            const hasPremium = await Subscription.exists({
+              userId: offer.providerId._id,
+              status: "active",
+              endDate: { $gt: new Date() },
+            });
             provider = {
               _id: offer.providerId._id,
               name: offer.providerId.name,
@@ -208,6 +227,7 @@ class PromotionService {
               status: offer.providerId.status,
               providerInfo: offer.providerId.providerInfo,
               createdAt: offer.providerId.createdAt,
+              hasPremium: !!hasPremium,
             };
           }
           return {
@@ -257,20 +277,14 @@ class PromotionService {
     }
 
     // Проверка лимита топ-объявлений
-    const user = await User.findById(offer.providerId);
-    const userRole = user.role || "provider";
-    // Получаем лимит для роли (и типа тарифа, если есть)
-    const roleLimit = await RoleLimit.findOne({
-      role: userRole,
-      type: /free|premium|.*/,
-    });
+    const roleLimit = await this.getUserRoleLimit(offer.providerId);
     const maxTopOffers = roleLimit?.limits?.maxTopOffers || 1;
     const now = new Date();
     const activeTopOffers = await Offer.countDocuments({
       providerId: offer.providerId,
       "promoted.isPromoted": true,
       "promoted.promotedUntil": { $gt: now },
-      _id: { $ne: offer._id }, // не считаем текущий оффер, если он уже топ
+      _id: { $ne: offer._id },
     });
     if (activeTopOffers >= maxTopOffers) {
       throw new ApiError(

@@ -34,3 +34,15 @@ exports.getMySubscription = async (req, res) => {
     res.status(500).json({ error: "Ошибка получения подписки" });
   }
 };
+
+exports.getAllMySubscriptions = async (req, res) => {
+  try {
+    const subscriptions = await Subscription.find({ userId: req.user.id })
+      .sort({ endDate: -1 })
+      .populate("tariffId");
+    res.json({ subscriptions });
+  } catch (error) {
+    console.error("[getAllMySubscriptions] error:", error);
+    res.status(500).json({ error: "Ошибка получения подписок" });
+  }
+};

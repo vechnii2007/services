@@ -7,6 +7,7 @@ import {
   Button,
   Typography,
   Chip,
+  Tooltip,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
@@ -32,6 +33,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import CloseIcon from "@mui/icons-material/Close";
 import { getCategoryName } from "../CategoryCard";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 const MotionCard = motion(Card);
 
@@ -283,6 +285,22 @@ const OfferCard = memo(
           }}
           onClick={handleViewClick}
         >
+          {/* Top Profile badge */}
+          {(safeProvider.hasPremium ||
+            safeProvider.subscriptionType === "premium") && (
+            <Tooltip title="Top Profile">
+              <Box position="absolute" top={12} left={12} zIndex={10}>
+                <EmojiEventsIcon
+                  color="warning"
+                  sx={{
+                    fontSize: 24,
+                    filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.10))",
+                  }}
+                />
+              </Box>
+            </Tooltip>
+          )}
+
           {isPromoted && (
             <PromotedBadge>
               <TrendingUpIcon fontSize="small" />

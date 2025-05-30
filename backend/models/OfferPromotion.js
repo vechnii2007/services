@@ -6,7 +6,6 @@ const offerPromotionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Offer",
       required: true,
-      index: true,
     },
     isPromoted: {
       type: Boolean,

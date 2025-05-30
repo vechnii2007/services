@@ -51,6 +51,7 @@ import {
   WhatsApp as WhatsAppIcon,
   Close as CloseIcon,
   Edit as EditIcon,
+  EmojiEvents as EmojiEventsIcon,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -763,6 +764,18 @@ const OfferDetails = () => {
                           >
                             {safeProvider.name}
                           </Typography>
+                          {safeProvider.hasPremium && (
+                            <Tooltip title="Top Profile">
+                              <EmojiEventsIcon
+                                color="warning"
+                                sx={{
+                                  ml: 0.5,
+                                  fontSize: 20,
+                                  verticalAlign: "middle",
+                                }}
+                              />
+                            </Tooltip>
+                          )}
                           {safeProvider._id && (
                             <Button
                               size="small"

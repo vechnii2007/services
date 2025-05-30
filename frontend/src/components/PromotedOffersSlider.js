@@ -283,17 +283,29 @@ const PromotedOffersSlider = ({ favorites, toggleFavorite }) => {
                     </Card>
                   </SwiperSlide>
                 ))
-              : promoted.map((offer) => (
-                  <SwiperSlide key={offer._id}>
-                    <OfferCard
-                      offer={offer}
-                      isFavorite={Boolean(favorites?.[offer._id])}
-                      onFavoriteClick={() =>
-                        toggleFavorite?.(offer._id, offer.type)
-                      }
-                    />
-                  </SwiperSlide>
-                ))}
+              : promoted.map((offer) => {
+                  // Гарантируем наличие categoryObj для OfferCard
+                  let categoryObj = offer.categoryObj;
+                  if (
+                    !categoryObj &&
+                    offer.category &&
+                    typeof offer.category === "object" &&
+                    (offer.category.name || offer.category.label)
+                  ) {
+                    categoryObj = offer.category;
+                  }
+                  return (
+                    <SwiperSlide key={offer._id}>
+                      <OfferCard
+                        offer={{ ...offer, categoryObj }}
+                        isFavorite={Boolean(favorites?.[offer._id])}
+                        onFavoriteClick={() =>
+                          toggleFavorite?.(offer._id, offer.type)
+                        }
+                      />
+                    </SwiperSlide>
+                  );
+                })}
           </StyledSwiper>
         </>
       )}
