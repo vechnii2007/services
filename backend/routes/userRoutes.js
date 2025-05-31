@@ -8,6 +8,8 @@ const passport = require("../config/passport");
 require("dotenv").config();
 const { isValidObjectId } = require("../utils/validation");
 const subscriptionController = require("../controllers/subscriptionController");
+const Subscription = require("../models/Subscription");
+const promotionService = require("../services/promotionService");
 
 // Регистрация пользователя
 router.post("/register", async (req, res) => {
@@ -219,7 +221,22 @@ router.get("/:id", async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json(user);
+    // Получаем все подписки пользователя
+    const subscriptions = await Subscription.find({ userId: req.params.id })
+      .populate("tariffId")
+      .sort({ startDate: -1 });
+    // Получаем лимиты пользователя (по активной подписке)
+    let limits = null;
+    try {
+      limits = await promotionService.getUserRoleLimit(req.params.id);
+    } catch (e) {
+      console.error("[userRoutes] Ошибка получения лимитов:", e);
+    }
+    res.json({
+      user,
+      subscriptions,
+      limits: limits ? limits.limits : null,
+    });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }

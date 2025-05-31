@@ -22,6 +22,7 @@ const Review = require("../models/Review");
 const { UPLOADS_PATH } = require("../config/uploadConfig");
 const { isValidObjectId } = require("../utils/validation");
 const promotionController = require("../controllers/promotionController");
+const Subscription = require("../models/Subscription");
 
 // Базовый URL бэкенда
 const BASE_URL = "http://localhost:5001";
@@ -151,6 +152,17 @@ router.get("/offers", async (req, res) => {
     const formattedOffers = await Promise.all(
       offers.map(async (offer) => {
         let provider = offer.providerId || null;
+        // Проверяем, есть ли у провайдера активная premium-подписка
+        let hasPremium = false;
+        if (provider && provider._id) {
+          hasPremium = await Subscription.exists({
+            userId: provider._id,
+            status: "active",
+            endDate: { $gt: new Date() },
+            // Можно добавить фильтр по тарифу, если нужно только premium:
+            // tariffId: ...
+          });
+        }
         // Получаем рейтинг и отзывы по предложению
         const offerRatingInfo = await Review.getAverageRatingByOffer(offer._id);
         // Создаем базовый объект предложения
@@ -158,7 +170,7 @@ router.get("/offers", async (req, res) => {
           ...offer._doc,
           rating: offerRatingInfo.rating,
           reviewCount: offerRatingInfo.count,
-          provider: provider ? { ...provider._doc } : null,
+          provider: provider ? { ...provider._doc, hasPremium } : null,
         };
         // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
         let categoryObj = offer.category;
@@ -323,6 +335,15 @@ router.get("/offers/:id", async (req, res) => {
       .populate("serviceType");
 
     if (offer) {
+      // Проверяем, есть ли у провайдера активная premium-подписка
+      let hasPremium = false;
+      if (offer.providerId && offer.providerId._id) {
+        hasPremium = await Subscription.exists({
+          userId: offer.providerId._id,
+          status: "active",
+          endDate: { $gt: new Date() },
+        });
+      }
       // Получаем рейтинг и отзывы по предложению
       const offerRatingInfo = await Review.getAverageRatingByOffer(offer._id);
       // Форматируем ответ
@@ -341,6 +362,7 @@ router.get("/offers/:id", async (req, res) => {
               status: offer.providerId.status,
               createdAt: offer.providerId.createdAt,
               providerInfo: offer.providerId.providerInfo,
+              hasPremium,
             }
           : null,
       };
@@ -472,6 +494,18 @@ router.get("/my-offers", auth, async (req, res) => {
           ...offer._doc,
           providerId: userId, // Явно добавляем providerId
         };
+        // Проверяем, есть ли у провайдера активная premium-подписка
+        let hasPremium = false;
+        if (offer.providerId && offer.providerId._id) {
+          hasPremium = await Subscription.exists({
+            userId: offer.providerId._id,
+            status: "active",
+            endDate: { $gt: new Date() },
+          });
+        }
+        offerData.provider = offer.providerId
+          ? { ...offer.providerId._doc, hasPremium }
+          : null;
         // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
         let categoryObj = offer.category;
         if (
@@ -1339,6 +1373,15 @@ router.get("/favorites", auth, async (req, res) => {
         .populate("category", "name label _id")
         .populate("serviceType");
       if (offer && offer.status === "active") {
+        // Проверяем, есть ли у провайдера активная premium-подписка
+        let hasPremium = false;
+        if (offer.providerId && offer.providerId._id) {
+          hasPremium = await Subscription.exists({
+            userId: offer.providerId._id,
+            status: "active",
+            endDate: { $gt: new Date() },
+          });
+        }
         // --- ГАРАНТИРУЕМ ОБЪЕКТ CATEGORY ---
         let categoryObj = offer.category;
         if (
@@ -1376,6 +1419,7 @@ router.get("/favorites", auth, async (req, res) => {
           ...offer._doc,
           type: favorite.offerType,
           category: categoryObj,
+          hasPremium,
         });
       }
     }

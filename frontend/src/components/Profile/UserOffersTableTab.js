@@ -23,6 +23,8 @@ import GenericTable from "../AdminPanel/GenericTable";
 import { useTheme } from "@mui/material/styles";
 import PromoteOfferModal from "../PromoteOfferModal";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SubscriptionService from "../../services/SubscriptionService";
+import api from "../../services/api";
 
 const UserOffersTableTab = ({ userId }) => {
   const { t } = useTranslation();
@@ -38,6 +40,7 @@ const UserOffersTableTab = ({ userId }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [demoteLoading, setDemoteLoading] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(null);
+  const [topLimit, setTopLimit] = useState(1);
 
   const fetchMyOffers = useCallback(async () => {
     setLoading(true);
@@ -64,9 +67,15 @@ const UserOffersTableTab = ({ userId }) => {
     fetchMyOffers();
   }, [fetchMyOffers]);
 
+  useEffect(() => {
+    // Получаем лимит топ-объявлений с backend
+    api.get("/subscriptions/limits/me").then((res) => {
+      setTopLimit(res.data?.limits?.maxTopOffers || 1);
+    });
+  }, []);
+
   // Считаем количество активных топ-офферов
   const now = new Date();
-  const topLimit = 1; // TODO: если лимит приходит с бэка — брать из offers/профиля/ролей
   const activeTopOffers = offers.filter(
     (o) =>
       o.promoted &&

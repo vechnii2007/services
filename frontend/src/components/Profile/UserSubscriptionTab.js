@@ -18,24 +18,24 @@ import SubscriptionService from "../../services/SubscriptionService";
 const UserSubscriptionTab = ({ userId }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("subscription");
-  const [subscription, setSubscription] = useState(null);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchSubscription = async () => {
+    const fetchSubscriptions = async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await SubscriptionService.getUserSubscription(userId);
-        setSubscription(data);
+        const data = await SubscriptionService.getAllUserSubscriptions();
+        setSubscriptions(data.subscriptions || []);
       } catch (e) {
         setError(e.response?.data?.message || e.message);
       } finally {
         setLoading(false);
       }
     };
-    if (userId) fetchSubscription();
+    fetchSubscriptions();
   }, [userId]);
 
   const renderSubscriptionStatus = () => {
@@ -45,11 +45,7 @@ const UserSubscriptionTab = ({ userId }) => {
     if (error) {
       return <Alert severity="error">{error}</Alert>;
     }
-    if (
-      !subscription ||
-      !subscription.status ||
-      subscription.status === "none"
-    ) {
+    if (subscriptions.length === 0) {
       return (
         <Alert
           icon={<AccessTime fontSize="inherit" />}
@@ -60,69 +56,74 @@ const UserSubscriptionTab = ({ userId }) => {
         </Alert>
       );
     }
-    if (subscription.status === "expired") {
-      return (
-        <Alert
-          icon={<Warning fontSize="inherit" />}
-          severity="warning"
-          sx={{ mb: 3 }}
-        >
-          {t("subscription_expired")}
-        </Alert>
-      );
-    }
-    if (subscription.status === "active") {
-      return (
-        <Alert
-          icon={<CheckCircle fontSize="inherit" />}
-          severity="success"
-          sx={{ mb: 3 }}
-        >
-          {t("subscription_active_until", {
-            date: new Date(subscription.expiresAt).toLocaleDateString(),
-          })}
-        </Alert>
-      );
-    }
-    return null;
+    return (
+      <Box>
+        {subscriptions.map((sub, idx) => (
+          <Paper
+            key={sub._id || idx}
+            sx={{
+              p: 2,
+              mb: 2,
+              background: sub.status === "active" ? "#e8f5e9" : undefined,
+            }}
+          >
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} sm={4}>
+                <Typography variant="subtitle1" gutterBottom>
+                  {t("tariff")}: {sub.tariffId?.name || "-"}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <Chip
+                  label={t(sub.status)}
+                  color={
+                    sub.status === "active"
+                      ? "success"
+                      : sub.status === "expired"
+                      ? "warning"
+                      : "default"
+                  }
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <Typography variant="body2" color="textSecondary">
+                  {t("period")}:{" "}
+                  {sub.tariffId?.period
+                    ? t("days", { count: sub.tariffId.period })
+                    : "-"}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <Typography variant="body2" color="textSecondary">
+                  {t("expires_at")}:{" "}
+                  {sub.endDate
+                    ? new Date(sub.endDate).toLocaleDateString()
+                    : "-"}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        ))}
+      </Box>
+    );
   };
+
+  // Определяем, есть ли активная премиум-подписка
+  const hasPremium = subscriptions.some(
+    (sub) => sub.status === "active" && sub.tariffId?.type === "premium"
+  );
 
   return (
     <Box p={3}>
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>
           {t("my_subscription")}
+          {hasPremium && (
+            <Chip label="Premium account" color="warning" sx={{ ml: 2 }} />
+          )}
         </Typography>
         {renderSubscriptionStatus()}
-        {subscription &&
-          subscription.status === "active" &&
-          subscription.tariff && (
-            <Box mt={2}>
-              <Typography variant="subtitle1" gutterBottom>
-                {t("current_tariff")}:
-              </Typography>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item>
-                  <Typography variant="h6">
-                    {subscription.tariff.name}
-                  </Typography>
-                </Grid>
-                <Grid item>
-                  <Chip
-                    label={t(subscription.tariff.type)}
-                    color="primary"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item>
-                  <Typography variant="body2" color="textSecondary">
-                    {t("period")}:{" "}
-                    {t("days", { count: subscription.tariff.period })}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
       </Paper>
 
       <Box mb={3}>
